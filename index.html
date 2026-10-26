@@ -1,0 +1,1564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SwitchLab</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eef1f4;--card:#fff;--ink:#1b2430;--muted:#5b6675;--line:#d5dbe3;--accent:#0f766e;--btn-ink:#fff;--ok:#15803d;--bad:#b91c1c;--term:#0b1016;--term-ink:#cfe3ff;color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0d1117;--card:#161b22;--ink:#e6edf3;--muted:#8b949e;--line:#2b333d;--accent:#2dd4bf;--btn-ink:#0d1117;--ok:#4ade80;--bad:#f87171;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0d1117;--card:#161b22;--ink:#e6edf3;--muted:#8b949e;--line:#2b333d;--accent:#2dd4bf;--btn-ink:#0d1117;--ok:#4ade80;--bad:#f87171;color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "IBM Plex Sans",system-ui,sans-serif}
+header{padding:20px 20px 4px}
+h1{margin:0;font-size:1.35rem;font-weight:600}
+header p{margin:2px 0 0;color:var(--muted)}
+.lab-top{display:flex;align-items:center;gap:16px}
+h2{margin:0 0 10px;font-size:1rem;font-weight:600}
+.labs{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;padding:16px 20px 24px}
+.lab-card{display:block;width:100%;text-align:left;font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;cursor:pointer}
+button.lab-card:hover{border-color:var(--accent)}
+.lab-card.off{opacity:.6;cursor:default}
+.lab-card span{display:block}
+.lab-title{font-weight:600;margin-bottom:6px}
+.lab-desc{color:var(--muted);font-size:.9rem}
+.lab-state{margin-top:10px;font-size:.8rem;color:var(--accent)}
+.lab-card.off .lab-state{color:var(--muted)}
+main{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:16px;padding:16px 20px 24px;align-items:start}
+@media (max-width:760px){main{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;min-width:0}
+.topo-title{margin-top:20px}
+.note{color:var(--muted);font-size:.9rem;margin:0 0 12px}
+.reqs{list-style:none;margin:0 0 14px;padding:0}
+.reqs li{margin:6px 0}
+.reqs li.ok{color:var(--ok)}
+.reqs li.bad{color:var(--bad)}
+.actions{display:flex;gap:8px}
+button{font:inherit;padding:8px 14px;border-radius:6px;border:1px solid var(--accent);background:var(--accent);color:var(--btn-ink);cursor:pointer}
+button.ghost{background:none;color:var(--ink);border-color:var(--line)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+svg{width:100%;height:auto;display:block;background:var(--term);border-radius:6px}
+svg rect{fill:var(--bg);stroke:var(--line);stroke-width:1.5}
+svg rect.dev{stroke:var(--accent)}
+svg text{fill:var(--ink);font:600 13px "IBM Plex Sans",system-ui;text-anchor:middle;dominant-baseline:middle}
+svg line{stroke:var(--muted);stroke-width:2}
+.term{background:var(--term);color:var(--term-ink);font:13px/1.55 "IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;padding:6px 16px 14px;height:380px;overflow:auto;white-space:normal;margin:0;cursor:text;border-radius:0 0 10px 10px}
+.cli{display:flex;align-items:center;gap:8px;margin-top:8px}
+#prompt{color:#5eead4;white-space:pre;margin-right:.6ch}
+#cmd{flex:1;min-width:0;background:transparent;border:0;outline:0;padding:0;margin:0;color:inherit;font:inherit;caret-color:#5eead4}
+.app{display:grid;grid-template-columns:220px minmax(0,1fr);min-height:100vh}
+.side{background:var(--card);border-right:1px solid var(--line);padding:16px 12px}
+.side-head{margin:36px 10px 6px;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.side-head:first-child{margin-top:4px}
+.nav-item{display:block;width:100%;text-align:left;font:inherit;color:var(--muted);background:none;border:0;border-radius:6px;padding:8px 10px;margin:2px 0;cursor:pointer}
+.nav-item.active{color:var(--ink);background:var(--line)}
+.nav-item.off{cursor:default;opacity:.55}
+.content{min-width:0}
+.levels{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+.level{padding:6px 10px;font-size:.85rem}
+.level.active{background:var(--accent);color:var(--btn-ink);border-color:var(--accent)}
+.dash-bar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:4px 20px 14px}
+.dash-label{font:12px "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.06em;color:var(--muted)}
+.seg{display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg-btn{font:12px "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.04em;text-transform:uppercase;padding:7px 14px;border:0;border-radius:0;background:var(--card);color:var(--muted);cursor:pointer}
+.seg-btn+.seg-btn{border-left:1px solid var(--line)}
+.seg-btn.active{background:var(--accent);color:var(--btn-ink)}
+.dash-tools{padding:0 20px 14px}
+#search{width:260px;max-width:100%;font:inherit;font-size:.9rem;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink)}
+.group-head{display:flex;justify-content:space-between;padding:10px 20px;font:12px "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.04em;color:var(--muted);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px 16px;padding:14px 20px;border-bottom:1px solid var(--line)}
+.row.off{opacity:.6}
+.row-title{font-weight:600}
+.row-desc{color:var(--muted);font-size:.9rem}
+.row-right{display:flex;align-items:center;gap:14px}
+.row-level{font:12px "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.04em;text-transform:uppercase;color:var(--accent)}
+.row.off .row-level{color:var(--muted)}
+.start{background:none;color:var(--ink);border:1px solid var(--line);padding:7px 14px;border-radius:6px;cursor:pointer}
+.start:hover{border-color:var(--accent)}
+.lab-col{display:grid;gap:16px;min-width:0;align-content:start}
+.lab-col h2{font:12px "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 12px}
+.console-head,.req-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.console-head h2,.req-head h2{margin:0}
+.tab{font:11px "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.04em;padding:5px 9px;border:0;border-radius:4px;background:var(--line);color:var(--muted);cursor:pointer}
+#req-count{font:12px "IBM Plex Mono",ui-monospace,monospace;color:var(--muted)}
+.scenario-lead{margin:0 0 10px}
+.steps{margin:0;padding-left:2.4em;list-style:decimal-leading-zero}
+.steps li{margin:6px 0}
+.reqs li{margin:0 0 8px;padding:10px 12px;border:1px solid var(--line);border-radius:8px}
+details.card summary{cursor:pointer;font:12px "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.cmds{margin:10px 0 0;font:13px "IBM Plex Mono",ui-monospace,monospace;line-height:1.7}
+@media (max-width:760px){.app{grid-template-columns:1fr}.side{border-right:0;border-bottom:1px solid var(--line)}}
+.console{padding:0;overflow:hidden}
+.console .console-head{margin:0;padding:10px 14px;border-bottom:1px solid var(--line)}
+.console-label{font:11px "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.tabs{display:flex;gap:4px}
+.tab.active{background:var(--accent);color:var(--btn-ink)}
+.tab:disabled{opacity:.45;cursor:default}
+.line{display:flex;align-items:baseline;white-space:pre}
+.ps{color:#5eead4}
+.ln-err{color:#f7a1a1}
+.ln-ok{color:#8ce99a}
+.term > div > div{white-space:pre-wrap}
+.domains{padding:0}
+.domain summary{list-style:none;display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--line);cursor:pointer;font:12px "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.06em;text-transform:uppercase}
+.domain summary::-webkit-details-marker{display:none}
+.domain summary::before{content:"";width:6px;height:6px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(-45deg);flex-shrink:0}
+.domain[open] summary::before{transform:rotate(45deg)}
+.dom-title{color:var(--ink)}
+.dom-meta{color:var(--muted)}
+.empty{margin:0;padding:12px 20px 16px;color:var(--muted);font-size:.9rem}
+.dash-label{margin-left:auto}
+.ref-note{margin:0}
+#ref header{padding:32px 32px 8px}
+#ref .eyebrow{font:11px "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin:0 0 10px}
+#ref h1{font:600 2rem/1.2 "IBM Plex Mono",ui-monospace,monospace;letter-spacing:-.01em}
+#ref header p{max-width:640px;margin-top:10px}
+#ref .domain summary{display:block;padding:28px 32px 12px;border:0;font:11px "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+#ref .dom-meta{display:none}
+#ref .domain summary::before{display:inline-block;vertical-align:middle;margin-right:10px}
+#ref .rows{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;padding:0 32px 8px}
+#ref .row{display:block;border:1px solid var(--line);border-radius:10px;background:var(--card);padding:16px 18px}
+#ref .row-title{font-weight:600;margin-bottom:8px}
+#ref .row-desc{line-height:1.5}
+svg text.lbl{fill:var(--term-ink);font:11px "IBM Plex Mono",ui-monospace,monospace}
+#topo [data-dev]{cursor:pointer}
+#topo .box{fill:#131a22;stroke:#2a3644;stroke-width:1.5}
+#topo [data-dev]:hover .box{stroke:#5eead4}
+#topo [data-dev].sel .box{stroke:#5eead4;stroke-width:2}
+#topo .icon{fill:none;stroke:#8fb3c9;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+#topo text{dominant-baseline:auto}
+#topo .name{fill:#e6edf3;font:600 13px "IBM Plex Sans",system-ui,sans-serif;text-anchor:start}
+#topo .sub{fill:#8b949e;font:10px "IBM Plex Mono",ui-monospace,monospace;text-anchor:start}
+#topo .port{fill:#8b949e;font:10px "IBM Plex Mono",ui-monospace,monospace;text-anchor:middle}
+#topo .link{stroke:#3b4a5a;stroke-width:2}
+#scenario-lead.code{white-space:pre;font:12px "IBM Plex Mono",ui-monospace,monospace;background:var(--term);color:var(--term-ink);padding:12px;border-radius:6px;overflow:auto}
+#ref-detail{padding:28px 32px 32px}
+#ref-detail .ref-label{font:11px "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:18px 0 8px}
+#ref-detail .ref-code{background:var(--term);color:var(--term-ink);border-radius:8px;padding:14px;font:12px/1.6 "IBM Plex Mono",ui-monospace,monospace;white-space:pre;overflow:auto;margin:0}
+#ref-detail #ref-lab{margin-top:20px}
+#ref .ref-item{cursor:pointer}
+#ref .ref-item:hover{border-color:var(--accent)}
+#ref-detail .ref-eyebrow{font:11px "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin:0 0 8px}
+#ref-detail h2{font-size:1.5rem;margin:0 0 12px}
+#ref-detail > button.ghost{font-size:.95rem;padding:6px 16px;margin:0 0 6px;position:relative;top:-10px}
+#ref-detail .ref-intro{color:var(--muted);max-width:720px;margin:0 0 8px}
+#ref-detail .ref-h{font:12px "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:26px 0 10px}
+#ref-detail .ref-list{margin:0;padding-left:18px}
+#ref-detail .ref-list li{margin:6px 0}
+#ref-detail .ref-verify{list-style:none;padding:0}
+#ref-detail .ref-verify li{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:8px 12px;margin:6px 0}
+#ref-detail .ref-warn{list-style:none;padding:0}
+#ref-detail .ref-warn li{padding-left:18px;position:relative}
+#ref-detail .ref-warn li::before{content:"!";position:absolute;left:0;color:#d9a441;font-weight:600}
+#ref-detail .ref-table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:8px;font-size:.9rem}
+#ref-detail .ref-table th,#ref-detail .ref-table td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+#ref-detail .ref-table th{font:11px "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+#ref-detail .ref-table code{font:12px "IBM Plex Mono",ui-monospace,monospace}
+#ref-detail .ref-two{display:grid;grid-template-columns:1fr 1fr;gap:32px}
+@media (max-width:760px){#ref-detail .ref-two{grid-template-columns:1fr}}
+#ref-detail .ref-cta{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:32px;padding:16px 18px;background:var(--card);border:1px solid var(--line);border-radius:10px}
+#ref-detail .ref-cta p{margin:4px 0 0;color:var(--muted);font-size:.9rem}
+</style>
+</head>
+<body>
+
+<div class="app">
+<nav class="side" aria-label="Main">
+  <p class="side-head">Workspace</p>
+  <button class="nav-item active" id="nav-labs">Labs</button>
+  <span class="nav-item off" title="Coming soon">Practice</span>
+  <span class="nav-item off" title="Coming soon">Mock exam</span>
+  <button class="nav-item" id="nav-ref">Reference</button>
+  <span class="nav-item off" title="Coming soon">Progress</span>
+  <p class="side-head">Account</p>
+  <span class="nav-item off" title="Coming soon">Account</span>
+  <span class="nav-item off" title="Coming soon">Support</span>
+</nav>
+<div class="content">
+<section id="dash">
+  <header>
+    <h1>SwitchLab</h1>
+    <p>Choose a difficulty, then start a lab.</p>
+  </header>
+  <div class="dash-bar">
+    <input id="search" type="search" placeholder="Search topics" aria-label="Search topics">
+    <span class="dash-label">Difficulty</span>
+    <div class="seg">
+      <button class="seg-btn" data-set="beginner">Beginner</button>
+      <button class="seg-btn" data-set="intermediate">Intermediate</button>
+      <button class="seg-btn" data-set="advanced">Advanced</button>
+      <button class="seg-btn" data-set="expert">Expert</button>
+    </div>
+  </div>
+  
+  <div class="domains">
+  <details class="domain" open>
+    <summary><span class="dom-title">1.0 · Network fundamentals</span><span class="dom-meta">5 topics</span></summary>
+    <div class="rows">
+    <div class="row" data-name="ipv4 addressing">
+      <div>
+        <div class="row-title">IPv4 addressing</div>
+        <div class="row-desc">Split a random 192.168.x.0/24 network into two LANs and configure R1's gateways.</div>
+      </div>
+      <div class="row-right">
+        
+        <button class="start" id="open-ipv4">Start lab →</button>
+      </div>
+    </div>
+    <div class="row" data-name="subnetting">
+      <div>
+        <div class="row-title">Subnetting</div>
+        <div class="row-desc">Divide a network into equal blocks.</div>
+      </div>
+      <div class="row-right">
+        <button class="start" id="open-subnetting">Start lab →</button>
+      </div>
+    </div>
+    <div class="row" data-name="vlsm">
+      <div>
+        <div class="row-title">VLSM</div>
+        <div class="row-desc">Right-size subnets to host requirements.</div>
+      </div>
+      <div class="row-right">
+        <button class="start" id="open-vlsm">Start lab →</button>
+      </div>
+    </div>
+    <div class="row" data-name="ipv6 addressing">
+      <div>
+        <div class="row-title">IPv6 Addressing</div>
+        <div class="row-desc">Global, link-local and prefix configuration.</div>
+      </div>
+      <div class="row-right">
+        <button class="start" id="open-ipv6">Start lab →</button>
+      </div>
+    </div>
+    <div class="row" data-name="cdp lldp">
+      <div>
+        <div class="row-title">CDP &amp; LLDP</div>
+        <div class="row-desc">Neighbour discovery and port-level control.</div>
+      </div>
+      <div class="row-right">
+        <button class="start" id="open-cdp">Start lab →</button>
+      </div>
+    </div>
+    </div>
+  </details>
+  <details class="domain">
+    <summary><span class="dom-title">2.0 · Network access</span><span class="dom-meta">8 topics</span></summary>
+    <div class="rows">
+      <div class="row" data-name="vlans">
+        <div>
+          <div class="row-title">VLANs</div>
+          <div class="row-desc">Put switch ports into separate broadcast domains.</div>
+        </div>
+        <div class="row-right">
+          <button class="start" id="open-vlans">Start lab →</button>
+        </div>
+      </div>
+      <div class="row" data-name="access ports">
+        <div>
+          <div class="row-title">Access Ports</div>
+          <div class="row-desc">Carry a single VLAN to an end device such as a PC or printer.</div>
+        </div>
+        <div class="row-right">
+          <button class="start" id="open-access">Start lab →</button>
+        </div>
+      </div>
+      <div class="row" data-name="trunking">
+        <div>
+          <div class="row-title">Trunking (802.1Q)</div>
+          <div class="row-desc">Carry several VLANs between switches using tags.</div>
+        </div>
+        <div class="row-right">
+          <button class="start" id="open-trunk">Start lab →</button>
+        </div>
+      </div>
+      <div class="row" data-name="inter-vlan routing">
+        <div>
+          <div class="row-title">Inter-VLAN Routing</div>
+          <div class="row-desc">Let hosts in different VLANs talk, using router-on-a-stick or SVIs.</div>
+        </div>
+        <div class="row-right">
+          <button class="start" id="open-intervlan">Start lab →</button>
+        </div>
+      </div>
+      <div class="row" data-name="stp">
+        <div>
+          <div class="row-title">Spanning Tree Protocol (STP)</div>
+          <div class="row-desc">Block redundant links to prevent Layer 2 loops.</div>
+        </div>
+        <div class="row-right">
+          <button class="start" id="open-stp">Start lab →</button>
+        </div>
+      </div>
+      <div class="row" data-name="etherchannel">
+        <div>
+          <div class="row-title">EtherChannel</div>
+          <div class="row-desc">Bundle several physical links into one logical link for bandwidth and redundancy.</div>
+        </div>
+        <div class="row-right">
+          <button class="start" id="open-etherchannel">Start lab →</button>
+        </div>
+      </div>
+      <div class="row" data-name="advanced stp">
+        <div>
+          <div class="row-title">Advanced STP (RSTP, PVST+, Guards)</div>
+          <div class="row-desc">Faster convergence, plus guards against topology changes and rogue switches.</div>
+        </div>
+        <div class="row-right">
+          <button class="start" id="open-advstp">Start lab →</button>
+        </div>
+      </div>
+      <div class="row" data-name="advanced etherchannel">
+        <div>
+          <div class="row-title">Advanced EtherChannel</div>
+          <div class="row-desc">Load balancing, Layer 3 EtherChannels and consistency checks.</div>
+        </div>
+        <div class="row-right">
+          <button class="start" id="open-advetherchannel">Start lab →</button>
+        </div>
+      </div>
+    </div>
+  </details>
+  <details class="domain">
+    <summary><span class="dom-title">3.0 · IP connectivity</span><span class="dom-meta">2 topics</span></summary>
+    <div class="rows">
+      <div class="row" data-name="static routing">
+        <div>
+          <div class="row-title">Static Routing</div>
+          <div class="row-desc">Send traffic between two networks with static routes.</div>
+        </div>
+        <div class="row-right">
+          <button class="start" id="open-static">Start lab →</button>
+        </div>
+      </div>
+      <div class="row" data-name="default routes">
+        <div>
+          <div class="row-title">Default Routes</div>
+          <div class="row-desc">The gateway of last resort, used when no more specific route matches.</div>
+        </div>
+        <div class="row-right">
+          <button class="start" id="open-defroute">Start lab →</button>
+        </div>
+      </div>
+    </div>
+  </details>
+  <details class="domain">
+    <summary><span class="dom-title">4.0 · IP services</span><span class="dom-meta">4 topics</span></summary>
+    <div class="rows"><div class="row" data-name="dhcp">
+        <div>
+          <div class="row-title">DHCP</div>
+          <div class="row-desc">Give hosts their IP settings automatically from a pool.</div>
+        </div>
+        <div class="row-right">
+          <button class="start" id="open-dhcp">Start lab →</button>
+        </div>
+      </div>
+      <div class="row" data-name="dhcp relay">
+        <div>
+          <div class="row-title">DHCP Relay</div>
+          <div class="row-desc">Forward DHCP requests across subnets using ip helper-address.</div>
+        </div>
+        <div class="row-right">
+          <button class="start" id="open-dhcprelay">Start lab →</button>
+        </div>
+      </div>
+      <div class="row" data-name="nat">
+        <div>
+          <div class="row-title">NAT</div>
+          <div class="row-desc">Translate private addresses for internet access, using static, dynamic or PAT.</div>
+        </div>
+        <div class="row-right">
+          <button class="start" id="open-nat">Start lab →</button>
+        </div>
+      </div>
+      <div class="row" data-name="network services">
+        <div>
+          <div class="row-title">Network Services (NTP, Syslog, DNS)</div>
+          <div class="row-desc">Clock sync, central logging and name resolution.</div>
+        </div>
+        <div class="row-right">
+          <button class="start" id="open-services">Start lab →</button>
+        </div>
+      </div></div>
+  </details>
+  <details class="domain">
+    <summary><span class="dom-title">5.0 · Security fundamentals</span><span class="dom-meta">2 topics</span></summary>
+    <div class="rows"><div class="row" data-name="acl ipv4">
+        <div>
+          <div class="row-title">Standard and Extended ACLs (IPv4)</div>
+          <div class="row-desc">Filter IPv4 traffic top down, with an implicit deny at the end.</div>
+        </div>
+        <div class="row-right">
+          <button class="start" id="open-acl">Start lab →</button>
+        </div>
+      </div>
+      <div class="row" data-name="port security">
+        <div>
+          <div class="row-title">Port Security</div>
+          <div class="row-desc">Limit which MAC addresses can use an access port.</div>
+        </div>
+        <div class="row-right">
+          <button class="start" id="open-portsec">Start lab →</button>
+        </div>
+      </div></div>
+  </details>
+  <details class="domain">
+    <summary><span class="dom-title">6.0 · Automation &amp; programmability</span><span class="dom-meta">2 topics</span></summary>
+    <div class="rows"><div class="row" data-name="rest apis">
+        <div>
+          <div class="row-title">REST APIs</div>
+          <div class="row-desc">Read API requests and responses, HTTP methods and status codes.</div>
+        </div>
+        <div class="row-right">
+          <button class="start" id="open-rest">Start lab →</button>
+        </div>
+      </div>
+      <div class="row" data-name="json data">
+        <div>
+          <div class="row-title">JSON Data</div>
+          <div class="row-desc">Read JSON-encoded data and pick the right value.</div>
+        </div>
+        <div class="row-right">
+          <button class="start" id="open-json">Start lab →</button>
+        </div>
+      </div></div>
+  </details>
+  </div>
+</section>
+
+<section id="lab" hidden>
+  <header class="lab-top">
+    <button class="ghost" id="back">Back to labs</button>
+    <div>
+      <h1 id="lab-title">IPv4 addressing</h1>
+      <p id="lab-sub">Subnet two LANs on R1</p>
+    </div>
+  </header>
+  <main>
+    <div class="lab-col">
+      <section class="card">
+        <h2>Scenario</h2>
+        <p class="scenario-lead" id="scenario-lead"></p>
+        <ol class="steps" id="steps"></ol>
+      </section>
+      <section class="card console">
+        <div class="console-head">
+          <span class="console-label">Console</span>
+          <div class="tabs">
+            <button class="tab active" data-dev="R1" aria-pressed="true">R1</button>
+            <button class="tab" data-dev="S1">S1</button>
+            <button class="tab" data-dev="PC-A">PC-A</button>
+            <button class="tab" data-dev="PC-B">PC-B</button>
+          </div>
+        </div>
+        <div class="term" id="term">
+          <div id="log"></div>
+          <div class="line"><span id="prompt"></span><input id="cmd" aria-label="CLI input" spellcheck="false" autocomplete="off"></div>
+        </div>
+      </section>
+    </div>
+    <div class="lab-col">
+      <section class="card">
+        <div class="req-head"><h2>Requirements</h2><span id="req-count">0/0</span></div>
+        <ul class="reqs" id="reqs"></ul>
+        <div class="actions">
+          <button id="check">Check</button>
+          <button class="ghost" id="reset">Reset</button>
+        </div>
+      </section>
+      <details class="card">
+        <summary>Commands you'll need</summary>
+        <p class="cmds">enable &middot; disable &middot; configure terminal &middot; hostname &middot; interface &lt;name&gt; &middot; description &lt;text&gt; &middot; ip address &lt;ip&gt; &lt;mask&gt; &middot; no ip address &middot; ipv6 address &lt;addr/len&gt; &middot; ipv6 address fe80::1 link-local &middot; no ipv6 address &middot; ip route &lt;net&gt; &lt;mask&gt; &lt;next-hop&gt; &middot; no ip route &lt;net&gt; &lt;mask&gt; &lt;next-hop&gt; &middot; no shutdown &middot; shutdown &middot; cdp run &middot; no cdp run &middot; lldp run &middot; no lldp run &middot; cdp enable &middot; no cdp enable &middot; show running-config &middot; show startup-config &middot; show version &middot; show ip route &middot; show ip interface brief &middot; show ipv6 interface brief &middot; show cdp neighbors &middot; show lldp neighbors &middot; write memory &middot; copy running-config startup-config &middot; ping &lt;ip&gt; &middot; terminal length 0 &middot; exit &middot; end</p>
+        <p class="note">Short forms work: en, conf t, int g0/0, sh ip int br, no sh.</p>
+        <p class="note">Switch S1: vlan, name, switchport mode access|trunk, switchport access vlan, switchport trunk allowed|native vlan, description, shutdown, show vlan brief, show interfaces status, spanning-tree, channel-group, port-channel load-balance, encapsulation dot1Q (R1 subinterfaces), ip route with distance or exit interface, ip access-list standard|extended, ip access-group, switchport port-security.</p>
+      </details>
+      <section class="card">
+        <h2>Topology</h2>
+        <p class="note">Click a device to open its console.</p>
+        <div id="topo"></div>
+      </section>
+    </div>
+  </main>
+</section>
+
+<section id="ref" hidden>
+  <header>
+    <p class="eyebrow">Reference</p>
+    <h1>CCNA command reference</h1>
+    <p>Each topic covered by the labs, grouped by CCNA area.</p>
+  </header>
+  <div id="ref-detail" hidden></div>
+  <div class="domains">
+    <details class="domain" open>
+      <summary><span class="dom-title">Core</span><span class="dom-meta">12 topics</span></summary>
+      <div class="rows">
+        <div class="row ref-item" role="button" tabindex="0"><div><div class="row-title">IPv4 addressing</div><div class="row-desc">Dotted-decimal addresses paired with a mask to split network and host bits.</div></div></div>
+        <div class="row ref-item" role="button" tabindex="0"><div><div class="row-title">Subnetting</div><div class="row-desc">Borrow host bits to create smaller networks, then count blocks and hosts.</div></div></div>
+        <div class="row ref-item" role="button" tabindex="0"><div><div class="row-title">Variable Length Subnet Masking (VLSM)</div><div class="row-desc">Size each subnet to its host need instead of using one fixed mask.</div></div></div>
+        <div class="row ref-item" role="button" tabindex="0"><div><div class="row-title">Static routing</div><div class="row-desc">Manually defined routes to remote networks that stay fixed until someone changes them.</div></div></div>
+        <div class="row ref-item" role="button" tabindex="0"><div><div class="row-title">Default routes</div><div class="row-desc">The gateway of last resort, used when no more specific route matches.</div></div></div>
+        <div class="row ref-item" role="button" tabindex="0"><div><div class="row-title">OSPFv2 (IPv4)</div><div class="row-desc">Link-state routing for IPv4 that builds a topology map and runs SPF.</div></div></div>
+        <div class="row ref-item" role="button" tabindex="0"><div><div class="row-title">VLANs</div><div class="row-desc">Split one switch into separate broadcast domains.</div></div></div>
+        <div class="row ref-item" role="button" tabindex="0"><div><div class="row-title">Access ports</div><div class="row-desc">A switch port carrying one VLAN for an end device.</div></div></div>
+        <div class="row ref-item" role="button" tabindex="0"><div><div class="row-title">Trunking (802.1Q)</div><div class="row-desc">A link carrying several tagged VLANs, with one untagged native VLAN.</div></div></div>
+        <div class="row ref-item" role="button" tabindex="0"><div><div class="row-title">Inter-VLAN routing</div><div class="row-desc">Route between VLANs with a router-on-a-stick or an SVI.</div></div></div>
+        <div class="row ref-item" role="button" tabindex="0"><div><div class="row-title">Spanning Tree (STP)</div><div class="row-desc">Blocks redundant Layer 2 links to prevent loops.</div></div></div>
+        <div class="row ref-item" role="button" tabindex="0"><div><div class="row-title">EtherChannel</div><div class="row-desc">Bundles links into one logical link for bandwidth and redundancy.</div></div></div>
+      </div>
+    </details>
+    <details class="domain">
+      <summary><span class="dom-title">IP &amp; routing</span><span class="dom-meta">3 topics</span></summary>
+      <div class="rows">
+        <div class="row ref-item" role="button" tabindex="0"><div><div class="row-title">OSPFv3</div><div class="row-desc">OSPF for IPv6, run per link and identified by a router ID.</div></div></div>
+        <div class="row ref-item" role="button" tabindex="0"><div><div class="row-title">IPv6 addressing</div><div class="row-desc">128-bit addresses with unicast, multicast, and anycast types.</div></div></div>
+        <div class="row ref-item" role="button" tabindex="0"><div><div class="row-title">IPv6 routing</div><div class="row-desc">Static routes, RIPng, OSPFv3, and EIGRP for IPv6.</div></div></div>
+      </div>
+    </details>
+    <details class="domain">
+      <summary><span class="dom-title">Switching</span><span class="dom-meta">3 topics</span></summary>
+      <div class="rows">
+        <div class="row ref-item" role="button" tabindex="0"><div><div class="row-title">Advanced STP</div><div class="row-desc">Rapid PVST+ and guard features for faster convergence and stability.</div></div></div>
+        <div class="row ref-item" role="button" tabindex="0"><div><div class="row-title">Advanced EtherChannel</div><div class="row-desc">Load balancing, Layer 3 bundles, and consistency checks.</div></div></div>
+        <div class="row ref-item" role="button" tabindex="0"><div><div class="row-title">CDP and LLDP</div><div class="row-desc">Discover directly connected neighbours using Cisco and open-standard protocols.</div></div></div>
+      </div>
+    </details>
+    <details class="domain">
+      <summary><span class="dom-title">Services</span><span class="dom-meta">5 topics</span></summary>
+      <div class="rows">
+        <div class="row ref-item" role="button" tabindex="0"><div><div class="row-title">DHCP</div><div class="row-desc">Automatic IPv4 address assignment using the DORA exchange.</div></div></div>
+        <div class="row ref-item" role="button" tabindex="0"><div><div class="row-title">DHCP relay</div><div class="row-desc">Forward DHCP broadcasts across subnets with ip helper-address.</div></div></div>
+        <div class="row ref-item" role="button" tabindex="0"><div><div class="row-title">NAT</div><div class="row-desc">Translate private addresses to public ones: static, dynamic, or PAT.</div></div></div>
+        <div class="row ref-item" role="button" tabindex="0"><div><div class="row-title">NTP, syslog, DNS</div><div class="row-desc">Clock synchronisation, central logging, and name resolution.</div></div></div>
+        <div class="row ref-item" role="button" tabindex="0"><div><div class="row-title">QoS</div><div class="row-desc">Classify, mark, and prioritise traffic during congestion.</div></div></div>
+      </div>
+    </details>
+    <details class="domain">
+      <summary><span class="dom-title">Security</span><span class="dom-meta">6 topics</span></summary>
+      <div class="rows">
+        <div class="row ref-item" role="button" tabindex="0"><div><div class="row-title">Standard and extended ACLs</div><div class="row-desc">Filter IPv4 traffic top-down, with an implicit deny at the end.</div></div></div>
+        <div class="row ref-item" role="button" tabindex="0"><div><div class="row-title">IPv6 ACLs</div><div class="row-desc">Always named, with implicit permits for neighbour discovery.</div></div></div>
+        <div class="row ref-item" role="button" tabindex="0"><div><div class="row-title">Port security</div><div class="row-desc">Limit which MAC addresses an access port will accept.</div></div></div>
+        <div class="row ref-item" role="button" tabindex="0"><div><div class="row-title">Device hardening</div><div class="row-desc">Secure local and remote access, and use SSH instead of Telnet.</div></div></div>
+        <div class="row ref-item" role="button" tabindex="0"><div><div class="row-title">DHCP snooping</div><div class="row-desc">Filter DHCP messages and build a binding table.</div></div></div>
+        <div class="row ref-item" role="button" tabindex="0"><div><div class="row-title">Dynamic ARP inspection</div><div class="row-desc">Check ARP packets against the snooping binding table.</div></div></div>
+      </div>
+    </details>
+    <details class="domain">
+      <summary><span class="dom-title">Wireless</span><span class="dom-meta">2 topics</span></summary>
+      <div class="rows">
+        <div class="row ref-item" role="button" tabindex="0"><div><div class="row-title">WLAN fundamentals</div><div class="row-desc">RF basics, access point modes, and controller-based deployment with CAPWAP.</div></div></div>
+        <div class="row ref-item" role="button" tabindex="0"><div><div class="row-title">WLAN security</div><div class="row-desc">Open, WPA, and 802.1X authentication options on a WLC.</div></div></div>
+      </div>
+    </details>
+    <details class="domain">
+      <summary><span class="dom-title">Management</span><span class="dom-meta">2 topics</span></summary>
+      <div class="rows">
+        <div class="row ref-item" role="button" tabindex="0"><div><div class="row-title">Device management</div><div class="row-desc">Time sync, logging, monitoring, and secure file transfer.</div></div></div>
+        <div class="row ref-item" role="button" tabindex="0"><div><div class="row-title">Network automation</div><div class="row-desc">Moving from device-by-device CLI work to APIs and configuration tools.</div></div></div>
+      </div>
+    </details>
+    <details class="domain">
+      <summary><span class="dom-title">Troubleshooting</span><span class="dom-meta">1 topic</span></summary>
+      <div class="rows">
+        <div class="row ref-item" role="button" tabindex="0"><div><div class="row-title">Structured troubleshooting</div><div class="row-desc">Work up through the OSI layers to isolate faults instead of guessing.</div></div></div>
+      </div>
+    </details>
+  </div>
+</section>
+</div>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const term = $('term'), input = $('cmd'), promptEl = $('prompt');
+let log = $('log');
+const logs = {R1: log};
+let dev = 'R1';
+let state;
+let swState;
+let quizOn = false;
+const past = [];
+let pos = 0;
+const PROMPT = {user:'R1>', priv:'R1#', config:'R1(config)#', ifc:'R1(config-if)#'};
+const DOTTED = /^\d{1,3}(\.\d{1,3}){3}$/;
+const SHOWS = ['show ip interface brief', 'show ipv6 interface brief', 'show cdp neighbors', 'show lldp neighbors', 'show ip route', 'show running-config', 'show startup-config', 'show version'];
+const KEYS = {
+  user: ['enable', 'exit', 'ping', 'terminal length 0', ...SHOWS],
+  priv: ['configure terminal', 'copy running-config startup-config', 'disable', 'exit', 'ping', 'terminal length 0', 'write memory', ...SHOWS],
+  config: ['hostname', 'interface', 'ip route', 'no ip route', 'cdp run', 'no cdp run', 'lldp run', 'no lldp run', 'exit', 'end', ...SHOWS],
+  ifc: ['description', 'ip address', 'ipv6 address', 'no ip address', 'no ipv6 address', 'cdp enable', 'no cdp enable', 'no shutdown', 'shutdown', 'exit', 'end', ...SHOWS]
+};
+
+// Lab definitions. Addressing levels list interfaces; CDP levels list the discovery state they need.
+// shortcut: fixed values per level on a random network; move labs to data files when the lab library grows
+const LEVELS = {
+  beginner: {title:'Beginner', sub:'Address one LAN on R1 and bring the interface up', ifs:[
+    {k:'gi0/0', host:1, mask:'255.255.255.128', net:'0/25', lan:'LAN 1', rule:'first'}]},
+  intermediate: {title:'Intermediate', sub:'Address two LANs on R1 using first usable addresses', ifs:[
+    {k:'gi0/0', host:1, mask:'255.255.255.128', net:'0/25', lan:'LAN 1', rule:'first'},
+    {k:'gi0/1', host:129, mask:'255.255.255.192', net:'128/26', lan:'LAN 2', rule:'first'}]},
+  advanced: {title:'Advanced', sub:'Address two LANs on R1 using last usable addresses', ifs:[
+    {k:'gi0/0', host:126, mask:'255.255.255.128', net:'0/25', lan:'LAN 1', rule:'last'},
+    {k:'gi0/1', host:190, mask:'255.255.255.192', net:'128/26', lan:'LAN 2', rule:'last'}]},
+  expert: {title:'Expert', sub:'Address three LANs on R1 using last usable addresses', ifs:[
+    {k:'gi0/0', host:62, mask:'255.255.255.192', net:'0/26', lan:'LAN 1', rule:'last'},
+    {k:'gi0/1', host:94, mask:'255.255.255.224', net:'64/27', lan:'LAN 2', rule:'last'},
+    {k:'gi0/2', host:126, mask:'255.255.255.224', net:'96/27', lan:'LAN 3', rule:'last'}]}
+};
+const SUBNET = {
+  beginner: {title:'Beginner', sub:'Split the /24 into two equal blocks and address R1 in each', ifs:[
+    {k:'gi0/0', host:1, mask:'255.255.255.128', net:'0/25', lan:'block 1', rule:'first'},
+    {k:'gi0/1', host:129, mask:'255.255.255.128', net:'128/25', lan:'block 2', rule:'first'}]},
+  intermediate: {title:'Intermediate', sub:'Use three equal blocks from the /24 and address R1 in each', ifs:[
+    {k:'gi0/0', host:1, mask:'255.255.255.192', net:'0/26', lan:'block 1', rule:'first'},
+    {k:'gi0/1', host:65, mask:'255.255.255.192', net:'64/26', lan:'block 2', rule:'first'},
+    {k:'gi0/2', host:129, mask:'255.255.255.192', net:'128/26', lan:'block 3', rule:'first'}]},
+  advanced: {title:'Advanced', sub:'Split the /24 into eight equal blocks and address R1 in blocks 1 to 4', ifs:[
+    {k:'gi0/0', host:1, mask:'255.255.255.224', net:'0/27', lan:'block 1', rule:'first'},
+    {k:'gi0/1', host:33, mask:'255.255.255.224', net:'32/27', lan:'block 2', rule:'first'},
+    {k:'gi0/2', host:65, mask:'255.255.255.224', net:'64/27', lan:'block 3', rule:'first'},
+    {k:'gi0/3', host:97, mask:'255.255.255.224', net:'96/27', lan:'block 4', rule:'first'}]},
+  expert: {title:'Expert', sub:'Split the /24 into eight equal blocks and address R1 in blocks 5 to 8, using last usable addresses', ifs:[
+    {k:'gi0/0', host:158, mask:'255.255.255.224', net:'128/27', lan:'block 5', rule:'last'},
+    {k:'gi0/1', host:190, mask:'255.255.255.224', net:'160/27', lan:'block 6', rule:'last'},
+    {k:'gi0/2', host:222, mask:'255.255.255.224', net:'192/27', lan:'block 7', rule:'last'},
+    {k:'gi0/3', host:254, mask:'255.255.255.224', net:'224/27', lan:'block 8', rule:'last'}]}
+};
+const VLSM = {
+  beginner: {title:'Beginner', sub:'Address two LANs that need 50 and 20 hosts, using first usable addresses', ifs:[
+    {k:'gi0/0', host:1, mask:'255.255.255.192', net:'0/26', lan:'LAN A', need:50, rule:'first'},
+    {k:'gi0/1', host:65, mask:'255.255.255.224', net:'64/27', lan:'LAN B', need:20, rule:'first'}]},
+  intermediate: {title:'Intermediate', sub:'Address three LANs that need 50, 20 and 10 hosts, using first usable addresses', ifs:[
+    {k:'gi0/0', host:1, mask:'255.255.255.192', net:'0/26', lan:'LAN A', need:50, rule:'first'},
+    {k:'gi0/1', host:65, mask:'255.255.255.224', net:'64/27', lan:'LAN B', need:20, rule:'first'},
+    {k:'gi0/2', host:97, mask:'255.255.255.240', net:'96/28', lan:'LAN C', need:10, rule:'first'}]},
+  advanced: {title:'Advanced', sub:'Address four LANs that need 50, 20, 10 and 5 hosts, using first usable addresses', ifs:[
+    {k:'gi0/0', host:1, mask:'255.255.255.192', net:'0/26', lan:'LAN A', need:50, rule:'first'},
+    {k:'gi0/1', host:65, mask:'255.255.255.224', net:'64/27', lan:'LAN B', need:20, rule:'first'},
+    {k:'gi0/2', host:97, mask:'255.255.255.240', net:'96/28', lan:'LAN C', need:10, rule:'first'},
+    {k:'gi0/3', host:113, mask:'255.255.255.248', net:'112/29', lan:'LAN D', need:5, rule:'first'}]},
+  expert: {title:'Expert', sub:'The same four LANs (50, 20, 10 and 5 hosts), using last usable addresses', ifs:[
+    {k:'gi0/0', host:62, mask:'255.255.255.192', net:'0/26', lan:'LAN A', need:50, rule:'last'},
+    {k:'gi0/1', host:94, mask:'255.255.255.224', net:'64/27', lan:'LAN B', need:20, rule:'last'},
+    {k:'gi0/2', host:110, mask:'255.255.255.240', net:'96/28', lan:'LAN C', need:10, rule:'last'},
+    {k:'gi0/3', host:118, mask:'255.255.255.248', net:'112/29', lan:'LAN D', need:5, rule:'last'}]}
+};
+const IPV6 = {
+  beginner: {kind:'v6', title:'Beginner', sub:'Give Gi0/0 a global IPv6 address in subnet 1 and bring it up', ifs:[
+    {k:'gi0/0', sub:1}]},
+  intermediate: {kind:'v6', title:'Intermediate', sub:'Address two IPv6 subnets, one on Gi0/0 and one on Gi0/1', ifs:[
+    {k:'gi0/0', sub:1}, {k:'gi0/1', sub:2}]},
+  advanced: {kind:'v6', title:'Advanced', sub:'Address three IPv6 subnets, and give Gi0/0 the link-local address fe80::1', ifs:[
+    {k:'gi0/0', sub:1, ll:true}, {k:'gi0/1', sub:2}, {k:'gi0/2', sub:3}]},
+  expert: {kind:'v6', title:'Expert', sub:'Address four IPv6 subnets, with link-local address fe80::1 on every interface', ifs:[
+    {k:'gi0/0', sub:1, ll:true}, {k:'gi0/1', sub:2, ll:true}, {k:'gi0/2', sub:3, ll:true}, {k:'gi0/3', sub:4, ll:true}]}
+};
+const CDP = {
+  beginner: {kind:'proto', title:'Beginner', sub:'Turn LLDP on and make R1 learn S1 over LLDP', lead:'R1 is connected to S1 on Gi0/0. Discovery is set up as on a fresh device.', steps:['Turn LLDP on for the whole device.', 'Bring up Gi0/0 so the link is active.'], cmds:['lldp run', 'int gi0/0', 'no shutdown', 'exit'], reqs:[
+    {text:'LLDP is enabled globally', ok:st => st.lldp, hint:'lldp run'},
+    {text:'R1 learns S1 over LLDP on Gi0/0', ok:st => st.lldp && !st.ifs['gi0/0'].shut, hint:'lldp run, then no shutdown on Gi0/0'}]},
+  intermediate: {kind:'proto', title:'Intermediate', sub:'Turn CDP off, run LLDP, and make R1 learn S1 over LLDP', lead:'R1 is connected to S1 on Gi0/0. CDP is running.', steps:['Turn CDP off for the whole device.', 'Turn LLDP on and bring up Gi0/0.'], cmds:['no cdp run', 'lldp run', 'int gi0/0', 'no shutdown', 'exit'], reqs:[
+    {text:'CDP is disabled globally', ok:st => !st.cdp, hint:'no cdp run'},
+    {text:'LLDP is enabled globally', ok:st => st.lldp, hint:'lldp run'},
+    {text:'R1 learns S1 over LLDP on Gi0/0', ok:st => st.lldp && !st.ifs['gi0/0'].shut, hint:'no shutdown on Gi0/0'}]},
+  advanced: {kind:'proto', title:'Advanced', sub:'Keep CDP and LLDP on, but turn CDP off on Gi0/0 and bring it up', lead:'R1 is connected to S1 on Gi0/0. CDP is running.', steps:['Keep CDP and LLDP running for the whole device.', 'Turn CDP off on Gi0/0 only.'], cmds:['lldp run', 'int gi0/0', 'no cdp enable', 'no shutdown', 'exit'], reqs:[
+    {text:'CDP is enabled globally', ok:st => st.cdp, hint:'cdp run'},
+    {text:'LLDP is enabled globally', ok:st => st.lldp, hint:'lldp run'},
+    {text:'Gi0/0 has CDP disabled', ok:st => st.ifs['gi0/0'].cdp === false, hint:'no cdp enable (on Gi0/0)'},
+    {text:'R1 learns S1 over LLDP on Gi0/0', ok:st => st.lldp && !st.ifs['gi0/0'].shut, hint:'no shutdown on Gi0/0'}]},
+  expert: {kind:'proto', title:'Expert', sub:'Turn CDP off everywhere, keep LLDP running, and bring up Gi0/0 and Gi0/1', lead:'R1 is connected to S1 on Gi0/0. CDP is running.', steps:['Turn CDP off for the whole device.', 'Keep LLDP running and bring up both interfaces.'], cmds:['no cdp run', 'lldp run', 'int gi0/0', 'no shutdown', 'exit', 'int gi0/1', 'no shutdown', 'exit'], reqs:[
+    {text:'CDP is disabled globally', ok:st => !st.cdp, hint:'no cdp run'},
+    {text:'LLDP is enabled globally', ok:st => st.lldp, hint:'lldp run'},
+    {text:'R1 learns S1 over LLDP on Gi0/0', ok:st => st.lldp && !st.ifs['gi0/0'].shut, hint:'no shutdown on Gi0/0'},
+    {text:'Gi0/1 is up', ok:st => !st.ifs['gi0/1'].shut, hint:'no shutdown on Gi0/1'}]}
+};
+// ---- switch S1 ----
+const PN = p => p.replace('fa', 'Fa').replace('gi', 'Gi');
+const swVlan = (id, name) => ({text:`VLAN ${id}${name ? ` is named ${name}` : ' exists'}`, ok: st => !!st.sw.vlans[id] && (!name || st.sw.vlans[id].name === name), hint: name ? `vlan ${id}, name ${name}` : `vlan ${id}`});
+const swAccess = (p, id) => ({text:`${PN(p)} is an access port in VLAN ${id}`, ok: st => st.sw.ports[p].mode === 'access' && st.sw.ports[p].vlan === id, hint:`switchport mode access, switchport access vlan ${id}`});
+const swMode = p => ({text:`${PN(p)} is an access port`, ok: st => st.sw.ports[p].mode === 'access', hint:'switchport mode access'});
+const swUp = p => ({text:`${PN(p)} is up`, ok: st => !st.sw.ports[p].shut, hint:'no shutdown'});
+const swDown = p => ({text:`${PN(p)} is shut down`, ok: st => st.sw.ports[p].shut, hint:'shutdown'});
+const swDesc = (p, d) => ({text:`${PN(p)} has the description ${d}`, ok: st => st.sw.ports[p].desc === d, hint:`description ${d}`});
+const swTrunk = p => ({text:`${PN(p)} is a trunk`, ok: st => st.sw.ports[p].mode === 'trunk', hint:'switchport mode trunk'});
+const swAllowed = (p, list) => ({text:`${PN(p)} allows only VLANs ${list.join(', ')} on the trunk`, ok: st => !!st.sw.ports[p].allowed && st.sw.ports[p].allowed.join(',') === list.join(','), hint:`switchport trunk allowed vlan ${list.join(',')}`});
+const swNative = (p, id) => ({text:`${PN(p)} uses VLAN ${id} as the native VLAN`, ok: st => st.sw.ports[p].native === id, hint:`switchport trunk native vlan ${id}`});
+const r1Up = {text:'R1 Gi0/0 is up', ok: st => !st.ifs['gi0/0'].shut, hint:'no shutdown (on R1 Gi0/0)'};
+const SW_LEAD = 'R1 Gi0/0 is cabled to S1 Gi0/1. PC1 is on Fa0/1 and PC2 on Fa0/2.';
+const VLANS = {
+  beginner: {kind:'sw', title:'Beginner', sub:'Create VLAN 10 and put Fa0/1 in it', lead:SW_LEAD, steps:['Create VLAN 10 on S1.', 'Make Fa0/1 an access port in VLAN 10.', 'Bring Fa0/1 up.'], reqs:[swVlan(10), swAccess('fa0/1', 10), swUp('fa0/1')]},
+  intermediate: {kind:'sw', title:'Intermediate', sub:'Create VLANs 10 and 20, and put Fa0/1 and Fa0/2 in them', lead:SW_LEAD, steps:['Create VLANs 10 and 20 on S1.', 'Put Fa0/1 in VLAN 10 and Fa0/2 in VLAN 20.', 'Bring both ports up.'], reqs:[swVlan(10), swVlan(20), swAccess('fa0/1', 10), swAccess('fa0/2', 20), swUp('fa0/1'), swUp('fa0/2')]},
+  advanced: {kind:'sw', title:'Advanced', sub:'Create named VLANs Sales (10) and Staff (20), and put Fa0/1 and Fa0/2 in them', lead:SW_LEAD, steps:['Create VLAN 10 named Sales and VLAN 20 named Staff.', 'Put Fa0/1 in VLAN 10 and Fa0/2 in VLAN 20.', 'Bring both ports up.'], reqs:[swVlan(10, 'Sales'), swVlan(20, 'Staff'), swAccess('fa0/1', 10), swAccess('fa0/2', 20), swUp('fa0/1'), swUp('fa0/2')]},
+  expert: {kind:'sw', title:'Expert', sub:'Add a Parking VLAN 999 for the unused Fa0/3 and shut Fa0/3 down', lead:SW_LEAD, steps:['Create VLAN 999 named Parking.', 'Put Fa0/3 in VLAN 999 and shut it down.', 'Keep Fa0/1 and Fa0/2 working in their VLANs.'], reqs:[swVlan(10, 'Sales'), swVlan(20, 'Staff'), swVlan(999, 'Parking'), swAccess('fa0/1', 10), swAccess('fa0/2', 20), swUp('fa0/1'), swUp('fa0/2'), swAccess('fa0/3', 999), swDown('fa0/3')]}
+};
+const ACCESS = {
+  beginner: {kind:'sw', title:'Beginner', sub:'Make Fa0/1 an access port and bring it up', lead:SW_LEAD, steps:['Set Fa0/1 to access mode.', 'Bring Fa0/1 up.'], reqs:[swMode('fa0/1'), swUp('fa0/1')]},
+  intermediate: {kind:'sw', title:'Intermediate', sub:'Make Fa0/1 and Fa0/2 access ports and bring both up', lead:SW_LEAD, steps:['Set Fa0/1 and Fa0/2 to access mode.', 'Bring both ports up.'], reqs:[swMode('fa0/1'), swMode('fa0/2'), swUp('fa0/1'), swUp('fa0/2')]},
+  advanced: {kind:'sw', title:'Advanced', sub:'Make Fa0/1 and Fa0/2 access ports, and shut down the unused Fa0/3', lead:SW_LEAD, steps:['Set Fa0/1 and Fa0/2 to access mode.', 'Bring Fa0/1 and Fa0/2 up.', 'Shut down the unused Fa0/3.'], reqs:[swMode('fa0/1'), swMode('fa0/2'), swUp('fa0/1'), swUp('fa0/2'), swDown('fa0/3')]},
+  expert: {kind:'sw', title:'Expert', sub:'As Advanced, and give each PC port a description', lead:SW_LEAD, steps:['Set Fa0/1 and Fa0/2 to access mode and bring them up.', 'Shut down the unused Fa0/3.', 'Describe Fa0/1 as PC1 and Fa0/2 as PC2.'], reqs:[swMode('fa0/1'), swMode('fa0/2'), swUp('fa0/1'), swUp('fa0/2'), swDown('fa0/3'), swDesc('fa0/1', 'PC1'), swDesc('fa0/2', 'PC2')]}
+};
+const TRUNK = {
+  beginner: {kind:'sw', title:'Beginner', sub:'Make Gi0/1 on S1 a trunk to R1 and bring both sides up', lead:SW_LEAD, steps:['Set Gi0/1 on S1 to trunk mode.', 'Bring Gi0/1 on S1 up.', 'Bring R1 Gi0/0 up.'], reqs:[swTrunk('gi0/1'), swUp('gi0/1'), r1Up]},
+  intermediate: {kind:'sw', title:'Intermediate', sub:'Allow only VLANs 10 and 20 on the trunk', lead:SW_LEAD, steps:['Keep the trunk up on both sides.', 'Allow only VLANs 10 and 20 on the trunk.'], reqs:[swTrunk('gi0/1'), swUp('gi0/1'), r1Up, swAllowed('gi0/1', [10, 20])]},
+  advanced: {kind:'sw', title:'Advanced', sub:'Set the native VLAN to 99 and allow VLANs 10, 20 and 99 on the trunk', lead:SW_LEAD, steps:['Create VLAN 99.', 'Set VLAN 99 as the native VLAN.', 'Allow VLANs 10, 20 and 99 on the trunk.'], reqs:[swTrunk('gi0/1'), swUp('gi0/1'), r1Up, swVlan(99), swNative('gi0/1', 99), swAllowed('gi0/1', [10, 20, 99])]},
+  expert: {kind:'sw', title:'Expert', sub:'As Advanced, and make Fa0/1 and Fa0/2 access ports on VLANs 10 and 20', lead:SW_LEAD, steps:['Finish the trunk as in Advanced.', 'Make Fa0/1 an access port in VLAN 10 and Fa0/2 in VLAN 20.', 'Bring Fa0/1 and Fa0/2 up.'], reqs:[swTrunk('gi0/1'), swUp('gi0/1'), r1Up, swVlan(99), swNative('gi0/1', 99), swAllowed('gi0/1', [10, 20, 99]), swAccess('fa0/1', 10), swAccess('fa0/2', 20), swUp('fa0/1'), swUp('fa0/2')]}
+};
+const SW_CMDS = {
+  user: ['enable', 'exit', 'show'],
+  priv: ['configure', 'copy', 'disable', 'exit', 'show', 'write'],
+  config: ['hostname', 'interface', 'vlan', 'spanning-tree', 'port-channel', 'exit', 'end', 'show'],
+  vlan: ['name', 'exit', 'end'],
+  ifc: ['description', 'no', 'shutdown', 'switchport', 'channel-group', 'spanning-tree', 'exit', 'end', 'show']
+};
+const SW_SHOWS = ['show vlan brief', 'show interfaces status', 'show running-config', 'show startup-config', 'show etherchannel summary', 'show spanning-tree'];
+const SW_KEYS = {
+  user: ['enable', 'exit', 'show vlan brief', 'show interfaces status', 'show running-config'],
+  priv: ['configure terminal', 'copy running-config startup-config', 'disable', 'exit', 'write memory', ...SW_SHOWS],
+  config: ['hostname', 'interface', 'vlan', 'spanning-tree mode rapid-pvst', 'spanning-tree vlan 10 root primary', 'port-channel load-balance src-dst-ip', 'exit', 'end', ...SW_SHOWS],
+  vlan: ['name', 'exit', 'end'],
+  ifc: ['description', 'switchport mode access', 'switchport mode trunk', 'switchport access vlan', 'switchport trunk allowed vlan', 'switchport trunk native vlan', 'shutdown', 'no shutdown', 'channel-group 1 mode active', 'spanning-tree portfast', 'spanning-tree bpduguard enable', 'exit', 'end', ...SW_SHOWS]
+};
+function keysNow(){ return dev === 'S1' ? SW_KEYS[swState.mode] : (KEYS[state.mode] || ['permit', 'deny', 'exit', 'end']); }
+function freshSw(){
+  const port = (name, shut = true) => ({name, mode:'dynamic', vlan:1, native:1, allowed:null, shut, desc:null, group:null, chanMode:null, portfast:false, bpdu:false, psec:false, psMax:null, psViolation:null, psSticky:false});
+  return {mode:'user', iface:null, host:'S1', saved:null, stp:{mode:'pvst', prio:{}}, lb:null, vlans:{1:{name:'default'}},
+    ports:{'fa0/1':port('Fa0/1'), 'fa0/2':port('Fa0/2'), 'fa0/3':port('Fa0/3', false), 'gi0/1':port('Gi0/1')}};
+}
+function swKey(t){
+  const m = (t || '').toLowerCase().match(/^(fastethernet|fa|f|gigabitethernet|gigabit|gig|gi|g)?(\d+\/\d+)$/);
+  if (!m) return null;
+  const k = (/^(f|fa|fastethernet)$/.test(m[1] || '') ? 'fa' : 'gi') + m[2];
+  return Object.hasOwn(swState.ports, k) ? k : null;
+}
+function swConfigLines(){
+  const L = [`hostname ${swState.host}`];
+  if (swState.stp.mode === 'rapid-pvst') L.push('spanning-tree mode rapid-pvst');
+  Object.keys(swState.stp.prio).forEach(id => L.push(`spanning-tree vlan ${id} priority ${swState.stp.prio[id]}`));
+  Object.keys(swState.vlans).filter(id => id !== '1').forEach(id => L.push(`vlan ${id}`, ` name ${swState.vlans[id].name}`, '!'));
+  Object.values(swState.ports).forEach(p => {
+    L.push(`interface ${p.name}`);
+    if (p.desc) L.push(` description ${p.desc}`);
+    if (p.group) L.push(` channel-group ${p.group} mode ${p.chanMode}`);
+    if (p.portfast) L.push(' spanning-tree portfast');
+    if (p.bpdu) L.push(' spanning-tree bpduguard enable');
+    if (p.psec) L.push(' switchport port-security');
+    if (p.psMax) L.push(` switchport port-security maximum ${p.psMax}`);
+    if (p.psViolation) L.push(` switchport port-security violation ${p.psViolation}`);
+    if (p.psSticky) L.push(' switchport port-security mac-address sticky');
+    if (p.mode === 'access') L.push(' switchport mode access', ` switchport access vlan ${p.vlan}`);
+    if (p.mode === 'trunk') L.push(' switchport mode trunk');
+    if (p.allowed) L.push(` switchport trunk allowed vlan ${p.allowed.join(',')}`);
+    if (p.native !== 1) L.push(` switchport trunk native vlan ${p.native}`);
+    L.push(p.shut ? ' shutdown' : ' no shutdown', '!');
+  });
+  return L;
+}
+function swSave(){ swState.saved = swConfigLines(); print('Building configuration...'); print('[OK]', 'ln-ok'); }
+function swVlanBrief(){
+  print('VLAN Name                 Status    Ports');
+  print('---- -------------------- --------- ----------');
+  Object.keys(swState.vlans).forEach(id => {
+    const ports = Object.values(swState.ports).filter(p => p.mode === 'access' && p.vlan === Number(id)).map(p => p.name).join(', ');
+    print(id.padEnd(4) + ' ' + swState.vlans[id].name.padEnd(20) + ' ' + 'active'.padEnd(9) + ' ' + ports);
+  });
+}
+function swStatus(){
+  print('Port      Status');
+  Object.values(swState.ports).forEach(p => print(p.name.padEnd(10) + (p.shut ? 'administratively down' : 'up')));
+}
+function swShow(args){
+  if (pick(args[0], ['vlan']) && pick(args[1], ['brief'])) return swVlanBrief();
+  if (pick(args[0], ['interfaces']) && pick(args[1], ['status'])) return swStatus();
+  if (pick(args[0], ['running-config']) && args.length === 1) return swConfigLines().forEach(l => print(l));
+  if (pick(args[0], ['etherchannel']) && pick(args[1], ['summary'])) return swEtherSummary();
+  if (pick(args[0], ['spanning-tree'])) return swStp();
+  if (pick(args[0], ['startup-config']) && args.length === 1) return swState.saved ? swState.saved.forEach(l => print(l)) : print('startup-config is not present', 'ln-err');
+  print('% Invalid input detected', 'ln-err');
+}
+function swSwitchport(w){
+  const p = swState.ports[swState.iface];
+  if (pick(w[1], ['mode'])) {
+    const v = pick(w[2], ['access', 'trunk', 'dynamic']);
+    if (!v) return print('% Invalid input detected', 'ln-err');
+    p.mode = v;
+  } else if (pick(w[1], ['port-security'])) {
+    if (!w[2]) p.psec = true;
+    else if (pick(w[2], ['maximum']) && /^\d+$/.test(w[3] || '')) { p.psec = true; p.psMax = Number(w[3]); }
+    else if (pick(w[2], ['violation']) && pick(w[3], ['shutdown', 'restrict', 'protect'])) { p.psec = true; p.psViolation = pick(w[3], ['shutdown', 'restrict', 'protect']); }
+    else if (pick(w[2], ['mac-address']) && pick(w[3], ['sticky'])) { p.psec = true; p.psSticky = true; }
+    else print('% Invalid input detected', 'ln-err');
+  } else if (pick(w[1], ['access']) && pick(w[2], ['vlan']) && /^\d+$/.test(w[3] || '')) p.vlan = Number(w[3]);
+  else if (pick(w[1], ['trunk']) && pick(w[2], ['allowed']) && pick(w[3], ['vlan']) && /^[\d,]+$/.test(w[4] || '')) p.allowed = w[4].split(',').map(Number).sort((a, b) => a - b);
+  else if (pick(w[1], ['trunk']) && pick(w[2], ['native']) && pick(w[3], ['vlan']) && /^\d+$/.test(w[4] || '')) p.native = Number(w[4]);
+  else print('% Invalid input detected', 'ln-err');
+}
+function runSw(raw){
+  const line = raw.trim();
+  if (!line) return;
+  if (line === '?' || line === 'help') return help();
+  const w = line.toLowerCase().split(/\s+/), s = swState, m = s.mode, cmd = w[0];
+  const port = () => s.ports[s.iface];
+  const c = m === 'ifc' && cmd === 'sh' ? 'shutdown' : pick(cmd, SW_CMDS[m]);
+  if (c === 'show') return swShow(w.slice(1));
+  if (c === 'enable') s.mode = 'priv';
+  else if (c === 'disable') s.mode = 'user';
+  else if (c === 'configure' && pick(w[1], ['terminal'])) s.mode = 'config';
+  else if (c === 'write') swSave();
+  else if (c === 'copy' && pick(w[1], ['running-config']) && pick(w[2], ['startup-config'])) swSave();
+  else if (c === 'hostname' && m === 'config' && w[1]) s.host = raw.trim().split(/\s+/)[1];
+  else if (c === 'vlan' && m === 'config' && /^\d+$/.test(w[1] || '')) { s.vlanId = Number(w[1]); s.vlans[s.vlanId] = s.vlans[s.vlanId] || {name: 'VLAN' + String(s.vlanId).padStart(4, '0')}; s.mode = 'vlan'; }
+  else if (c === 'name' && m === 'vlan' && w[1]) s.vlans[s.vlanId].name = raw.trim().split(/\s+/)[1];
+  else if (c === 'interface' && m === 'config' && swKey(w[1])) { s.iface = swKey(w[1]); s.mode = 'ifc'; }
+  else if (c === 'switchport' && m === 'ifc') swSwitchport(w);
+  else if (c === 'description' && m === 'ifc' && w.length > 1) port().desc = raw.trim().slice(raw.trim().indexOf(' ') + 1);
+  else if (c === 'shutdown' && m === 'ifc') port().shut = true;
+  else if (c === 'no' && m === 'ifc' && pick(w[1], ['shutdown'])) port().shut = false;
+  else if (c === 'spanning-tree' && m === 'config' && pick(w[1], ['mode']) && pick(w[2], ['rapid-pvst'])) s.stp.mode = 'rapid-pvst';
+  else if (c === 'spanning-tree' && m === 'config' && pick(w[1], ['vlan']) && /^\d+$/.test(w[2] || '') && pick(w[3], ['priority']) && /^\d+$/.test(w[4] || '')) s.stp.prio[w[2]] = Number(w[4]);
+  else if (c === 'spanning-tree' && m === 'config' && pick(w[1], ['vlan']) && /^\d+$/.test(w[2] || '') && pick(w[3], ['root']) && pick(w[4], ['primary'])) s.stp.prio[w[2]] = 24576;
+  else if (c === 'spanning-tree' && m === 'ifc' && pick(w[1], ['portfast'])) port().portfast = true;
+  else if (c === 'spanning-tree' && m === 'ifc' && pick(w[1], ['bpduguard']) && pick(w[2], ['enable'])) port().bpdu = true;
+  else if (c === 'channel-group' && m === 'ifc' && /^\d+$/.test(w[1] || '') && pick(w[2], ['mode']) && pick(w[3], ['active', 'passive', 'on', 'desirable', 'auto'])) { port().group = Number(w[1]); port().chanMode = pick(w[3], ['active', 'passive', 'on', 'desirable', 'auto']); }
+  else if (c === 'port-channel' && m === 'config' && pick(w[1], ['load-balance']) && w[2]) s.lb = w[2];
+  else if (c === 'exit') s.mode = {ifc:'config', vlan:'config', config:'priv', priv:'user', user:'user'}[m];
+  else if (c === 'end' && m !== 'user' && m !== 'priv') s.mode = 'priv';
+  else print('% Invalid input detected', 'ln-err');
+  renderPrompt();
+}
+
+// ---- 2.0 extras: STP, EtherChannel, Inter-VLAN ----
+const swRoot = id => ({text:`S1 is root for VLAN ${id}`, ok: st => st.sw.stp.prio[id] !== undefined && st.sw.stp.prio[id] <= 24576, hint:`spanning-tree vlan ${id} root primary`});
+const swPrio = (id, n) => ({text:`VLAN ${id} has spanning-tree priority ${n}`, ok: st => st.sw.stp.prio[id] === n, hint:`spanning-tree vlan ${id} priority ${n}`});
+const swRstp = {text:'S1 runs Rapid PVST+', ok: st => st.sw.stp.mode === 'rapid-pvst', hint:'spanning-tree mode rapid-pvst'};
+const swPortfast = p => ({text:`${PN(p)} has PortFast enabled`, ok: st => st.sw.ports[p].portfast === true, hint:'spanning-tree portfast'});
+const swBpdu = p => ({text:`${PN(p)} has BPDU guard enabled`, ok: st => st.sw.ports[p].bpdu === true, hint:'spanning-tree bpduguard enable'});
+const swGroup = (p, n, mode) => ({text:`${PN(p)} is in channel-group ${n} with mode ${mode}`, ok: st => st.sw.ports[p].group === n && st.sw.ports[p].chanMode === mode, hint:`channel-group ${n} mode ${mode}`});
+const swLb = v => ({text:`EtherChannel load balancing is ${v}`, ok: st => st.sw.lb === v, hint:`port-channel load-balance ${v}`});
+const r1Sub = (key, name, enc, ip, mask) => [
+  {text:`${name} is encapsulation dot1Q ${enc}`, ok: st => !!st.ifs[key] && st.ifs[key].encap === enc, hint:`encapsulation dot1Q ${enc}`},
+  {text:`${name} has the address ${ip} ${mask}`, ok: st => !!st.ifs[key] && st.ifs[key].ip === ip && st.ifs[key].mask === mask, hint:`ip address ${ip} ${mask}`},
+  {text:`${name} is up`, ok: st => !!st.ifs[key] && !st.ifs[key].shut, hint:'no shutdown'}];
+const INTER_LEAD = 'R1 Gi0/0 is cabled to S1 Gi0/1 as a trunk. PC1 is on Fa0/1 and PC2 on Fa0/2.';
+const interUp = [swTrunk('gi0/1'), swUp('gi0/1'), r1Up];
+const SUB10 = r1Sub('gi0/0.10', 'Gi0/0.10', 10, '192.168.10.1', '255.255.255.0');
+const SUB20 = r1Sub('gi0/0.20', 'Gi0/0.20', 20, '192.168.20.1', '255.255.255.0');
+const SUB99 = r1Sub('gi0/0.99', 'Gi0/0.99', 99, '192.168.99.1', '255.255.255.0');
+const INTER_ADV = [...interUp, ...SUB10, ...SUB20, swAccess('fa0/1', 10), swAccess('fa0/2', 20), swUp('fa0/1'), swUp('fa0/2')];
+const STP = {
+  beginner: {kind:'sw', title:'Beginner', sub:'Make S1 the root bridge for VLAN 10', lead:SW_LEAD, steps:['Make S1 the root for VLAN 10 with spanning-tree vlan 10 root primary.'], reqs:[swRoot(10)]},
+  intermediate: {kind:'sw', title:'Intermediate', sub:'Make S1 the root bridge for VLANs 10 and 20', lead:SW_LEAD, steps:['Make S1 the root for VLAN 10.', 'Make S1 the root for VLAN 20.'], reqs:[swRoot(10), swRoot(20)]},
+  advanced: {kind:'sw', title:'Advanced', sub:'Run Rapid PVST+ and make S1 the root for VLANs 10 and 20', lead:SW_LEAD, steps:['Set the spanning-tree mode to rapid-pvst.', 'Make S1 the root for VLANs 10 and 20.'], reqs:[swRstp, swRoot(10), swRoot(20)]},
+  expert: {kind:'sw', title:'Expert', sub:'As Advanced, and give VLAN 30 a backup priority of 28672', lead:SW_LEAD, steps:['Keep Rapid PVST+ and S1 root for VLANs 10 and 20.', 'Set VLAN 30 to priority 28672.'], reqs:[swRstp, swRoot(10), swRoot(20), swPrio(30, 28672)]}
+};
+const ADVSTP = {
+  beginner: {kind:'sw', title:'Beginner', sub:'Run Rapid PVST+ on S1', lead:SW_LEAD, steps:['Set the spanning-tree mode to rapid-pvst.'], reqs:[swRstp]},
+  intermediate: {kind:'sw', title:'Intermediate', sub:'Run Rapid PVST+ and enable PortFast on Fa0/1 and Fa0/2', lead:SW_LEAD, steps:['Set the spanning-tree mode to rapid-pvst.', 'Enable PortFast on Fa0/1 and Fa0/2.'], reqs:[swRstp, swPortfast('fa0/1'), swPortfast('fa0/2')]},
+  advanced: {kind:'sw', title:'Advanced', sub:'As Intermediate, and enable BPDU guard on Fa0/1 and Fa0/2', lead:SW_LEAD, steps:['Keep Rapid PVST+ and PortFast on Fa0/1 and Fa0/2.', 'Enable BPDU guard on Fa0/1 and Fa0/2.'], reqs:[swRstp, swPortfast('fa0/1'), swPortfast('fa0/2'), swBpdu('fa0/1'), swBpdu('fa0/2')]},
+  expert: {kind:'sw', title:'Expert', sub:'As Advanced, and also protect the unused Fa0/3 with PortFast and BPDU guard', lead:SW_LEAD, steps:['Keep the Advanced settings on Fa0/1 and Fa0/2.', 'Enable PortFast and BPDU guard on Fa0/3.'], reqs:[swRstp, swPortfast('fa0/1'), swPortfast('fa0/2'), swBpdu('fa0/1'), swBpdu('fa0/2'), swPortfast('fa0/3'), swBpdu('fa0/3')]}
+};
+const ETHERCHANNEL = {
+  beginner: {kind:'sw', title:'Beginner', sub:'Bundle Fa0/1 and Fa0/2 into channel-group 1 with mode on', lead:SW_LEAD, steps:['Use channel-group 1 mode on on Fa0/1 and Fa0/2.'], reqs:[swGroup('fa0/1', 1, 'on'), swGroup('fa0/2', 1, 'on')]},
+  intermediate: {kind:'sw', title:'Intermediate', sub:'Bundle Fa0/1 and Fa0/2 into channel-group 1 with mode on, and bring both up', lead:SW_LEAD, steps:['Use channel-group 1 mode on on Fa0/1 and Fa0/2.', 'Bring both ports up.'], reqs:[swGroup('fa0/1', 1, 'on'), swGroup('fa0/2', 1, 'on'), swUp('fa0/1'), swUp('fa0/2')]},
+  advanced: {kind:'sw', title:'Advanced', sub:'Use LACP (mode active) for channel-group 1 on Fa0/1 and Fa0/2, and bring both up', lead:SW_LEAD, steps:['Use channel-group 1 mode active on Fa0/1 and Fa0/2.', 'Bring both ports up.'], reqs:[swGroup('fa0/1', 1, 'active'), swGroup('fa0/2', 1, 'active'), swUp('fa0/1'), swUp('fa0/2')]},
+  expert: {kind:'sw', title:'Expert', sub:'As Advanced, and make both channel ports trunks', lead:SW_LEAD, steps:['Keep the LACP channel on Fa0/1 and Fa0/2.', 'Make Fa0/1 and Fa0/2 trunks.'], reqs:[swGroup('fa0/1', 1, 'active'), swGroup('fa0/2', 1, 'active'), swUp('fa0/1'), swUp('fa0/2'), swTrunk('fa0/1'), swTrunk('fa0/2')]}
+};
+const ADVETHER = {
+  beginner: {kind:'sw', title:'Beginner', sub:'Use LACP (mode active) for channel-group 1 on Fa0/1 and Fa0/2', lead:SW_LEAD, steps:['Use channel-group 1 mode active on Fa0/1 and Fa0/2.'], reqs:[swGroup('fa0/1', 1, 'active'), swGroup('fa0/2', 1, 'active')]},
+  intermediate: {kind:'sw', title:'Intermediate', sub:'As Beginner, and balance traffic by source and destination IP', lead:SW_LEAD, steps:['Keep the LACP channel on Fa0/1 and Fa0/2.', 'Set load balancing to src-dst-ip.'], reqs:[swGroup('fa0/1', 1, 'active'), swGroup('fa0/2', 1, 'active'), swLb('src-dst-ip')]},
+  advanced: {kind:'sw', title:'Advanced', sub:'As Intermediate, with both channel ports up and trunked', lead:SW_LEAD, steps:['Keep the LACP channel and load balancing.', 'Bring both ports up and make them trunks.'], reqs:[swGroup('fa0/1', 1, 'active'), swGroup('fa0/2', 1, 'active'), swLb('src-dst-ip'), swUp('fa0/1'), swUp('fa0/2'), swTrunk('fa0/1'), swTrunk('fa0/2')]},
+  expert: {kind:'sw', title:'Expert', sub:'As Advanced, and allow only VLANs 10 and 20 on the channel', lead:SW_LEAD, steps:['Keep the Advanced settings.', 'Allow only VLANs 10 and 20 on Fa0/1 and Fa0/2.'], reqs:[swGroup('fa0/1', 1, 'active'), swGroup('fa0/2', 1, 'active'), swLb('src-dst-ip'), swUp('fa0/1'), swUp('fa0/2'), swTrunk('fa0/1'), swTrunk('fa0/2'), swAllowed('fa0/1', [10, 20]), swAllowed('fa0/2', [10, 20])]}
+};
+const INTERVLAN = {
+  beginner: {kind:'sw', title:'Beginner', sub:'Trunk S1 Gi0/1 to R1 and give R1 a VLAN 10 subinterface', lead:INTER_LEAD, steps:['Make S1 Gi0/1 a trunk and bring it up.', 'On R1, create Gi0/0.10 with dot1Q 10 and 192.168.10.1/24.', 'Bring Gi0/0.10 up.'], reqs:[...interUp, ...SUB10]},
+  intermediate: {kind:'sw', title:'Intermediate', sub:'Add VLAN 20 on subinterface Gi0/0.20 with 192.168.20.1/24', lead:INTER_LEAD, steps:['Keep the trunk and Gi0/0.10 working.', 'On R1, create Gi0/0.20 with dot1Q 20 and 192.168.20.1/24.', 'Bring Gi0/0.20 up.'], reqs:[...interUp, ...SUB10, ...SUB20]},
+  advanced: {kind:'sw', title:'Advanced', sub:'As Intermediate, and put Fa0/1 in VLAN 10 and Fa0/2 in VLAN 20', lead:INTER_LEAD, steps:['Keep the subinterfaces working.', 'Put Fa0/1 in VLAN 10 and Fa0/2 in VLAN 20.', 'Bring both ports up.'], reqs:INTER_ADV},
+  expert: {kind:'sw', title:'Expert', sub:'As Advanced, and add Gi0/0.99 on 192.168.99.1/24 with VLANs 10, 20 and 99 allowed on the trunk', lead:INTER_LEAD, steps:['Create VLAN 99 on S1.', 'On R1, create Gi0/0.99 with dot1Q 99 and 192.168.99.1/24.', 'Allow only VLANs 10, 20 and 99 on the trunk.'], reqs:[...INTER_ADV, ...SUB99, swVlan(99), swAllowed('gi0/1', [10, 20, 99])]}
+};
+function swEtherSummary(){
+  const groups = {};
+  Object.values(swState.ports).filter(p => p.group !== null).forEach(p => { (groups[p.group] = groups[p.group] || []).push(p); });
+  if (!Object.keys(groups).length) return print('No aggregators configured');
+  print('Group  Port-channel  Ports');
+  Object.keys(groups).forEach(g => print(`${g.padEnd(7)}Po${g.padEnd(12)}${groups[g].map(p => `${p.name}(${p.chanMode})`).join(' ')}`));
+}
+function swStp(){
+  print(`Spanning tree mode: ${swState.stp.mode}`);
+  Object.keys(swState.vlans).forEach(id => {
+    const pr = swState.stp.prio[id] !== undefined ? swState.stp.prio[id] : 32768;
+    print(`VLAN${id.padStart(4, '0')}  priority ${pr}  ${pr <= 24576 ? 'this switch is root' : 'another switch is root'}`);
+  });
+}
+
+// ---- 3.0 and 5.0 extras: static and default routes, ACLs, port security ----
+const RT_NODES = [
+  {id:'R1', type:'router', x:8, y:64, name:'R1', sub:'Router'},
+  {id:'PC1', type:'pc', x:370, y:14, name:'PC1', sub:'LAN 1'},
+  {id:'R2', type:'router', x:370, y:64, name:'R2', sub:'10.0.0.2'},
+  {id:'R3', type:'router', x:370, y:114, name:'R3', sub:'10.0.1.2'}];
+const RT_LINKS = [{a:'R1', b:'PC1', port:'Gi0/0'}, {a:'R1', b:'R2', port:'Gi0/1'}, {a:'R1', b:'R3', port:'Gi0/2'}];
+const rtIf = (k, name, ip, mask) => [
+  {text:`${name} is ${ip} ${mask}`, ok: st => !!st.ifs[k] && st.ifs[k].ip === ip && st.ifs[k].mask === mask, hint:`ip address ${ip} ${mask}`},
+  {text:`${name} is up`, ok: st => !!st.ifs[k] && !st.ifs[k].shut, hint:'no shutdown'}];
+const rtRoute = (net, mask, nh, dist = 1) => ({text:`R1 has a route to ${net} ${mask} via ${nh}${dist !== 1 ? ` with distance ${dist}` : ''}`, ok: st => st.routes.some(r => r.net === net && r.mask === mask && r.nh === nh && r.dist === dist), hint:`ip route ${net} ${mask} ${nh}${dist !== 1 ? ' ' + dist : ''}`});
+const aclEntries = (name, type, expected) => ({text:`ACL ${name} has the entries: ${expected.join('; ')}`, ok: st => !!st.acls[name] && st.acls[name].type === type && st.acls[name].entries.join(' | ') === expected.join(' | '), hint:`ip access-list ${type} ${name}, then ${expected.join(', ')}`});
+const aclApplied = (k, dir, name) => ({text:`${k.replace('gi', 'Gi')} applies ACL ${name} ${dir === 'in' ? 'inbound' : 'outbound'}`, ok: st => !!st.ifs[k] && (dir === 'in' ? st.ifs[k].aclIn : st.ifs[k].aclOut) === name, hint:`ip access-group ${name} ${dir}`});
+const swPsec = p => ({text:`${PN(p)} has port security on`, ok: st => st.sw.ports[p].psec === true, hint:'switchport port-security'});
+const swPsMax = (p, n) => ({text:`${PN(p)} allows ${n} MAC address${n > 1 ? 'es' : ''}`, ok: st => st.sw.ports[p].psMax === n, hint:`switchport port-security maximum ${n}`});
+const swPsViol = (p, v) => ({text:`${PN(p)} violation mode is ${v}`, ok: st => st.sw.ports[p].psViolation === v, hint:`switchport port-security violation ${v}`});
+const swPsSticky = p => ({text:`${PN(p)} learns sticky MAC addresses`, ok: st => st.sw.ports[p].psSticky === true, hint:'switchport port-security mac-address sticky'});
+const STATIC_BASE = x => [...rtIf('gi0/0', 'Gi0/0', `192.168.${x}.1`, '255.255.255.0'), ...rtIf('gi0/1', 'Gi0/1', '10.0.0.1', '255.255.255.252'), rtRoute(`172.16.${x}.0`, '255.255.255.0', '10.0.0.2')];
+const STATIC = {
+  beginner: {kind:'rt', title:'Beginner', sub:'Route the remote LAN 172.16.x.0/24 through R2 at 10.0.0.2', lead: x => `R1 Gi0/0 serves 192.168.${x}.0/24. R2 is the next hop on Gi0/1.`, steps:['Address Gi0/0 and Gi0/1 on R1 and bring them up.', 'Add a static route for 172.16.x.0/24 via 10.0.0.2.'], build: x => STATIC_BASE(x)},
+  intermediate: {kind:'rt', title:'Intermediate', sub:'Add a second remote LAN, 172.17.x.0/24, also through R2', lead: x => `R1 Gi0/0 serves 192.168.${x}.0/24. R2 is the next hop on Gi0/1.`, steps:['Keep the first static route working.', 'Add a static route for 172.17.x.0/24 via 10.0.0.2.'], build: x => [...STATIC_BASE(x), rtRoute(`172.17.${x}.0`, '255.255.255.0', '10.0.0.2')]},
+  advanced: {kind:'rt', title:'Advanced', sub:'Add R3 on Gi0/2 as a backup for 172.16.x.0/24, using distance 150', lead: x => `R1 Gi0/0 serves 192.168.${x}.0/24. R2 is on Gi0/1 and R3 on Gi0/2.`, steps:['Keep the routes to R2 working.', 'Address Gi0/2 as 10.0.1.1/30 and bring it up.', 'Add a backup route for 172.16.x.0/24 via 10.0.1.2 with distance 150.'], build: x => [...STATIC_BASE(x), rtRoute(`172.17.${x}.0`, '255.255.255.0', '10.0.0.2'), ...rtIf('gi0/2', 'Gi0/2', '10.0.1.1', '255.255.255.252'), rtRoute(`172.16.${x}.0`, '255.255.255.0', '10.0.1.2', 150)]},
+  expert: {kind:'rt', title:'Expert', sub:'As Advanced, and add 172.18.x.0/24 as a route out the exit interface Gi0/2', lead: x => `R1 Gi0/0 serves 192.168.${x}.0/24. R2 is on Gi0/1 and R3 on Gi0/2.`, steps:['Keep the Advanced routes.', 'Add a static route for 172.18.x.0/24 that uses Gi0/2 as the exit interface.'], build: x => [...STATIC_BASE(x), rtRoute(`172.17.${x}.0`, '255.255.255.0', '10.0.0.2'), ...rtIf('gi0/2', 'Gi0/2', '10.0.1.1', '255.255.255.252'), rtRoute(`172.16.${x}.0`, '255.255.255.0', '10.0.1.2', 150), rtRoute(`172.18.${x}.0`, '255.255.255.0', 'Gi0/2')]}
+};
+const DEF_BASE = x => [...rtIf('gi0/0', 'Gi0/0', `192.168.${x}.1`, '255.255.255.0'), ...rtIf('gi0/1', 'Gi0/1', '10.0.0.1', '255.255.255.252')];
+const DEFROUTE = {
+  beginner: {kind:'rt', title:'Beginner', sub:'Send unknown traffic to R2 at 10.0.0.2 with a default route', lead: x => `R1 Gi0/0 serves 192.168.${x}.0/24. R2 at 10.0.0.2 is the way out.`, steps:['Address Gi0/0 and Gi0/1 on R1 and bring them up.', 'Add a default route via 10.0.0.2.'], build: x => [...DEF_BASE(x), rtRoute('0.0.0.0', '0.0.0.0', '10.0.0.2')]},
+  intermediate: {kind:'rt', title:'Intermediate', sub:'Add R3 at 10.0.1.2 as a backup default route with distance 150', lead: x => `R1 Gi0/0 serves 192.168.${x}.0/24. R2 is on Gi0/1 and R3 on Gi0/2.`, steps:['Keep the default route via R2.', 'Address Gi0/2 as 10.0.1.1/30 and bring it up.', 'Add a backup default route via 10.0.1.2 with distance 150.'], build: x => [...DEF_BASE(x), rtRoute('0.0.0.0', '0.0.0.0', '10.0.0.2'), ...rtIf('gi0/2', 'Gi0/2', '10.0.1.1', '255.255.255.252'), rtRoute('0.0.0.0', '0.0.0.0', '10.0.1.2', 150)]},
+  advanced: {kind:'rt', title:'Advanced', sub:'Make Gi0/1 the exit interface for the default route', lead: x => `R1 Gi0/0 serves 192.168.${x}.0/24. R2 is on Gi0/1.`, steps:['Address Gi0/0 and Gi0/1 on R1 and bring them up.', 'Add a default route that uses Gi0/1 as the exit interface.'], build: x => [...DEF_BASE(x), rtRoute('0.0.0.0', '0.0.0.0', 'Gi0/1')]},
+  expert: {kind:'rt', title:'Expert', sub:'Default route via R2, plus a specific route to 172.16.x.0/24 via R2', lead: x => `R1 Gi0/0 serves 192.168.${x}.0/24. R2 is on Gi0/1.`, steps:['Add a default route via 10.0.0.2.', 'Add a specific route for 172.16.x.0/24 via 10.0.0.2 so it is not sent to the default.'], build: x => [...DEF_BASE(x), rtRoute('0.0.0.0', '0.0.0.0', '10.0.0.2'), rtRoute(`172.16.${x}.0`, '255.255.255.0', '10.0.0.2')]}
+};
+const ACL = {
+  beginner: {kind:'rt', title:'Beginner', sub:'Block 192.168.x.10 with standard ACL 10 on inbound Gi0/0', lead: x => `PC1 is on 192.168.${x}.0/24 behind Gi0/0.`, steps:['Create standard ACL 10: deny host 192.168.x.10, then permit any.', 'Apply ACL 10 inbound on Gi0/0.'], build: x => [...rtIf('gi0/0', 'Gi0/0', `192.168.${x}.1`, '255.255.255.0'), aclEntries('10', 'standard', [`deny host 192.168.${x}.10`, 'permit any']), aclApplied('gi0/0', 'in', '10')]},
+  intermediate: {kind:'rt', title:'Intermediate', sub:'Block the first half of the LAN with standard ACL 10 on outbound Gi0/1', lead: x => `PC1 is on 192.168.${x}.0/24. R2 is reached through Gi0/1.`, steps:['Create standard ACL 10: deny 192.168.x.0 0.0.0.127, then permit any.', 'Apply ACL 10 outbound on Gi0/1.'], build: x => [...rtIf('gi0/0', 'Gi0/0', `192.168.${x}.1`, '255.255.255.0'), ...rtIf('gi0/1', 'Gi0/1', '10.0.0.1', '255.255.255.252'), aclEntries('10', 'standard', [`deny 192.168.${x}.0 0.0.0.127`, 'permit any']), aclApplied('gi0/1', 'out', '10')]},
+  advanced: {kind:'rt', title:'Advanced', sub:'Block Telnet inbound on Gi0/0 with extended ACL 110', lead: x => `PC1 is on 192.168.${x}.0/24 behind Gi0/0.`, steps:['Create extended ACL 110: deny tcp any any eq telnet, then permit ip any any.', 'Apply ACL 110 inbound on Gi0/0.'], build: x => [...rtIf('gi0/0', 'Gi0/0', `192.168.${x}.1`, '255.255.255.0'), aclEntries('110', 'extended', ['deny tcp any any eq telnet', 'permit ip any any']), aclApplied('gi0/0', 'in', '110')]},
+  expert: {kind:'rt', title:'Expert', sub:'Keep ACL 110 on Gi0/0, and filter web traffic from the LAN with web-filter outbound on Gi0/1', lead: x => `PC1 is on 192.168.${x}.0/24. R2 is reached through Gi0/1.`, steps:['Keep ACL 110 inbound on Gi0/0.', 'Create extended ACL web-filter: deny tcp the first half of the LAN to any eq www, then permit ip any any.', 'Apply web-filter outbound on Gi0/1.'], build: x => [...rtIf('gi0/0', 'Gi0/0', `192.168.${x}.1`, '255.255.255.0'), ...rtIf('gi0/1', 'Gi0/1', '10.0.0.1', '255.255.255.252'), aclEntries('110', 'extended', ['deny tcp any any eq telnet', 'permit ip any any']), aclApplied('gi0/0', 'in', '110'), aclEntries('web-filter', 'extended', [`deny tcp 192.168.${x}.0 0.0.0.127 any eq www`, 'permit ip any any']), aclApplied('gi0/1', 'out', 'web-filter')]}
+};
+const PS_ADV = [swMode('fa0/1'), swMode('fa0/2'), swUp('fa0/1'), swUp('fa0/2'), swPsec('fa0/1'), swPsec('fa0/2'), swPsSticky('fa0/1'), swPsSticky('fa0/2'), swPsMax('fa0/1', 1), swPsMax('fa0/2', 1), swPsViol('fa0/1', 'shutdown'), swPsViol('fa0/2', 'restrict')];
+const PORTSEC = {
+  beginner: {kind:'sw', title:'Beginner', sub:'Turn on port security on Fa0/1', lead:SW_LEAD, steps:['Make Fa0/1 an access port and bring it up.', 'Enable port security on Fa0/1.'], reqs:[swMode('fa0/1'), swUp('fa0/1'), swPsec('fa0/1')]},
+  intermediate: {kind:'sw', title:'Intermediate', sub:'Allow one MAC address on Fa0/1 and shut the port on a violation', lead:SW_LEAD, steps:['Keep port security on Fa0/1.', 'Set the maximum to 1 and the violation mode to shutdown.'], reqs:[swMode('fa0/1'), swUp('fa0/1'), swPsec('fa0/1'), swPsMax('fa0/1', 1), swPsViol('fa0/1', 'shutdown')]},
+  advanced: {kind:'sw', title:'Advanced', sub:'Use sticky MAC addresses on Fa0/1 and Fa0/2, and restrict Fa0/2 on a violation', lead:SW_LEAD, steps:['Turn on sticky port security on Fa0/1 and Fa0/2.', 'Allow one MAC per port.', 'Shut Fa0/1 on a violation and restrict Fa0/2.'], reqs:PS_ADV},
+  expert: {kind:'sw', title:'Expert', sub:'As Advanced, and protect the unused Fa0/3 with sticky MAC, one address and shutdown', lead:SW_LEAD, steps:['Keep the Advanced settings on Fa0/1 and Fa0/2.', 'Protect Fa0/3 with sticky MAC, a maximum of 1 and shutdown on violation.'], reqs:[...PS_ADV, swPsec('fa0/3'), swPsSticky('fa0/3'), swPsMax('fa0/3', 1), swPsViol('fa0/3', 'shutdown')]}
+};
+
+// ---- 4.0 IP services: DHCP, DHCP relay, NAT, network services ----
+const dhcpPool = (name, net, mask, gw) => ({text:`DHCP pool ${name} serves ${net} ${mask} with default router ${gw}`, ok: st => !!st.dhcp[name] && st.dhcp[name].net === net && st.dhcp[name].mask === mask && st.dhcp[name].gw === gw, hint:`ip dhcp pool ${name}, network ${net} ${mask}, default-router ${gw}`});
+const dhcpEx = (a, b) => ({text:`DHCP excludes ${a} to ${b}`, ok: st => st.dhcpEx.some(([x, y]) => x === a && y === b), hint:`ip dhcp excluded-address ${a} ${b}`});
+const dhcpDns = (name, ip) => ({text:`DHCP pool ${name} gives DNS server ${ip}`, ok: st => !!st.dhcp[name] && st.dhcp[name].dns.includes(ip), hint:`dns-server ${ip}`});
+const dhcpDomain = (name, d) => ({text:`DHCP pool ${name} sets the domain to ${d}`, ok: st => !!st.dhcp[name] && st.dhcp[name].domain === d, hint:`domain-name ${d}`});
+const helperOn = (k, ip) => ({text:`${k.replace('gi', 'Gi')} forwards DHCP to ${ip}`, ok: st => !!st.ifs[k] && st.ifs[k].helpers.includes(ip), hint:`ip helper-address ${ip}`});
+const noHelper = k => ({text:`${k.replace('gi', 'Gi')} does not forward DHCP`, ok: st => !!st.ifs[k] && st.ifs[k].helpers.length === 0, hint:'no ip helper-address'});
+const natSide = (k, dir) => ({text:`${k.replace('gi', 'Gi')} is NAT ${dir}`, ok: st => !!st.ifs[k] && st.ifs[k].nat === dir, hint:`ip nat ${dir}`});
+const natPat = (acl, k) => ({text:`ACL ${acl} hosts use ${k.replace('gi', 'Gi')} with PAT (overload)`, ok: st => st.nat.pat.some(p => p.acl === acl && p.iface === k.replace('gi', 'Gi')), hint:`ip nat inside source list ${acl} interface ${k.replace('gi', 'Gi')} overload`});
+const natStatic = (inside, outside) => ({text:`${inside} is NATed to ${outside} with a static entry`, ok: st => st.nat.stat.some(p => p.in === inside && p.out === outside), hint:`ip nat inside source static ${inside} ${outside}`});
+const svcNtp = ip => ({text:`R1 uses NTP server ${ip}`, ok: st => st.svc.ntp.includes(ip), hint:`ntp server ${ip}`});
+const svcLog = ip => ({text:`R1 sends logs to ${ip}`, ok: st => st.svc.log.includes(ip), hint:`logging host ${ip}`});
+const svcDns = ip => ({text:`R1 uses DNS server ${ip}`, ok: st => st.svc.dns.includes(ip), hint:`ip name-server ${ip}`});
+const DHCP_LAN = x => [...rtIf('gi0/0', 'Gi0/0', `192.168.${x}.1`, '255.255.255.0'), ...rtIf('gi0/1', 'Gi0/1', '10.0.0.1', '255.255.255.252')];
+const DHCP_POOL = x => dhcpPool('lan1', `192.168.${x}.0`, '255.255.255.0', `192.168.${x}.1`);
+const DHCP = {
+  beginner: {kind:'rt', title:'Beginner', sub:'Create DHCP pool LAN1 for 192.168.x.0/24 with R1 as the default router', lead: x => `PC1 is on 192.168.${x}.0/24 behind Gi0/0 and gets its settings from R1.`, steps:['Address Gi0/0 and Gi0/1 on R1 and bring them up.', 'Create ip dhcp pool LAN1 with network 192.168.x.0 255.255.255.0.', 'Set default-router to 192.168.x.1.'], build: x => [...DHCP_LAN(x), DHCP_POOL(x)]},
+  intermediate: {kind:'rt', title:'Intermediate', sub:'As Beginner, and exclude 192.168.x.1 to 192.168.x.20 from the pool', lead: x => `PC1 is on 192.168.${x}.0/24 behind Gi0/0 and gets its settings from R1.`, steps:['Keep the LAN1 pool.', 'Add ip dhcp excluded-address 192.168.x.1 192.168.x.20.'], build: x => [...DHCP_LAN(x), DHCP_POOL(x), dhcpEx(`192.168.${x}.1`, `192.168.${x}.20`)]},
+  advanced: {kind:'rt', title:'Advanced', sub:'As Intermediate, and give clients the DNS server 172.16.x.53', lead: x => `PC1 is on 192.168.${x}.0/24 behind Gi0/0 and gets its settings from R1.`, steps:['Keep the LAN1 pool and excluded range.', 'Add dns-server 172.16.x.53 to LAN1.'], build: x => [...DHCP_LAN(x), DHCP_POOL(x), dhcpEx(`192.168.${x}.1`, `192.168.${x}.20`), dhcpDns('lan1', `172.16.${x}.53`)]},
+  expert: {kind:'rt', title:'Expert', sub:'As Advanced, and set the domain name to lab.local', lead: x => `PC1 is on 192.168.${x}.0/24 behind Gi0/0 and gets its settings from R1.`, steps:['Keep the Advanced settings.', 'Add domain-name lab.local to LAN1.'], build: x => [...DHCP_LAN(x), DHCP_POOL(x), dhcpEx(`192.168.${x}.1`, `192.168.${x}.20`), dhcpDns('lan1', `172.16.${x}.53`), dhcpDomain('lan1', 'lab.local')]}
+};
+const RELAY_BASE = x => [...DHCP_LAN(x), rtRoute(`172.16.${x}.0`, '255.255.255.0', '10.0.0.2'), helperOn('gi0/0', `172.16.${x}.10`)];
+const RELAY_2ND = x => [rtRoute(`172.17.${x}.0`, '255.255.255.0', '10.0.0.2'), helperOn('gi0/0', `172.17.${x}.10`)];
+const DHCPRELAY = {
+  beginner: {kind:'rt', title:'Beginner', sub:'Forward DHCP from the LAN to the server 172.16.x.10 behind R2', lead: x => `PC1 is on 192.168.${x}.0/24 behind Gi0/0. The DHCP server 172.16.x.10 is behind R2.`, steps:['Address Gi0/0 and Gi0/1 on R1 and bring them up.', 'Add a route to 172.16.x.0/24 via 10.0.0.2.', 'On Gi0/0, add ip helper-address 172.16.x.10.'], build: x => RELAY_BASE(x)},
+  intermediate: {kind:'rt', title:'Intermediate', sub:'Add a second DHCP server 172.17.x.10 behind R2 as a backup helper', lead: x => `PC1 is on 192.168.${x}.0/24 behind Gi0/0. Both DHCP servers are behind R2.`, steps:['Keep the relay to 172.16.x.10.', 'Add a route to 172.17.x.0/24 via 10.0.0.2.', 'Add a second ip helper-address 172.17.x.10 on Gi0/0.'], build: x => [...RELAY_BASE(x), ...RELAY_2ND(x)]},
+  advanced: {kind:'rt', title:'Advanced', sub:'As Intermediate, and make sure the uplink Gi0/1 does not relay DHCP', lead: x => `PC1 is on 192.168.${x}.0/24 behind Gi0/0. Both DHCP servers are behind R2.`, steps:['Keep both helper addresses on Gi0/0.', 'Make sure Gi0/1 has no ip helper-address.'], build: x => [...RELAY_BASE(x), ...RELAY_2ND(x), noHelper('gi0/1')]},
+  expert: {kind:'rt', title:'Expert', sub:'As Advanced, and add a default route via R2 so replies leave the network', lead: x => `PC1 is on 192.168.${x}.0/24 behind Gi0/0. Both DHCP servers are behind R2.`, steps:['Keep the Advanced settings.', 'Add a default route via 10.0.0.2.'], build: x => [...RELAY_BASE(x), ...RELAY_2ND(x), noHelper('gi0/1'), rtRoute('0.0.0.0', '0.0.0.0', '10.0.0.2')]}
+};
+const NAT_BASE = x => [...DHCP_LAN(x), natSide('gi0/0', 'inside'), natSide('gi0/1', 'outside'), aclEntries('1', 'standard', [`permit 192.168.${x}.0 0.0.0.255`])];
+const NAT = {
+  beginner: {kind:'rt', title:'Beginner', sub:'Mark Gi0/0 as NAT inside, Gi0/1 as NAT outside, and define ACL 1 for the LAN', lead: x => `PC1 is on 192.168.${x}.0/24 behind Gi0/0. R2 is outside on Gi0/1.`, steps:['Address Gi0/0 and Gi0/1 and bring them up.', 'Set Gi0/0 to ip nat inside and Gi0/1 to ip nat outside.', 'Create access-list 1 permit 192.168.x.0 0.0.0.255.'], build: x => NAT_BASE(x)},
+  intermediate: {kind:'rt', title:'Intermediate', sub:'As Beginner, and translate the LAN to the Gi0/1 address with PAT', lead: x => `PC1 is on 192.168.${x}.0/24 behind Gi0/0. R2 is outside on Gi0/1.`, steps:['Keep the NAT inside and outside sides.', 'Add ip nat inside source list 1 interface Gi0/1 overload.'], build: x => [...NAT_BASE(x), natPat('1', 'gi0/1')]},
+  advanced: {kind:'rt', title:'Advanced', sub:'As Intermediate, and add a static NAT from 192.168.x.20 to 198.51.100.x', lead: x => `PC1 is on 192.168.${x}.0/24 behind Gi0/0. R2 is outside on Gi0/1.`, steps:['Keep the PAT rule.', 'Add ip nat inside source static 192.168.x.20 198.51.100.x.'], build: x => [...NAT_BASE(x), natPat('1', 'gi0/1'), natStatic(`192.168.${x}.20`, `198.51.100.${x}`)]},
+  expert: {kind:'rt', title:'Expert', sub:'As Advanced, and add a default route via R2 so NAT traffic can leave', lead: x => `PC1 is on 192.168.${x}.0/24 behind Gi0/0. R2 is outside on Gi0/1.`, steps:['Keep the Advanced NAT rules.', 'Add a default route via 10.0.0.2.'], build: x => [...NAT_BASE(x), natPat('1', 'gi0/1'), natStatic(`192.168.${x}.20`, `198.51.100.${x}`), rtRoute('0.0.0.0', '0.0.0.0', '10.0.0.2')]}
+};
+const SERVICES = {
+  beginner: {kind:'rt', title:'Beginner', sub:'Point R1 at the NTP server 10.0.0.2 behind R2', lead: x => `R1 reaches R2 on Gi0/1. The NTP server 10.0.0.2 sits behind R2.`, steps:['Address Gi0/1 and bring it up.', 'Add ntp server 10.0.0.2.'], build: x => [...rtIf('gi0/1', 'Gi0/1', '10.0.0.1', '255.255.255.252'), svcNtp('10.0.0.2')]},
+  intermediate: {kind:'rt', title:'Intermediate', sub:'Also send logs to the syslog server 172.16.x.100 behind R2', lead: x => `R1 reaches R2 on Gi0/1. The syslog server 172.16.x.100 sits behind R2.`, steps:['Keep the NTP server.', 'Add a route to 172.16.x.0/24 via 10.0.0.2.', 'Add logging host 172.16.x.100.'], build: x => [...rtIf('gi0/1', 'Gi0/1', '10.0.0.1', '255.255.255.252'), svcNtp('10.0.0.2'), rtRoute(`172.16.${x}.0`, '255.255.255.0', '10.0.0.2'), svcLog(`172.16.${x}.100`)]},
+  advanced: {kind:'rt', title:'Advanced', sub:'As Intermediate, and use the DNS server 172.16.x.53', lead: x => `R1 reaches R2 on Gi0/1. The syslog and DNS servers sit behind R2.`, steps:['Keep the NTP and syslog settings.', 'Add ip name-server 172.16.x.53.'], build: x => [...rtIf('gi0/1', 'Gi0/1', '10.0.0.1', '255.255.255.252'), svcNtp('10.0.0.2'), rtRoute(`172.16.${x}.0`, '255.255.255.0', '10.0.0.2'), svcLog(`172.16.${x}.100`), svcDns(`172.16.${x}.53`)]},
+  expert: {kind:'rt', title:'Expert', sub:'As Advanced, and add a second NTP server 10.0.1.2 on Gi0/2', lead: x => `R1 reaches R2 on Gi0/1 and R3 on Gi0/2.`, steps:['Keep the Advanced settings.', 'Address Gi0/2 as 10.0.1.1/30 and bring it up.', 'Add ntp server 10.0.1.2.'], build: x => [...rtIf('gi0/1', 'Gi0/1', '10.0.0.1', '255.255.255.252'), ...rtIf('gi0/2', 'Gi0/2', '10.0.1.1', '255.255.255.252'), svcNtp('10.0.0.2'), svcNtp('10.0.1.2'), rtRoute(`172.16.${x}.0`, '255.255.255.0', '10.0.0.2'), svcLog(`172.16.${x}.100`), svcDns(`172.16.${x}.53`)]}
+};
+
+// ---- 6.0 automation: quiz labs (read a snippet, answer in the console) ----
+function quizRun(line){
+  const w = line.toLowerCase().split(/\s+/);
+  if (w[0] === '?' || w[0] === 'help') return print('Commands: answer <number> <letter>, show answers');
+  if (w[0] === 'show' && w[1] === 'answers') { Object.keys(state.answers).sort((a, b) => a - b).forEach(k => print(`${k}  ${state.answers[k]}`)); return; }
+  if (w[0] === 'answer' && /^\d+$/.test(w[1] || '') && /^[a-d]$/.test(w[2] || '')) { state.answers[Number(w[1])] = w[2]; return print(`Question ${w[1]} answered ${w[2]}`); }
+  print('% Use: answer <question number> <letter>', 'ln-err');
+}
+const REST_SNIP = 'GET https://api.example.net/v1/interfaces/Gi0-0\nAccept: application/json\n\nHTTP/1.1 200 OK\nContent-Type: application/json';
+const REST_Q = [
+  {prompt:'Which HTTP method reads data without changing it?', choices:['POST', 'GET', 'DELETE'], answer:'b'},
+  {prompt:'What does status code 200 mean?', choices:['Created', 'OK', 'Not found'], answer:'b'},
+  {prompt:'Which method usually creates a new object on the server?', choices:['POST', 'GET', 'DELETE'], answer:'a'},
+  {prompt:'What does status code 404 mean?', choices:['Unauthorized', 'Not found', 'Server error'], answer:'b'},
+  {prompt:'Which method replaces one existing object completely?', choices:['PUT', 'GET', 'POST'], answer:'a'}
+];
+const JSON_SNIP = '{\n  "hostname": "R1",\n  "interfaces": [\n    {"name": "Gi0/0", "ip": "192.168.10.1"},\n    {"name": "Gi0/1", "ip": "10.0.0.1"}\n  ]\n}';
+const JSON_Q = [
+  {prompt:'What type of value is "interfaces"?', choices:['object', 'array', 'string'], answer:'b'},
+  {prompt:'What is the value of "hostname"?', choices:['R1', 'Gi0/0', '192.168.10.1'], answer:'a'},
+  {prompt:'What is the IP address of Gi0/1?', choices:['192.168.10.1', '10.0.0.1', 'Gi0/1'], answer:'b'},
+  {prompt:'How many interface entries are there?', choices:['1', '2', '3'], answer:'b'},
+  {prompt:'Which expression returns the second interface name?', choices:['interfaces[0].name', 'interfaces[1].name', 'interfaces.name'], answer:'b'}
+];
+const quizLevels = (snippet, Q, subs) => {
+  const steps = ['Read the snippet above.', 'Answer each question in the console with answer <number> <letter>.'];
+  return {
+    beginner: {kind:'quiz', title:'Beginner', sub:subs[0], snippet, steps, questions:Q.slice(0, 2)},
+    intermediate: {kind:'quiz', title:'Intermediate', sub:subs[1], snippet, steps, questions:Q.slice(0, 3)},
+    advanced: {kind:'quiz', title:'Advanced', sub:subs[2], snippet, steps, questions:Q.slice(0, 4)},
+    expert: {kind:'quiz', title:'Expert', sub:subs[3], snippet, steps, questions:Q.slice(0, 5)}
+  };
+};
+const REST = quizLevels(REST_SNIP, REST_Q, [
+  'Read one request and response, and answer two questions about them',
+  'Read the request and response, and answer three questions',
+  'Answer four questions about HTTP methods and status codes',
+  'Answer five questions, including which method replaces an object']);
+const JSONQ = quizLevels(JSON_SNIP, JSON_Q, [
+  'Read the JSON and answer two questions about its values',
+  'Read the JSON and answer three questions, including an IP address',
+  'Answer four questions about the structure of the JSON',
+  'Answer five questions, including reading the second list item']);
+
+const TOPICS = {
+  ipv4: {name:'IPv4 addressing', showNet:true, maskRule:'the correct mask', lead:x => `Your network is 192.168.${x}.0/24. R1 has no addressing yet.`, levels:LEVELS},
+  subnetting: {name:'Subnetting', showNet:false, maskRule:'the correct mask', lead:x => `Your network is 192.168.${x}.0/24. R1 has no addressing yet.`, levels:SUBNET},
+  vlsm: {name:'VLSM', showNet:false, maskRule:'the smallest mask that fits its hosts', lead:x => `Your network is 192.168.${x}.0/24. Each LAN has a host requirement.`, levels:VLSM},
+  ipv6: {name:'IPv6 Addressing', showNet:false, maskRule:'', lead:x => `Your prefix is 2001:db8:${x}::/48. R1 has no IPv6 addressing yet.`, levels:IPV6},
+  cdp: {name:'CDP & LLDP', showNet:false, maskRule:'', lead:null, levels:CDP},
+  vlans: {name:'VLANs', showNet:false, maskRule:'', lead:null, levels:VLANS},
+  access: {name:'Access Ports', showNet:false, maskRule:'', lead:null, levels:ACCESS},
+  trunk: {name:'Trunking (802.1Q)', showNet:false, maskRule:'', lead:null, levels:TRUNK},
+  stp: {name:'Spanning Tree Protocol (STP)', showNet:false, maskRule:'', lead:null, levels:STP},
+  advstp: {name:'Advanced STP', showNet:false, maskRule:'', lead:null, levels:ADVSTP},
+  etherchannel: {name:'EtherChannel', showNet:false, maskRule:'', lead:null, levels:ETHERCHANNEL},
+  advetherchannel: {name:'Advanced EtherChannel', showNet:false, maskRule:'', lead:null, levels:ADVETHER},
+  intervlan: {name:'Inter-VLAN Routing', showNet:false, maskRule:'', lead:null, levels:INTERVLAN},
+  static: {name:'Static Routing', showNet:false, maskRule:'', lead:null, levels:STATIC},
+  defroute: {name:'Default Routes', showNet:false, maskRule:'', lead:null, levels:DEFROUTE},
+  acl: {name:'Standard and Extended ACLs (IPv4)', showNet:false, maskRule:'', lead:null, levels:ACL},
+  portsec: {name:'Port Security', showNet:false, maskRule:'', lead:null, levels:PORTSEC},
+  dhcp: {name:'DHCP', showNet:false, maskRule:'', lead:null, levels:DHCP},
+  dhcprelay: {name:'DHCP Relay', showNet:false, maskRule:'', lead:null, levels:DHCPRELAY},
+  nat: {name:'NAT', showNet:false, maskRule:'', lead:null, levels:NAT},
+  services: {name:'Network Services (NTP, Syslog, DNS)', showNet:false, maskRule:'', lead:null, levels:SERVICES},
+  rest: {name:'REST APIs', showNet:false, maskRule:'', lead:null, levels:REST},
+  json: {name:'JSON Data', showNet:false, maskRule:'', lead:null, levels:JSONQ}
+};
+let REQS = [], SOLUTION = [], lastNet = null, level = 'intermediate', topic = 'ipv4';
+
+function iface(name){ return {name, ip:null, mask:null, ip6:null, ll:null, desc:null, aclIn:null, aclOut:null, helpers:[], nat:null, cdp:true, shut:true}; }
+function reset(){
+  swState = freshSw();
+  state = {mode:'user', iface:null, host:'R1', cdp:true, lldp:false, routes:[], saved:null, acls:{}, aclName:null, dhcp:{}, dhcpEx:[], dhcpName:null, nat:{pat:[], stat:[]}, svc:{ntp:[], log:[], dns:[]}, answers:{}, sw:swState, ifs:{'gi0/0':iface('Gi0/0'), 'gi0/1':iface('Gi0/1'), 'gi0/2':iface('Gi0/2'), 'gi0/3':iface('Gi0/3')}};
+  Object.values(logs).forEach(l => { l.textContent = ''; });
+  past.length = 0; pos = 0;
+  showDevice('R1');
+  renderPrompt(); renderReqs(null);
+}
+function print(text, cls = ''){
+  const d = document.createElement('div');
+  if (cls) d.className = cls;
+  d.textContent = text;
+  log.appendChild(d);
+  term.scrollTop = term.scrollHeight;
+}
+function echo(line){
+  const d = document.createElement('div');
+  const p = document.createElement('span');
+  p.className = 'ps';
+  p.textContent = promptFor() + ' ';
+  d.append(p, line);
+  log.appendChild(d);
+  term.scrollTop = term.scrollHeight;
+}
+const SUFFIX = {user:'>', priv:'#', config:'(config)#', ifc:'(config-if)#', vlan:'(config-vlan)#', nacl:'(config-nacl)#', dhcp:'(config-dhcp)#'};
+function promptFor(){ if (quizOn && dev === 'R1') return 'answer>'; if (dev === 'S1') return swState.host + SUFFIX[swState.mode]; return dev === 'R1' ? state.host + SUFFIX[state.mode] : dev + '>'; }
+function renderPrompt(){ promptEl.textContent = promptFor(); }
+function showDevice(name){
+  dev = name;
+  if (!logs[name]) { logs[name] = document.createElement('div'); term.insertBefore(logs[name], input.parentNode); }
+  Object.keys(logs).forEach(k => { logs[k].hidden = k !== name; });
+  log = logs[name];
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.dev === name));
+  document.querySelectorAll('#topo [data-dev]').forEach(g => g.classList.toggle('sel', g.dataset.dev === name));
+  renderPrompt();
+  if (!log.textContent) {
+    if (name === 'R1' || name === 'S1') { print(`Connected to ${name} \u2014 type ? or help for available commands.`); print('Press Tab to complete, Up/Down for history.'); }
+    else print(`Connected to ${name} \u2014 this device is not configurable in this lab.`);
+  }
+  input.focus();
+}
+function help(){ print(keysNow().join('   ')); }
+function complete(){
+  const text = input.value.toLowerCase();
+  const hits = keysNow().filter(k => k.startsWith(text));
+  if (!hits.length) return;
+  if (hits.length === 1) { input.value = hits[0] + ' '; return; }
+  let p = hits[0];
+  for (const h of hits) while (!h.startsWith(p)) p = p.slice(0, -1);
+  if (p.length > text.length) input.value = p;
+  else print(hits.join('   '));
+}
+function addStep(text){ const li = document.createElement('li'); li.textContent = text; $('steps').appendChild(li); }
+function markLevel(){
+  document.querySelectorAll('.seg-btn').forEach(b => b.classList.toggle('active', b.dataset.set === level));
+}
+function renderReqs(results){
+  const ul = $('reqs'); ul.textContent = '';
+  $('req-count').textContent = `${results ? results.filter(Boolean).length : 0}/${REQS.length}`;
+  REQS.forEach((r, i) => {
+    const li = document.createElement('li');
+    const res = results ? results[i] : null;
+    if (res !== null) li.className = res ? 'ok' : 'bad';
+    li.textContent = (res === null ? '\u25CB ' : res ? '\u2713 ' : '\u2717 ') + r.text + (res === false && r.hint ? ` \u2014 expected: ${r.hint}` : '');
+    ul.appendChild(li);
+  });
+}
+function node(id, type, x, y, name, sub){
+  const icon = {
+    router: '<rect x="2" y="9" width="20" height="10" rx="2"/><path d="M6 14h.01M10 14h.01M14 14h.01M12 9V5"/>',
+    switch: '<rect x="2" y="10" width="20" height="8" rx="2"/><path d="M6 14h.01M10 14h.01M14 14h.01M18 14h.01"/>',
+    pc: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M9 20h6M12 16v4"/>'
+  }[type];
+  return `<g data-dev="${id}" class="node">` +
+    `<rect class="box" x="${x}" y="${y}" width="150" height="52" rx="8"/>` +
+    `<g class="icon" transform="translate(${x + 12} ${y + 14})">${icon}</g>` +
+    `<text class="name" x="${x + 46}" y="${y + 22}">${name}</text>` +
+    `<text class="sub" x="${x + 46}" y="${y + 39}">${sub}</text></g>`;
+}
+function drawTopo(nodes, links, H){
+  const at = id => nodes.find(n => n.id === id);
+  let s = `<svg viewBox="0 0 528 ${H}" role="img" aria-label="Lab topology. Click a device to open its console.">`;
+  s += '<defs><pattern id="topo-dots" width="18" height="18" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" fill="#1d2833"/></pattern></defs>';
+  s += `<rect width="528" height="${H}" fill="url(#topo-dots)"/>`;
+  links.forEach(l => {
+    const a = at(l.a), b = at(l.b);
+    const x1 = a.x + 150, y1 = a.y + 26, x2 = b.x, y2 = b.y + 26;
+    s += `<line class="link" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`;
+    if (l.port) s += `<text class="port" x="${(x1 + x2) / 2}" y="${(y1 + y2) / 2 - 7}">${l.port}</text>`;
+  });
+  nodes.forEach(n => { s += node(n.id, n.type, n.x, n.y, n.name, n.sub); });
+  return s + '</svg>';
+}
+function renderTabs(names){
+  const box = document.querySelector('.tabs');
+  box.textContent = '';
+  names.forEach(n => {
+    const b = document.createElement('button');
+    b.className = 'tab';
+    b.dataset.dev = n;
+    b.textContent = n;
+    box.appendChild(b);
+  });
+}
+function briefV4(){
+  print('Interface    IP-Address       Status');
+  Object.values(state.ifs).forEach(i => print(i.name.padEnd(13) + (i.ip || 'unassigned').padEnd(17) + (i.shut ? 'administratively down' : 'up')));
+}
+function briefV6(){
+  print('Interface    IPv6-Address                     Link-local');
+  Object.values(state.ifs).forEach(i => print(i.name.padEnd(13) + (i.ip6 || 'unassigned').padEnd(32) + (i.ll || 'none')));
+}
+function neighbors(proto){
+  const on = proto === 'cdp' ? state.cdp : state.lldp;
+  if (!on) return print(`% ${proto.toUpperCase()} is not enabled on R1`, 'ln-err');
+  const rows = Object.values(state.ifs).filter(i => i.name === 'Gi0/0' && !i.shut && (proto === 'lldp' || i.cdp));
+  print('Device ID    Local Intf');
+  rows.forEach(() => print('S1'.padEnd(13) + 'Gi0/0'));
+  print(`Total ${proto} entries displayed : ${rows.length}`);
+}
+const CMDS = {
+  user: ['enable', 'exit', 'ping', 'show', 'terminal'],
+  priv: ['configure', 'copy', 'disable', 'exit', 'ping', 'show', 'terminal', 'write'],
+  config: ['hostname', 'interface', 'ip', 'cdp', 'lldp', 'no', 'ntp', 'logging', 'access-list', 'exit', 'end', 'show'],
+  ifc: ['description', 'ip', 'ipv6', 'shutdown', 'no', 'cdp', 'exit', 'end', 'show', 'encapsulation'], nacl: ['permit', 'deny', 'exit', 'end', 'show'], dhcp: ['network', 'default-router', 'dns-server', 'domain-name', 'exit', 'end']
+};
+// Cisco-style short forms: an exact word wins, otherwise a unique prefix does
+function pick(t, opts){
+  if (!t) return null;
+  if (opts.includes(t)) return t;
+  const hits = opts.filter(o => o.startsWith(t));
+  return hits.length === 1 ? hits[0] : null;
+}
+// accepts Gi0/0, gi0/0, g0/0, gig0/0, gigabitethernet0/0 or 0/0
+function ifKey(t){
+  const m = (t || '').toLowerCase().match(/^(?:gigabitethernet|gigabit|gig|gi|g)?(\d+\/\d+)(\.\d+)?$/);
+  if (!m) return null;
+  const k = 'gi' + m[1] + (m[2] || '');
+  if (m[2] && !Object.hasOwn(state.ifs, k) && Object.hasOwn(state.ifs, 'gi' + m[1])) state.ifs[k] = {...iface('Gi' + m[1] + m[2]), sub:true, encap:null};
+  return Object.hasOwn(state.ifs, k) ? k : null;
+}
+// IPv4 helpers for routes and ping
+const ipInt = s => s.split('.').reduce((acc, o) => acc * 256 + Number(o), 0);
+const inNet = (ip, mask, target) => ((ipInt(ip) & ipInt(mask)) >>> 0) === ((ipInt(target) & ipInt(mask)) >>> 0);
+const netText = (ip, mask) => { const n = (ipInt(ip) & ipInt(mask)) >>> 0; return [24, 16, 8, 0].map(s => (n >>> s) & 255).join('.'); };
+const prefixLen = mask => ipInt(mask).toString(2).split('').filter(b => b === '1').length;
+function configLines(){
+  const L = [`hostname ${state.host}`, state.cdp ? 'cdp run' : 'no cdp run'];
+  if (state.lldp) L.push('lldp run');
+  Object.values(state.ifs).forEach(i => {
+    L.push(`interface ${i.name}`);
+    if (i.desc) L.push(` description ${i.desc}`);
+    if (i.encap) L.push(` encapsulation dot1Q ${i.encap}`);
+    i.helpers.forEach(h => L.push(` ip helper-address ${h}`));
+    if (i.nat) L.push(` ip nat ${i.nat}`);
+    if (i.ip) L.push(` ip address ${i.ip} ${i.mask}`);
+    if (i.ip6) L.push(` ipv6 address ${i.ip6}`);
+    if (i.ll) L.push(` ipv6 address ${i.ll} link-local`);
+    if (!i.cdp) L.push(' no cdp enable');
+    L.push(i.shut ? ' shutdown' : ' no shutdown', '!');
+  });
+  Object.keys(state.acls).forEach(n => L.push(`ip access-list ${state.acls[n].type} ${n}`, ...state.acls[n].entries.map(e => ' ' + e), '!'));
+  Object.keys(state.dhcp).forEach(n => { const d = state.dhcp[n]; L.push(`ip dhcp pool ${n}`, ` network ${d.net} ${d.mask}`, ` default-router ${d.gw}`, ...d.dns.map(x => ` dns-server ${x}`), ...(d.domain ? [` domain-name ${d.domain}`] : []), '!'); });
+  state.dhcpEx.forEach(([a, b]) => L.push(`ip dhcp excluded-address ${a} ${b}`));
+  state.nat.pat.forEach(p => L.push(`ip nat inside source list ${p.acl} interface ${p.iface} overload`));
+  state.nat.stat.forEach(p => L.push(`ip nat inside source static ${p.in} ${p.out}`));
+  state.svc.ntp.forEach(a => L.push(`ntp server ${a}`));
+  state.svc.log.forEach(a => L.push(`logging host ${a}`));
+  state.svc.dns.forEach(a => L.push(`ip name-server ${a}`));
+  state.routes.forEach(r => L.push(`ip route ${r.net} ${r.mask} ${r.nh}${r.dist !== 1 ? ' ' + r.dist : ''}`));
+  return L;
+}
+function save(){ state.saved = configLines(); print('Building configuration...'); print('[OK]', 'ln-ok'); }
+function routeTable(){
+  print('Codes: C - connected, S - static');
+  Object.values(state.ifs).filter(i => i.ip && !i.shut).forEach(i => print(`C    ${netText(i.ip, i.mask)}/${prefixLen(i.mask)} is directly connected, ${i.name}`));
+  state.routes.forEach(r => print(r.nh.startsWith('Gi') ? `S    ${r.net}/${prefixLen(r.mask)} is directly connected, ${r.nh}` : `S    ${r.net}/${prefixLen(r.mask)} [${r.dist}/0] via ${r.nh}`));
+}
+function ping(target){
+  if (!DOTTED.test(target || '')) return print('% Unrecognized host or address', 'ln-err');
+  const hit = Object.values(state.ifs).some(i => i.ip && !i.shut && inNet(i.ip, i.mask, target));
+  print(`Sending 5, 100-byte ICMP Echos to ${target}, timeout is 2 seconds:`);
+  print(hit ? '!!!!!' : '.....', hit ? 'ln-ok' : 'ln-err');
+  print(hit ? 'Success rate is 100 percent (5/5)' : 'Success rate is 0 percent (0/5)', hit ? 'ln-ok' : 'ln-err');
+}
+function showCmd(args){
+  const first = pick(args[0], ['ip', 'ipv6', 'cdp', 'lldp', 'running-config', 'startup-config', 'version']);
+  if (first === 'version' && args.length === 1) { print('SwitchLab simulated IOS'); return print(`${state.host} uptime: this lab session`); }
+  if (first === 'running-config' && args.length === 1) return configLines().forEach(l => print(l));
+  if (first === 'startup-config' && args.length === 1) return state.saved ? state.saved.forEach(l => print(l)) : print('startup-config is not present', 'ln-err');
+  if (first === 'ip' && args.length === 2 && pick(args[1], ['route'])) return routeTable();
+  if (args.length === 3 && pick(args[1], ['interface']) && pick(args[2], ['brief'])) {
+    if (first === 'ip') return briefV4();
+    if (first === 'ipv6') return briefV6();
+  }
+  if (args.length === 2 && (first === 'cdp' || first === 'lldp') && pick(args[1], ['neighbors'])) return neighbors(first);
+  print('% Invalid input detected', 'ln-err');
+}
+function run(raw){
+  const line = raw.trim();
+  echo(line);
+  if (!line) return;
+  if (quizOn && dev === 'R1') return quizRun(line);
+  if (dev === 'S1') return runSw(line);
+  if (dev !== 'R1') return print('% Not configurable in this lab', 'ln-err');
+  if (line === '?' || line === 'help') return help();
+  const w = line.toLowerCase().split(/\s+/), m = state.mode, cmd = w[0], ifs = state.ifs;
+  const cur = () => ifs[state.iface];
+  // "sh" means shutdown in interface mode and show everywhere else
+  const c = m === 'ifc' && cmd === 'sh' ? 'shutdown' : m === 'ifc' && cmd === 'en' ? 'end' : pick(cmd, CMDS[m]);
+  if (c === 'show') return showCmd(w.slice(1));
+  if (c === 'enable') state.mode = 'priv';
+  else if (c === 'disable') state.mode = 'user';
+  else if (c === 'configure' && pick(w[1], ['terminal'])) state.mode = 'config';
+  else if (c === 'write') save();
+  else if (c === 'copy' && pick(w[1], ['running-config']) && pick(w[2], ['startup-config'])) save();
+  else if (c === 'ping') ping(w[1]);
+  else if (c === 'terminal' && pick(w[1], ['length'])) { /* no output */ }
+  else if (c === 'hostname' && m === 'config' && w[1]) state.host = raw.trim().split(/\s+/)[1];
+  else if (c === 'interface' && m === 'config' && ifKey(w[1])) { state.iface = ifKey(w[1]); state.mode = 'ifc'; }
+  else if (c === 'ip' && m === 'config' && pick(w[1], ['dhcp']) && pick(w[2], ['pool']) && w[3]) { state.dhcp[w[3]] = state.dhcp[w[3]] || {net:null, mask:null, gw:null, dns:[], domain:null}; state.dhcpName = w[3]; state.mode = 'dhcp'; }
+  else if (c === 'ip' && m === 'config' && pick(w[1], ['dhcp']) && pick(w[2], ['excluded-address']) && DOTTED.test(w[3] || '')) state.dhcpEx.push([w[3], DOTTED.test(w[4] || '') ? w[4] : w[3]]);
+  else if (c === 'ip' && m === 'config' && pick(w[1], ['nat']) && pick(w[2], ['inside']) && pick(w[3], ['source']) && pick(w[4], ['list']) && w.length === 9 && pick(w[6], ['interface']) && ifKey(w[7]) && pick(w[8], ['overload'])) state.nat.pat.push({acl: w[5], iface: state.ifs[ifKey(w[7])].name});
+  else if (c === 'ip' && m === 'config' && pick(w[1], ['nat']) && pick(w[2], ['inside']) && pick(w[3], ['source']) && pick(w[4], ['static']) && w.length === 7 && DOTTED.test(w[5]) && DOTTED.test(w[6])) state.nat.stat.push({in: w[5], out: w[6]});
+  else if (c === 'ip' && m === 'config' && pick(w[1], ['name-server']) && DOTTED.test(w[2] || '')) state.svc.dns.push(w[2]);
+  else if (c === 'ntp' && m === 'config' && pick(w[1], ['server']) && DOTTED.test(w[2] || '')) state.svc.ntp.push(w[2]);
+  else if (c === 'logging' && m === 'config' && pick(w[1], ['host']) && DOTTED.test(w[2] || '')) state.svc.log.push(w[2]);
+  else if (c === 'access-list' && m === 'config' && w[1] && pick(w[2], ['permit', 'deny'])) { state.acls[w[1]] = state.acls[w[1]] || {type:'standard', entries:[]}; state.acls[w[1]].entries.push(w.slice(2).join(' ')); }
+  else if (c === 'ip' && m === 'config' && pick(w[1], ['access-list']) && pick(w[2], ['standard', 'extended']) && w[3]) { const t = pick(w[2], ['standard', 'extended']); state.acls[w[3]] = state.acls[w[3]] || {type:t, entries:[]}; state.aclName = w[3]; state.mode = 'nacl'; }
+  else if (c === 'ip' && m === 'config' && pick(w[1], ['route']) && (w.length === 5 || w.length === 6) && DOTTED.test(w[2]) && DOTTED.test(w[3]) && (DOTTED.test(w[4]) || ifKey(w[4])) && (w.length === 5 || /^\d+$/.test(w[5]))) state.routes.push({net:w[2], mask:w[3], nh: DOTTED.test(w[4]) ? w[4] : state.ifs[ifKey(w[4])].name, dist: w.length === 6 ? Number(w[5]) : 1});
+  else if (c === 'no' && m === 'config' && pick(w[1], ['ip']) && pick(w[2], ['route']) && w.length === 6) state.routes = state.routes.filter(r => !(r.net === w[3] && r.mask === w[4] && r.nh === w[5]));
+  else if (c === 'ip' && m === 'ifc' && pick(w[1], ['address']) && w.length === 4 && DOTTED.test(w[2]) && DOTTED.test(w[3])) Object.assign(cur(), {ip:w[2], mask:w[3]});
+  else if (c === 'ip' && m === 'ifc' && pick(w[1], ['helper-address']) && DOTTED.test(w[2] || '')) cur().helpers.push(w[2]);
+  else if (c === 'ip' && m === 'ifc' && pick(w[1], ['nat']) && pick(w[2], ['inside', 'outside']) && w.length === 3) cur().nat = pick(w[2], ['inside', 'outside']);
+  else if (c === 'no' && m === 'ifc' && pick(w[1], ['ip']) && pick(w[2], ['helper-address'])) cur().helpers = [];
+  else if (c === 'ip' && m === 'ifc' && pick(w[1], ['access-group']) && w[2] && pick(w[3], ['in', 'out'])) cur()[pick(w[3], ['in', 'out']) === 'in' ? 'aclIn' : 'aclOut'] = w[2];
+  else if (c === 'ipv6' && m === 'ifc' && pick(w[1], ['address']) && w.length === 3) cur().ip6 = w[2];
+  else if (c === 'ipv6' && m === 'ifc' && pick(w[1], ['address']) && w.length === 4 && pick(w[3], ['link-local'])) cur().ll = w[2];
+  else if (c === 'description' && m === 'ifc' && w.length > 1) cur().desc = raw.trim().slice(raw.trim().indexOf(' ') + 1);
+  else if (c === 'encapsulation' && m === 'ifc' && pick(w[1], ['dot1q']) && /^\d+$/.test(w[2] || '')) cur().encap = Number(w[2]);
+  else if (c === 'shutdown' && m === 'ifc') cur().shut = true;
+  else if (c === 'cdp' && m === 'ifc' && pick(w[1], ['enable'])) cur().cdp = true;
+  else if (c === 'cdp' && m === 'config' && pick(w[1], ['run'])) state.cdp = true;
+  else if (c === 'lldp' && m === 'config' && pick(w[1], ['run'])) state.lldp = true;
+  else if (c === 'no' && m === 'ifc' && pick(w[1], ['shutdown'])) cur().shut = false;
+  else if (c === 'no' && m === 'ifc' && pick(w[1], ['ip']) && pick(w[2], ['address'])) Object.assign(cur(), {ip:null, mask:null});
+  else if (c === 'no' && m === 'ifc' && pick(w[1], ['ipv6']) && pick(w[2], ['address'])) Object.assign(cur(), {ip6:null, ll:null});
+  else if (c === 'no' && m === 'ifc' && pick(w[1], ['cdp']) && pick(w[2], ['enable'])) cur().cdp = false;
+  else if (c === 'no' && m === 'config' && pick(w[1], ['cdp']) && pick(w[2], ['run'])) state.cdp = false;
+  else if (c === 'no' && m === 'config' && pick(w[1], ['lldp']) && pick(w[2], ['run'])) state.lldp = false;
+  else if (c === 'network' && m === 'dhcp' && DOTTED.test(w[1] || '') && DOTTED.test(w[2] || '')) { state.dhcp[state.dhcpName].net = w[1]; state.dhcp[state.dhcpName].mask = w[2]; }
+  else if (c === 'default-router' && m === 'dhcp' && DOTTED.test(w[1] || '')) state.dhcp[state.dhcpName].gw = w[1];
+  else if (c === 'dns-server' && m === 'dhcp' && DOTTED.test(w[1] || '')) state.dhcp[state.dhcpName].dns.push(w[1]);
+  else if (c === 'domain-name' && m === 'dhcp' && w[1]) state.dhcp[state.dhcpName].domain = w[1];
+  else if ((c === 'permit' || c === 'deny') && m === 'nacl') state.acls[state.aclName].entries.push(w.join(' '));
+  else if (c === 'exit') state.mode = {ifc:'config', config:'priv', priv:'user', user:'user', nacl:'config', dhcp:'config'}[m];
+  else if (c === 'end' && (m === 'config' || m === 'ifc' || m === 'nacl' || m === 'dhcp')) state.mode = 'priv';
+  else print('% Invalid input detected', 'ln-err');
+  renderPrompt();
+}
+function check(){
+  const results = REQS.map(r => r.ok(state));
+  renderReqs(results);
+  const failed = results.filter(x => !x).length;
+  print(failed ? `[lab] ${failed} requirement(s) not met.` : '[lab] All requirements met.', failed ? 'ln-err' : 'ln-ok');
+}
+function newLab(lvl = level, t = topic){
+  level = lvl; topic = t; markLevel();
+  const T = TOPICS[topic], cfg = T.levels[level];
+  let x;
+  do { x = Math.floor(Math.random() * 256); } while (x === lastNet);
+  lastNet = x;
+  $('lab-title').textContent = T.name;
+  $('lab-sub').textContent = cfg.sub;
+  $('steps').textContent = '';
+  $('scenario-lead').className = '';
+  quizOn = cfg.kind === 'quiz';
+  if (cfg.kind === 'quiz') {
+    REQS = cfg.questions.map((q, i) => ({text:`Q${i + 1}. ${q.prompt}  ${q.choices.map((c, j) => String.fromCharCode(97 + j) + ') ' + c).join('   ')}`, ok: st => st.answers[i + 1] === q.answer, hint: q.answer}));
+    SOLUTION = [];
+    $('scenario-lead').className = 'code';
+    $('scenario-lead').textContent = cfg.snippet;
+    cfg.steps.forEach(addStep);
+    $('topo').innerHTML = '<p class="note">No device topology for this lab.</p>';
+    renderTabs([]);
+    reset();
+    log.textContent = '';
+    print('Answer each question with: answer <number> <letter>, for example: answer 1 b');
+    return;
+  }
+  if (cfg.kind === 'rt') {
+    REQS = cfg.build(x);
+    SOLUTION = [];
+    $('scenario-lead').textContent = typeof cfg.lead === 'function' ? cfg.lead(x) : cfg.lead;
+    cfg.steps.forEach(addStep);
+    $('topo').innerHTML = drawTopo(RT_NODES, RT_LINKS, 180);
+    renderTabs(['R1', 'PC1', 'R2', 'R3']);
+    reset();
+    return;
+  }
+  if (cfg.kind === 'proto' || cfg.kind === 'sw') {
+    REQS = cfg.reqs;
+    SOLUTION = cfg.cmds ? ['enable', 'conf t', ...cfg.cmds, 'end'] : [];
+    $('scenario-lead').textContent = cfg.lead;
+    cfg.steps.forEach(addStep);
+    const cdpNodes = [
+      {id:'R1', type:'router', x:8, y:64, name:'R1', sub:'Router'},
+      {id:'S1', type:'switch', x:190, y:64, name:'S1', sub:'Switch'},
+      {id:'PC1', type:'pc', x:370, y:24, name:'PC1', sub:'Host'},
+      {id:'PC2', type:'pc', x:370, y:104, name:'PC2', sub:'Host'}];
+    $('topo').innerHTML = drawTopo(cdpNodes, [{a:'R1', b:'S1', port:'Gi0/0'}, {a:'S1', b:'PC1', port:'Fa0/1'}, {a:'S1', b:'PC2', port:'Fa0/2'}], 180);
+    renderTabs(['R1', 'S1', 'PC1', 'PC2']);
+  } else {
+    const v6 = cfg.kind === 'v6';
+    const ifs = cfg.ifs.map(r => ({...r, name: r.k.replace('gi', 'Gi'), ip: v6 ? `2001:db8:${x}:${r.sub}::1/64` : `192.168.${x}.${r.host}`}));
+    REQS = [];
+    ifs.forEach(r => {
+      if (v6) REQS.push({text:`${r.name} gets an address ::1 in subnet ${r.sub} of 2001:db8:${x}::/48, with a /64 prefix`, ok: st => st.ifs[r.k].ip6 === r.ip, hint: r.ip});
+      else REQS.push({text:`${r.name} gets the ${r.rule} usable address in ${r.lan}${T.showNet ? ` (192.168.${x}.${r.net})` : ''}, with ${T.maskRule}`, ok: st => st.ifs[r.k].ip === r.ip && st.ifs[r.k].mask === r.mask, hint: `${r.ip} ${r.mask}`});
+      if (r.ll) REQS.push({text:`${r.name} has the link-local address fe80::1`, ok: st => st.ifs[r.k].ll === 'fe80::1', hint:'ipv6 address fe80::1 link-local'});
+    });
+    ifs.forEach(r => REQS.push({text:`${r.name} is up`, ok: st => !st.ifs[r.k].shut, hint:'no shutdown'}));
+    SOLUTION = ['enable', 'conf t'];
+    ifs.forEach(r => {
+      SOLUTION.push(`int ${r.k}`, v6 ? `ipv6 address ${r.ip}` : `ip address ${r.ip} ${r.mask}`);
+      if (r.ll) SOLUTION.push('ipv6 address fe80::1 link-local');
+      SOLUTION.push('no shutdown', 'exit');
+    });
+    SOLUTION.push('end');
+    $('scenario-lead').textContent = T.lead(x);
+    ifs.forEach(r => addStep(v6
+      ? `${r.name} serves subnet ${r.sub}; use ::1 as its address`
+      : `${r.name} serves ${r.lan}${r.need ? ` (${r.need} hosts)` : ''}${T.showNet ? ` at 192.168.${x}.${r.net}` : ''}; use the ${r.rule} usable address as the gateway`));
+    addStep('Bring each interface up and check that it stays up.');
+    const n = ifs.length, H = Math.max(180, (n - 1) * 64 + 92), mid = H / 2;
+    const topoNodes = [{id:'R1', type:'router', x:8, y:mid - 26, name:'R1', sub:'Router'}];
+    const topoLinks = [];
+    ifs.forEach((r, i) => {
+      const id = `PC${i + 1}`, cy = mid + (i - (n - 1) / 2) * 64;
+      topoNodes.push({id, type:'pc', x:370, y:cy - 26, name:id, sub: v6 ? `Subnet ${r.sub}` : (r.need ? `${r.lan}, ${r.need} hosts` : r.lan)});
+      topoLinks.push({a:'R1', b:id, port:r.name});
+    });
+    $('topo').innerHTML = drawTopo(topoNodes, topoLinks, H);
+    renderTabs(topoNodes.map(p => p.id));
+  }
+  reset();
+}
+// ---- reference: click a topic for its commands, mistakes and lab ----
+const REF_INFO = {
+  'IPv4 addressing': {lab:'ipv4', cta:'Practise IPv4 addressing in the lab', intro:'Every routed interface needs an IPv4 address and a mask. Getting the addressing right is the base for routing, switching and every lab that follows.',
+    know:['An IPv4 address is 32 bits, written as four octets of 8 bits each, with values from 0 to 255.', 'The subnet mask, or the prefix length such as /24, splits the address into a network part and a host part.', 'The all-zeros host value names the network, and the all-ones host value is its broadcast address.', 'Only the addresses between those two are usable for hosts and interfaces.', 'Private ranges for internal use are 10.0.0.0/8, 172.16.0.0/12 and 192.168.0.0/16.', 'An interface only passes traffic when it is no shutdown, and its address must sit inside the subnet it connects to.'],
+    commands:[['interface gigabitethernet0/0', 'config', 'Enter the interface configuration mode.'], ['ip address 192.168.10.1 255.255.255.0', 'config-if', 'Assign an IPv4 address and mask to the interface.'], ['ip address 192.168.10.1 255.255.255.0 secondary', 'config-if', 'Add a second address to the same interface.'], ['no shutdown', 'config-if', 'Bring the interface up.'], ['no ip address', 'config-if', 'Remove the address from the interface.'], ['description LAN 1', 'config-if', 'Label the interface for documentation.'], ['ip address dhcp', 'config-if', 'Take an address from a DHCP server instead.']],
+    verify:['show ip interface brief', 'show interfaces gigabitethernet0/0', 'show ip interface gigabitethernet0/0', 'show running-config interface gigabitethernet0/0', 'ping 192.168.10.2'],
+    mistakes:['Forgetting no shutdown, which leaves the interface administratively down.', 'Mismatched masks between two devices on the same link, so they cannot reach each other.', 'Giving the same address to two devices on one segment.', 'Using the network or broadcast address as a host address.', 'Mixing up the prefix length and the dotted-decimal mask when typing the command.']},
+  'Subnetting': {lab:'subnetting', cta:'Practise subnetting in the lab', intro:'Subnetting divides one network into smaller segments by borrowing host bits. Working out subnets quickly and accurately is a core CCNA skill.',
+    know:['Subnets = 2^n, where n is the number of borrowed bits. Usable hosts per subnet = 2^h - 2, where h is the host bits left over.', 'Block size = 256 minus the value of the interesting octet in the mask. For a /26 the block size is 64.', 'Common masks: /24 = 255.255.255.0, /25 = 255.255.255.128, /26 = 255.255.255.192, /27 = 255.255.255.224, /28 = 255.255.255.240, /29 = 255.255.255.248, /30 = 255.255.255.252.', 'A /30 gives 2 usable hosts, which suits point-to-point WAN links.', 'A /31 gives 2 addresses with no network or broadcast address. It is only for point-to-point links (RFC 3021).', 'To find the subnet of an address, round down to the nearest multiple of the block size in the interesting octet.', 'The broadcast address is one less than the network address of the next subnet.'],
+    commands:[['ip address 192.168.1.65 255.255.255.192', 'config-if', 'Give an interface an address inside a /26 subnet.'], ['ip address 172.16.0.1 255.255.255.252', 'config-if', 'Give a point-to-point link address on a /30.'], ['ip address 10.0.0.1 255.255.255.254', 'config-if', 'Give a point-to-point link address on a /31.'], ['show ip route connected', 'exec', 'Show the connected subnets learned from configured interfaces.'], ['ip subnet-zero', 'config', 'Allow use of the zero subnet (on by default on modern IOS).'], ['no ip subnet-zero', 'config', 'Stop using the zero subnet (legacy behaviour).']],
+    verify:['show ip interface brief', 'show ip route', 'show interfaces | include Internet address', 'ping <address>'],
+    mistakes:['Miscounting the borrowed bits when working out how many subnets you get.', 'Forgetting to subtract 2 from the host count for the network and broadcast addresses.', 'Placing two devices in different subnets on the same physical link.', 'Using a /30 or /31 on a multi-access LAN that needs more hosts.', 'Mixing up the block size with the mask value.']},
+  'Variable Length Subnet Masking (VLSM)': {lab:'vlsm', cta:'Practise VLSM in the lab', intro:'VLSM lets one classful or summarised address block be divided into subnets of different sizes. Each subnet is matched to the number of hosts it actually needs, so fewer addresses are wasted.',
+    know:['Allocate the largest host requirement first, then progressively smaller ones.', 'Each subnet borrows a different number of host bits, depending on the hosts it needs. Fixed-length subnetting uses one size for all.', 'Point-to-point WAN links usually use a /30 (or /31) mask to avoid wasting addresses.', 'VLSM needs a classless routing protocol such as OSPF, EIGRP, RIPv2 or static routes. RIPv1 does not support it.', 'Write down each subnet network address, mask, range and broadcast address before you configure interfaces.', 'Route summarisation works best when VLSM subnets are allocated contiguously from the same block.', 'Overlapping subnets caused by careless planning produce routing black holes or unreachable networks.'],
+    commands:[['ip address 192.168.10.1 255.255.255.128', 'config-if', 'Configure the largest VLSM subnet (/25, 126 hosts).'], ['ip address 192.168.10.129 255.255.255.192', 'config-if', 'Configure a medium VLSM subnet (/26, 62 hosts).'], ['ip address 192.168.10.193 255.255.255.252', 'config-if', 'Configure a small VLSM subnet (/30) for a WAN link.'], ['router ospf 1', 'config', 'Enable OSPF, a classless protocol that supports VLSM.'], ['network 192.168.10.0 0.0.0.255 area 0', 'config-router', 'Advertise the VLSM subnets within the classful range into OSPF area 0.'], ['ip route 192.168.10.0 255.255.255.0 10.0.0.2', 'config', 'Configure a summarised static route covering several VLSM subnets.']],
+    verify:['show ip route', 'show ip protocols', 'show ip interface brief', 'show ip ospf database', 'traceroute <destination>'],
+    mistakes:['Allocating subnets out of order, then running out of address space for the larger segments.', 'Overlapping two VLSM subnets carved from the same block.', 'Using RIPv1 or another classful protocol that cannot carry VLSM masks.', 'Giving a large subnet to a point-to-point link that only needs two addresses.', 'Forgetting to update summary routes after adding new VLSM subnets.']},
+  'Static routing': {lab:'static', cta:'Practise static routing in the lab', intro:'Static routes are routes you configure by hand. They are predictable and add little overhead, but they need updating whenever the topology changes.',
+    know:['The default administrative distance of a static route is 1.', 'A static route can point to a next-hop IP address, an exit interface, or both.', 'An exit interface alone on a multi-access network can cause extra ARP traffic. A next-hop IP address is usually the better choice.', 'A floating static route uses a higher administrative distance so that it acts as a backup to a dynamic route.', 'ip route 0.0.0.0 0.0.0.0 defines a default static route, the gateway of last resort.', 'A static route stays in the routing table only while its next hop or exit interface is up.', 'A recursive lookup happens when a static route points only to a next-hop IP, which itself must be resolved through another route.'],
+    commands:[['ip route 172.16.1.0 255.255.255.0 10.0.0.2', 'config', 'Configure a static route via a next-hop IP address.'], ['ip route 172.16.1.0 255.255.255.0 gigabitethernet0/1', 'config', 'Configure a static route via an exit interface.'], ['ip route 172.16.1.0 255.255.255.0 10.0.0.2 200', 'config', 'Configure a floating static route with administrative distance 200.'], ['ip route 0.0.0.0 0.0.0.0 10.0.0.1', 'config', 'Configure a default static route (gateway of last resort).'], ['ip route 172.16.1.0 255.255.255.0 10.0.0.2 name BACKUP-LINK', 'config', 'Add a descriptive name to a static route entry.'], ['no ip route 172.16.1.0 255.255.255.0 10.0.0.2', 'config', 'Remove a previously configured static route.']],
+    verify:['show ip route static', 'show ip route', 'show ip route 172.16.1.0', 'ping 172.16.1.1', 'traceroute 172.16.1.1'],
+    mistakes:['Pointing a static route at the wrong next hop, which can cause a routing loop.', 'Forgetting the return-path static route on the remote router.', 'Using an exit interface on a broadcast multi-access network, which causes excessive ARP traffic.', 'Omitting the administrative distance on a floating static route, so it wins over the dynamic route.', 'Leaving a stale static route that points to a next hop which no longer exists.']},
+  'Default routes': {lab:'defroute', cta:'Practise default routes in the lab', intro:'A default route is the gateway of last resort. It forwards traffic when no more specific route matches, which is common for internet-bound traffic and stub sites.',
+    know:['A default route is written as network 0.0.0.0 with mask 0.0.0.0, so it matches any destination.', 'A router always prefers the most specific (longest prefix) match. The default route is only used when nothing more specific matches.', 'A default route can be static, or learned dynamically and redistributed into a routing protocol.', 'In OSPF, a router originates a default route into the domain with default-information originate.', 'default-information originate always advertises a default route even when the originating router has none of its own.', 'show ip route marks the default route with an asterisk and labels it as the gateway of last resort.', 'Stub and totally stubby OSPF areas rely on an injected default route to reach networks outside the area.'],
+    commands:[['ip route 0.0.0.0 0.0.0.0 203.0.113.1', 'config', 'Configure a static default route pointing at the ISP next hop.'], ['ip default-network 172.16.0.0', 'config', 'Flag a network as a candidate default route for classful protocols.'], ['router ospf 1', 'config', 'Enter OSPF configuration to advertise a default route.'], ['default-information originate', 'config-router', 'Advertise a default route into OSPF if one exists in the routing table.'], ['default-information originate always', 'config-router', 'Force the default route into OSPF even without a local default route.'], ['ip route 0.0.0.0 0.0.0.0 gigabitethernet0/0', 'config', 'Configure a default route using an exit interface.']],
+    verify:['show ip route', 'show ip route 0.0.0.0', 'show ip protocols', 'show ip ospf database external', 'ping 8.8.8.8'],
+    mistakes:['Forgetting default-information originate, so OSPF never advertises the default route.', 'Assuming default-information originate works without always when no default route exists locally.', 'Configuring the default route on the wrong interface, which sends traffic to a dead end.', 'Expecting the default route to override a more specific matching route.', 'Not testing reachability beyond the immediate next hop after adding the default route.']},
+  'OSPFv2 (IPv4)': {intro:'OSPF is a classless, link-state interior gateway protocol. It builds a topology database and runs the SPF algorithm to converge quickly. It is heavily tested on the CCNA in single-area and multi-area designs.',
+    know:['OSPF administrative distance is 110. Cost is the reference bandwidth divided by the interface bandwidth. The default reference bandwidth is 100,000,000 (100 Mbps).', 'Router ID selection: a manually configured router-id first, then the highest loopback IP address, then the highest active physical interface IP address when the process starts.', 'Neighbours must match area number, subnet and mask, hello and dead intervals, authentication and area type (stub flags) to form an adjacency.', 'Default hello interval is 10 seconds and dead interval is 40 seconds on broadcast and point-to-point networks. On NBMA they are 30 and 120.', 'On broadcast and NBMA segments, the DR and BDR are elected by highest priority (default 1, range 0-255), then highest router ID. Priority 0 means the router never becomes DR or BDR.', 'Neighbour states progress Down, Init, 2-Way, ExStart, Exchange, Loading, Full. DROthers stay in 2-Way with each other.', 'A passive interface stops hello packets but still advertises the connected network.'],
+    commands:[['router ospf 1', 'config', 'Enable an OSPF process with a locally significant process ID.'], ['router-id 1.1.1.1', 'config-router', 'Set the OSPF router ID manually.'], ['network 10.0.0.0 0.0.0.255 area 0', 'config-router', 'Enable OSPF on interfaces inside the wildcard range and assign them to an area.'], ['passive-interface gigabitethernet0/1', 'config-router', 'Stop hellos on an interface while still advertising its network.'], ['ip ospf priority 255', 'config-if', 'Raise the DR election priority on this interface.'], ['ip ospf hello-interval 5', 'config-if', 'Change the hello interval (it must match on neighbours).'], ['ip ospf cost 20', 'config-if', 'Set the OSPF cost on the interface manually.'], ['auto-cost reference-bandwidth 10000', 'config-router', 'Change the reference bandwidth (Mbps) used for cost calculation on all interfaces.'], ['ip ospf 1 area 0', 'config-if', 'Enable OSPF directly on the interface instead of using a network statement.'], ['default-information originate', 'config-router', 'Inject a default route into the OSPF domain.']],
+    verify:['show ip ospf neighbor', 'show ip ospf interface brief', 'show ip protocols', 'show ip route ospf', 'show ip ospf database', 'show ip ospf', 'debug ip ospf adj'],
+    mistakes:['Mismatched hello or dead timers, or area numbers, between neighbours, which prevents the adjacency forming.', 'A wrong wildcard mask in the network statement, which leaves an interface out of OSPF.', 'Not setting auto-cost reference-bandwidth on all routers, which gives inconsistent costs.', 'Two routers on the same segment configured in different areas by mistake.', 'Duplicate router IDs on routers in the same OSPF domain.']},
+  'VLANs': {lab:'vlans', syntax:['vlan 10', ' name Sales', 'interface Fa0/1', ' switchport mode access', ' switchport access vlan 10'], verify:['show vlan brief'], mistake:'Creating a VLAN on one switch but not on the others in the path, so traffic is dropped.'},
+  'Access ports': {lab:'access', syntax:['interface Fa0/1', ' switchport mode access', ' switchport access vlan 10', ' spanning-tree portfast'], verify:['show interfaces status', 'show vlan brief'], mistake:'Leaving a port in dynamic auto when the other end is a trunk, which turns the port into a trunk.'},
+  'Trunking (802.1Q)': {lab:'trunk', syntax:['interface Gi0/1', ' switchport mode trunk', ' switchport trunk allowed vlan 10,20', ' switchport trunk native vlan 99'], verify:['show interfaces trunk'], mistake:'A native VLAN mismatch between the two ends of the trunk, which leaks traffic between VLANs.'},
+  'Inter-VLAN routing': {lab:'intervlan', syntax:['interface Gi0/0.10', ' encapsulation dot1Q 10', ' ip address 192.168.10.1 255.255.255.0', 'interface Gi0/0', ' no shutdown'], verify:['show ip route', 'ping 192.168.20.10   (a host in another VLAN)'], mistake:'Forgetting the trunk on the switch side, so the subinterfaces never see tagged frames.'},
+  'Spanning Tree (STP)': {lab:'stp', syntax:['spanning-tree vlan 10 root primary', 'spanning-tree vlan 10 priority 4096'], verify:['show spanning-tree vlan 10'], mistake:'Leaving every switch at the default priority, so the lowest MAC address becomes root by accident.'},
+  'EtherChannel': {lab:'etherchannel', syntax:['interface Fa0/1', ' channel-group 1 mode active', 'interface Fa0/2', ' channel-group 1 mode active'], verify:['show etherchannel summary'], mistake:'Mixing modes on the two ends, such as active on one side and on on the other, so the bundle does not form.'},
+  'OSPFv3': {syntax:['ipv6 unicast-routing', 'ipv6 router ospf 1', ' router-id 1.1.1.1', 'interface Gi0/0', ' ipv6 ospf 1 area 0'], verify:['show ipv6 ospf neighbor', 'show ipv6 route ospf'], mistake:'Forgetting the router ID, so the OSPFv3 process will not start.'},
+  'IPv6 addressing': {lab:'ipv6', syntax:['ipv6 unicast-routing', 'interface Gi0/0', ' ipv6 address 2001:db8:10:1::1/64', ' ipv6 address FE80::1 link-local'], verify:['show ipv6 interface brief'], mistake:'Leaving out ipv6 unicast-routing, so the router does not forward IPv6 packets.'},
+  'IPv6 routing': {syntax:['ipv6 unicast-routing', 'ipv6 route 2001:db8:20::/64 2001:db8:10::2'], verify:['show ipv6 route'], mistake:'Using a next hop that is not reachable on a directly connected link.'},
+  'Advanced STP': {lab:'advstp', syntax:['spanning-tree mode rapid-pvst', 'interface Fa0/1', ' spanning-tree portfast', ' spanning-tree bpduguard enable'], verify:['show spanning-tree summary'], mistake:'Enabling PortFast on a port that connects to another switch, which can create a loop.'},
+  'Advanced EtherChannel': {lab:'advetherchannel', syntax:['port-channel load-balance src-dst-ip', 'interface Fa0/1', ' channel-group 1 mode active', ' switchport mode trunk'], verify:['show etherchannel load-balance', 'show etherchannel summary'], mistake:'Expecting one flow to use several links. A single flow always uses one member link.'},
+  'CDP and LLDP': {lab:'cdp', syntax:['cdp run', 'lldp run', 'interface Gi0/1', ' no cdp enable'], verify:['show cdp neighbors', 'show lldp neighbors'], mistake:'Turning off CDP and LLDP on a link, then wondering why the neighbour table is empty.'},
+  'DHCP': {lab:'dhcp', syntax:['ip dhcp excluded-address 192.168.10.1 192.168.10.20', 'ip dhcp pool LAN1', ' network 192.168.10.0 255.255.255.0', ' default-router 192.168.10.1', ' dns-server 172.16.1.53'], verify:['show ip dhcp binding', 'show ip dhcp pool'], mistake:'Not excluding the router and server addresses, so the pool hands them out to clients.'},
+  'DHCP relay': {lab:'dhcprelay', syntax:['interface Gi0/0', ' ip helper-address 172.16.1.10'], verify:['show ip interface Gi0/0   (look for the helper address line)'], mistake:'Putting the helper address on the server side instead of the client-facing LAN interface.'},
+  'NAT': {lab:'nat', syntax:['interface Gi0/0', ' ip nat inside', 'interface Gi0/1', ' ip nat outside', 'access-list 1 permit 192.168.10.0 0.0.0.255', 'ip nat inside source list 1 interface Gi0/1 overload'], verify:['show ip nat translations', 'show ip nat statistics'], mistake:'The access list matches the wrong hosts, so nothing is translated.'},
+  'NTP, syslog, DNS': {lab:'services', syntax:['ntp server 10.0.0.2', 'logging host 172.16.1.100', 'ip name-server 172.16.1.53'], verify:['show ntp associations', 'show logging'], mistake:'Configuring an NTP server without a route to it, so the clock never syncs.'},
+  'QoS': {syntax:['class-map match-any VOICE', ' match dscp ef', 'policy-map WAN-OUT', ' class VOICE', '  priority percent 30', 'interface Gi0/1', ' service-policy output WAN-OUT'], verify:['show policy-map interface Gi0/1'], mistake:'Applying the policy in the wrong direction, so it never sees the traffic it should shape.'},
+  'Standard and extended ACLs': {lab:'acl', syntax:['ip access-list standard 10', ' deny host 192.168.10.10', ' permit any', 'interface Gi0/0', ' ip access-group 10 in'], verify:['show access-lists', 'show ip interface Gi0/0   (look for the access-group line)'], mistake:'Using a standard ACL where you need to match destinations or ports, which needs an extended ACL.'},
+  'IPv6 ACLs': {syntax:['ipv6 access-list BLOCK-TELNET', ' deny tcp any any eq telnet', ' permit ipv6 any any', 'interface Gi0/0', ' ipv6 traffic-filter BLOCK-TELNET in'], verify:['show ipv6 access-list'], mistake:'Forgetting the final permit, because every IPv6 ACL ends with an implicit deny.'},
+  'Port security': {lab:'portsec', syntax:['interface Fa0/1', ' switchport mode access', ' switchport port-security', ' switchport port-security maximum 1', ' switchport port-security violation shutdown', ' switchport port-security mac-address sticky'], verify:['show port-security interface Fa0/1', 'show port-security address'], mistake:'Leaving sticky addresses in place after a device is replaced, so the new device is blocked. Clear them with clear port-security sticky.'},
+  'Device hardening': {syntax:['hostname S1', 'enable secret <password>', 'service password-encryption', 'ip domain-name lab.local', 'crypto key generate rsa modulus 2048', 'username admin secret <password>', 'line vty 0 4', ' login local', ' transport input ssh'], verify:['show ip ssh', 'show running-config'], mistake:'Leaving Telnet enabled on the vty lines after SSH is set up.'},
+  'DHCP snooping': {syntax:['ip dhcp snooping', 'ip dhcp snooping vlan 10', 'interface Gi0/1', ' ip dhcp snooping trust'], verify:['show ip dhcp snooping', 'show ip dhcp snooping binding'], mistake:'Not trusting the uplink toward the real DHCP server, so its offers are dropped.'},
+  'Dynamic ARP inspection': {syntax:['ip arp inspection vlan 10', 'interface Gi0/1', ' ip arp inspection trust'], verify:['show ip arp inspection vlan 10', 'show ip arp inspection statistics'], mistake:'Enabling DAI without DHCP snooping, so the binding table is empty and valid ARP is dropped.'},
+  'WLAN fundamentals': {syntax:['On the WLC: create the WLAN and map it to a VLAN', 'Access points join the controller over CAPWAP'], verify:['On the WLC: show ap summary'], mistake:'Putting access points on a switch port or VLAN that cannot reach the WLC, so they never join.'},
+  'WLAN security': {syntax:['On the WLAN: choose Open, WPA2-PSK or WPA2-Enterprise (802.1X)', 'For 802.1X, point the WLAN at a RADIUS server'], verify:['On the WLC: show wlan summary'], mistake:'Using WPA2-Enterprise without a reachable RADIUS server, so clients cannot authenticate.'},
+  'Device management': {syntax:['logging buffered 16384', 'service timestamps log datetime', 'copy running-config startup-config'], verify:['show clock', 'show logging', 'show version'], mistake:'Making changes without saving them, so they are lost after a reload.'},
+  'Network automation': {syntax:['Enable RESTCONF or NETCONF on the device', 'Send an HTTP request (GET, POST, PUT, DELETE) to its API', 'Ansible or a Python script calls the same endpoints'], verify:['A GET returns 200 OK with JSON', 'Compare the result with show running-config'], mistake:'Pushing configuration without testing it on a lab device first.'},
+  'Structured troubleshooting': {syntax:['Layer 1: cables, link lights, interface up or down', 'Layer 2: VLANs, trunks and STP state', 'Layer 3: IP address, mask, gateway and routes', 'Layer 4 and up: application ports and ACLs'], verify:['ping and traceroute from source to destination', 'show ip interface brief'], mistake:'Jumping to a higher layer before checking the physical link and the addresses.'}
+};
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[c]));
+function showRef(card){
+  const title = card.querySelector('.row-title').textContent;
+  const info = REF_INFO[title] || {syntax:[], verify:[], mistake:'No details yet.'};
+  const group = card.closest('details') ? card.closest('details').querySelector('.dom-title').textContent : '';
+  const mistakes = info.mistakes || (info.mistake ? [info.mistake] : []);
+  let h = `<p class="ref-eyebrow">${esc(group)}</p><h2>${esc(title)}</h2><p class="ref-intro">${esc(info.intro || card.querySelector('.row-desc').textContent)}</p>`;
+  if (info.know) h += `<h3 class="ref-h">What you need to know</h3><ul class="ref-list">${info.know.map(k => `<li>${esc(k)}</li>`).join('')}</ul>`;
+  if (info.commands) h += `<h3 class="ref-h">Configuration commands</h3><table class="ref-table"><thead><tr><th>Command</th><th>Mode</th><th>Purpose</th></tr></thead><tbody>${info.commands.map(([c, m, p]) => `<tr><td><code>${esc(c)}</code></td><td>${esc(m)}</td><td>${esc(p)}</td></tr>`).join('')}</tbody></table>`;
+  else if (info.syntax && info.syntax.length) h += `<h3 class="ref-h">Configuration</h3><pre class="ref-code">${esc(info.syntax.join('\n'))}</pre>`;
+  h += `<div class="ref-two"><div><h3 class="ref-h">Verify it</h3><ul class="ref-list ref-verify">${(info.verify || []).map(v => `<li><code>${esc(v)}</code></li>`).join('')}</ul></div><div><h3 class="ref-h">Common mistakes</h3><ul class="ref-list ref-warn">${mistakes.map(m => `<li>${esc(m)}</li>`).join('')}</ul></div></div>`;
+  if (info.lab) h += `<div class="ref-cta"><div><strong>${esc(info.cta || 'Practise this in the lab')}</strong><p>Generated labs, graded against the simulated network state.</p></div><button id="ref-lab" data-lab="${esc(info.lab)}">Start lab →</button></div>`;
+  else h += `<p class="note">No lab for this topic yet.</p>`;
+  $('ref-detail').innerHTML = `<button class="ghost" id="ref-back">Back to reference</button>` + h;
+  document.querySelector('#ref .domains').hidden = true;
+  $('ref-detail').hidden = false;
+  window.scrollTo(0, 0);
+}
+function refHome(){ $('ref-detail').hidden = true; document.querySelector('#ref .domains').hidden = false; }
+function show(view){
+  $('dash').hidden = view !== 'dash';
+  $('lab').hidden = view !== 'lab';
+  $('ref').hidden = view !== 'ref';
+  if (view === 'ref') refHome();
+  $('nav-labs').classList.toggle('active', view !== 'ref');
+  $('nav-ref').classList.toggle('active', view === 'ref');
+  window.scrollTo(0, 0);
+  if (view === 'lab') input.focus();
+}
+
+input.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const line = input.value.trim();
+    if (line) past.push(line);
+    pos = past.length;
+    run(input.value);
+    input.value = '';
+  } else if (e.key === 'Tab') {
+    e.preventDefault();
+    if (dev === 'R1' || dev === 'S1') complete();
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (pos > 0) { pos--; input.value = past[pos]; }
+  } else if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    if (pos < past.length - 1) { pos++; input.value = past[pos]; }
+    else { pos = past.length; input.value = ''; }
+  }
+});
+term.addEventListener('click', () => input.focus());
+$('check').addEventListener('click', check);
+$('reset').addEventListener('click', () => newLab());
+$('back').addEventListener('click', () => show('dash'));
+$('nav-labs').addEventListener('click', () => show('dash'));
+$('nav-ref').addEventListener('click', () => show('ref'));
+$('ref').addEventListener('click', e => { const c = e.target.closest('.ref-item'); if (c) showRef(c); });
+$('ref').addEventListener('keydown', e => { const c = e.target.closest && e.target.closest('.ref-item'); if (c && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); showRef(c); } });
+$('ref-detail').addEventListener('click', e => {
+  if (e.target.closest('#ref-back')) return refHome();
+  const b = e.target.closest('#ref-lab');
+  if (b) { newLab(level, b.dataset.lab); show('lab'); }
+});
+document.querySelectorAll('.seg-btn').forEach(b => b.addEventListener('click', () => { level = b.dataset.set; markLevel(); }));
+$('open-ipv4').addEventListener('click', () => { newLab(level, 'ipv4'); show('lab'); });
+$('open-subnetting').addEventListener('click', () => { newLab(level, 'subnetting'); show('lab'); });
+$('open-vlsm').addEventListener('click', () => { newLab(level, 'vlsm'); show('lab'); });
+$('open-ipv6').addEventListener('click', () => { newLab(level, 'ipv6'); show('lab'); });
+$('open-cdp').addEventListener('click', () => { newLab(level, 'cdp'); show('lab'); });
+$('open-vlans').addEventListener('click', () => { newLab(level, 'vlans'); show('lab'); });
+$('open-access').addEventListener('click', () => { newLab(level, 'access'); show('lab'); });
+$('open-trunk').addEventListener('click', () => { newLab(level, 'trunk'); show('lab'); });
+$('open-intervlan').addEventListener('click', () => { newLab(level, 'intervlan'); show('lab'); });
+$('open-stp').addEventListener('click', () => { newLab(level, 'stp'); show('lab'); });
+$('open-etherchannel').addEventListener('click', () => { newLab(level, 'etherchannel'); show('lab'); });
+$('open-advstp').addEventListener('click', () => { newLab(level, 'advstp'); show('lab'); });
+$('open-advetherchannel').addEventListener('click', () => { newLab(level, 'advetherchannel'); show('lab'); });
+$('open-static').addEventListener('click', () => { newLab(level, 'static'); show('lab'); });
+$('open-defroute').addEventListener('click', () => { newLab(level, 'defroute'); show('lab'); });
+$('open-acl').addEventListener('click', () => { newLab(level, 'acl'); show('lab'); });
+$('open-portsec').addEventListener('click', () => { newLab(level, 'portsec'); show('lab'); });
+$('open-dhcp').addEventListener('click', () => { newLab(level, 'dhcp'); show('lab'); });
+$('open-dhcprelay').addEventListener('click', () => { newLab(level, 'dhcprelay'); show('lab'); });
+$('open-nat').addEventListener('click', () => { newLab(level, 'nat'); show('lab'); });
+$('open-services').addEventListener('click', () => { newLab(level, 'services'); show('lab'); });
+$('open-rest').addEventListener('click', () => { newLab(level, 'rest'); show('lab'); });
+$('open-json').addEventListener('click', () => { newLab(level, 'json'); show('lab'); });
+$('search').addEventListener('input', e => { const q = e.target.value.trim().toLowerCase(); if (q) document.querySelectorAll('details.domain').forEach(d => { d.open = true; }); document.querySelectorAll('[data-name]').forEach(r => { r.hidden = !r.dataset.name.includes(q); }); });
+
+$('topo').addEventListener('click', e => { const g = e.target.closest('[data-dev]'); if (g) showDevice(g.dataset.dev); });
+document.querySelector('.tabs').addEventListener('click', e => { const b = e.target.closest('[data-dev]'); if (b) showDevice(b.dataset.dev); });
+// self-check: the known-good config must pass, then the lab resets
+newLab();
+SOLUTION.forEach(run);
+console.assert(REQS.every(r => r.ok(state)), 'self-check: known-good config failed');
+newLab();
+show('dash');
+
+</script>
+</body>
+</html>
