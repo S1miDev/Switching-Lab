@@ -6,14 +6,13 @@ const logs = {R1: log};
 let dev = 'R1';
 let state;
 let swState;
-let quizOn = false;
 const past = [];
 let pos = 0;
 
 let REQS = [], SOLUTION = [], lastNet = null, level = 'intermediate', topic = 'ipv4';
 function reset(){
   swState = freshSw();
-  state = {mode:'user', iface:null, host:'R1', cdp:true, lldp:false, routes:[], saved:null, acls:{}, aclName:null, dhcp:{}, dhcpEx:[], dhcpName:null, nat:{pat:[], stat:[]}, svc:{ntp:[], log:[], dns:[]}, answers:{}, sw:swState, ifs:{'gi0/0':iface('Gi0/0'), 'gi0/1':iface('Gi0/1'), 'gi0/2':iface('Gi0/2'), 'gi0/3':iface('Gi0/3')}};
+  state = {mode:'user', iface:null, host:'R1', cdp:true, lldp:false, routes:[], saved:null, acls:{}, aclName:null, dhcp:{}, dhcpEx:[], dhcpName:null, nat:{pat:[], stat:[]}, svc:{ntp:[], log:[], dns:[]}, sw:swState, ifs:{'gi0/0':iface('Gi0/0'), 'gi0/1':iface('Gi0/1'), 'gi0/2':iface('Gi0/2'), 'gi0/3':iface('Gi0/3')}};
   Object.values(logs).forEach(l => { l.textContent = ''; });
   past.length = 0; pos = 0;
   showDevice('R1');
@@ -36,7 +35,7 @@ function echo(line){
   term.scrollTop = term.scrollHeight;
 }
 const SUFFIX = {user:'>', priv:'#', config:'(config)#', ifc:'(config-if)#', vlan:'(config-vlan)#', nacl:'(config-nacl)#', dhcp:'(config-dhcp)#'};
-function promptFor(){ if (quizOn && dev === 'R1') return 'answer>'; if (dev === 'S1') return swState.host + SUFFIX[swState.mode]; return dev === 'R1' ? state.host + SUFFIX[state.mode] : dev + '>'; }
+function promptFor(){ if (dev === 'S1') return swState.host + SUFFIX[swState.mode]; return dev === 'R1' ? state.host + SUFFIX[state.mode] : dev + '>'; }
 function renderPrompt(){ promptEl.textContent = promptFor(); }
 function showDevice(name){
   dev = name;
@@ -116,14 +115,6 @@ function renderTabs(names){
   });
 }
 function keysNow(){ return dev === 'S1' ? SW_KEYS[swState.mode] : (KEYS[state.mode] || ['permit', 'deny', 'exit', 'end']); }
-// quiz labs: the R1 console takes answers instead of IOS commands
-function quizRun(line){
-  const w = line.toLowerCase().split(/\s+/);
-  if (w[0] === '?' || w[0] === 'help') return print('Commands: answer <number> <letter>, show answers');
-  if (w[0] === 'show' && w[1] === 'answers') { Object.keys(state.answers).sort((a, b) => a - b).forEach(k => print(`${k}  ${state.answers[k]}`)); return; }
-  if (w[0] === 'answer' && /^\d+$/.test(w[1] || '') && /^[a-d]$/.test(w[2] || '')) { state.answers[Number(w[1])] = w[2]; return print(`Question ${w[1]} answered ${w[2]}`); }
-  print('% Use: answer <question number> <letter>', 'ln-err');
-}
 function check(){
   const results = REQS.map(r => r.ok(state));
   renderReqs(results);
@@ -140,20 +131,6 @@ function newLab(lvl = level, t = topic){
   $('lab-sub').textContent = cfg.sub;
   $('steps').textContent = '';
   $('scenario-lead').className = '';
-  quizOn = cfg.kind === 'quiz';
-  if (cfg.kind === 'quiz') {
-    REQS = cfg.questions.map((q, i) => ({text:`Q${i + 1}. ${q.prompt}  ${q.choices.map((c, j) => String.fromCharCode(97 + j) + ') ' + c).join('   ')}`, ok: st => st.answers[i + 1] === q.answer, hint: q.answer}));
-    SOLUTION = [];
-    $('scenario-lead').className = 'code';
-    $('scenario-lead').textContent = cfg.snippet;
-    cfg.steps.forEach(addStep);
-    $('topo').innerHTML = '<p class="note">No device topology for this lab.</p>';
-    renderTabs([]);
-    reset();
-    log.textContent = '';
-    print('Answer each question with: answer <number> <letter>, for example: answer 1 b');
-    return;
-  }
   if (cfg.kind === 'rt') {
     REQS = cfg.build(x);
     SOLUTION = [];

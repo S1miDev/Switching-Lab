@@ -251,42 +251,6 @@ const SERVICES = {
   expert: {kind:'rt', title:'Expert', sub:'As Advanced, and add a second NTP server 10.0.1.2 on Gi0/2', lead: x => `R1 reaches R2 on Gi0/1 and R3 on Gi0/2.`, steps:['Keep the Advanced settings.', 'Address Gi0/2 as 10.0.1.1/30 and bring it up.', 'Add ntp server 10.0.1.2.'], build: x => [...rtIf('gi0/1', 'Gi0/1', '10.0.0.1', '255.255.255.252'), ...rtIf('gi0/2', 'Gi0/2', '10.0.1.1', '255.255.255.252'), svcNtp('10.0.0.2'), svcNtp('10.0.1.2'), rtRoute(`172.16.${x}.0`, '255.255.255.0', '10.0.0.2'), svcLog(`172.16.${x}.100`), svcDns(`172.16.${x}.53`)]}
 };
 
-// ---- 6.0 automation: quiz labs (read a snippet, answer in the console) ----
-const REST_SNIP = 'GET https://api.example.net/v1/interfaces/Gi0-0\nAccept: application/json\n\nHTTP/1.1 200 OK\nContent-Type: application/json';
-const REST_Q = [
-  {prompt:'Which HTTP method reads data without changing it?', choices:['POST', 'GET', 'DELETE'], answer:'b'},
-  {prompt:'What does status code 200 mean?', choices:['Created', 'OK', 'Not found'], answer:'b'},
-  {prompt:'Which method usually creates a new object on the server?', choices:['POST', 'GET', 'DELETE'], answer:'a'},
-  {prompt:'What does status code 404 mean?', choices:['Unauthorized', 'Not found', 'Server error'], answer:'b'},
-  {prompt:'Which method replaces one existing object completely?', choices:['PUT', 'GET', 'POST'], answer:'a'}
-];
-const JSON_SNIP = '{\n  "hostname": "R1",\n  "interfaces": [\n    {"name": "Gi0/0", "ip": "192.168.10.1"},\n    {"name": "Gi0/1", "ip": "10.0.0.1"}\n  ]\n}';
-const JSON_Q = [
-  {prompt:'What type of value is "interfaces"?', choices:['object', 'array', 'string'], answer:'b'},
-  {prompt:'What is the value of "hostname"?', choices:['R1', 'Gi0/0', '192.168.10.1'], answer:'a'},
-  {prompt:'What is the IP address of Gi0/1?', choices:['192.168.10.1', '10.0.0.1', 'Gi0/1'], answer:'b'},
-  {prompt:'How many interface entries are there?', choices:['1', '2', '3'], answer:'b'},
-  {prompt:'Which expression returns the second interface name?', choices:['interfaces[0].name', 'interfaces[1].name', 'interfaces.name'], answer:'b'}
-];
-const quizLevels = (snippet, Q, subs) => {
-  const steps = ['Read the snippet above.', 'Answer each question in the console with answer <number> <letter>.'];
-  return {
-    beginner: {kind:'quiz', title:'Beginner', sub:subs[0], snippet, steps, questions:Q.slice(0, 2)},
-    intermediate: {kind:'quiz', title:'Intermediate', sub:subs[1], snippet, steps, questions:Q.slice(0, 3)},
-    advanced: {kind:'quiz', title:'Advanced', sub:subs[2], snippet, steps, questions:Q.slice(0, 4)},
-    expert: {kind:'quiz', title:'Expert', sub:subs[3], snippet, steps, questions:Q.slice(0, 5)}
-  };
-};
-const REST = quizLevels(REST_SNIP, REST_Q, [
-  'Read one request and response, and answer two questions about them',
-  'Read the request and response, and answer three questions',
-  'Answer four questions about HTTP methods and status codes',
-  'Answer five questions, including which method replaces an object']);
-const JSONQ = quizLevels(JSON_SNIP, JSON_Q, [
-  'Read the JSON and answer two questions about its values',
-  'Read the JSON and answer three questions, including an IP address',
-  'Answer four questions about the structure of the JSON',
-  'Answer five questions, including reading the second list item']);
 
 const TOPICS = {
   ipv4: {name:'IPv4 addressing', showNet:true, maskRule:'the correct mask', lead:x => `Your network is 192.168.${x}.0/24. R1 has no addressing yet.`, levels:LEVELS},
@@ -309,7 +273,5 @@ const TOPICS = {
   dhcp: {name:'DHCP', showNet:false, maskRule:'', lead:null, levels:DHCP},
   dhcprelay: {name:'DHCP Relay', showNet:false, maskRule:'', lead:null, levels:DHCPRELAY},
   nat: {name:'NAT', showNet:false, maskRule:'', lead:null, levels:NAT},
-  services: {name:'Network Services (NTP, Syslog, DNS)', showNet:false, maskRule:'', lead:null, levels:SERVICES},
-  rest: {name:'REST APIs', showNet:false, maskRule:'', lead:null, levels:REST},
-  json: {name:'JSON Data', showNet:false, maskRule:'', lead:null, levels:JSONQ}
+  services: {name:'Network Services (NTP, Syslog, DNS)', showNet:false, maskRule:'', lead:null, levels:SERVICES}
 };
