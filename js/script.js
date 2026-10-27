@@ -62,7 +62,7 @@ function complete(){
   tabCycle = null;
   const text = input.value.toLowerCase(), tw = text.split(/\s+/), sw = dev === 'S1', mode = sw ? swState.mode : state.mode;
   let hits;
-  if (tw.length === 2 && tw[0].length >= 3 && 'interface'.startsWith(tw[0]) && mode === 'config') {
+  if (tw.length === 2 && tw[0].length >= 3 && 'interface'.startsWith(tw[0]) && (mode === 'config' || mode === 'ifc')) {
     const names = sw ? Object.values(swState.ports).map(p => p.name) : Object.values(state.ifs).map(i => i.name);
     hits = names.filter(n => n.toLowerCase().startsWith(tw[1])).map(n => 'interface ' + n);
     if (hits.length > 1) { tabCycle = {value:hits[0], hits, i:0}; return input.value = hits[0]; } // first port; Tab again for the next
@@ -148,6 +148,7 @@ function renderTabs(names){
   });
 }
 function keysNow(){ return dev === 'S1' ? SW_KEYS[swState.mode] : (KEYS[state.mode] || ['permit', 'deny', 'exit', 'end']); }
+let solved = false;
 function check(){
   const results = REQS.map(r => r.ok(state));
   renderReqs(results);
@@ -264,7 +265,12 @@ input.addEventListener('keydown', e => {
     if (line) past.push(line);
     pos = past.length;
     run(input.value);
-    renderReqs(REQS.map(r => r.ok(state) || null)); // live: ticks met items, leaves the rest neutral (no hints)
+    const live = REQS.map(r => r.ok(state));
+    renderReqs(live.map(ok => ok || null)); // live: ticks met items, leaves the rest neutral (no hints)
+    // auto-check once when the last requirement is met; any unmet item re-arms it (also covers a new lab)
+    const all = REQS.length > 0 && live.every(Boolean);
+    if (all && !solved) check();
+    solved = all;
     input.value = '';
   } else if (e.key === 'Tab') {
     e.preventDefault();
@@ -303,7 +309,7 @@ $('nav-ref').addEventListener('click', () => show('ref'));
 $('ref').addEventListener('click', e => { const c = e.target.closest('.ref-item'); if (c) showRef(c); });
 $('ref').addEventListener('keydown', e => { const c = e.target.closest && e.target.closest('.ref-item'); if (c && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); showRef(c); } });
 document.addEventListener('click', e => { const b = e.target.closest('[data-lab]'); if (b) { newLab(level, b.dataset.lab); show('lab'); } });
-$('ref-detail').addEventListener('click', e => { if (e.target.closest('#ref-back')) refHome(); });
+$('ref-detail').addEventListener('click', e => { if (e.target.closest('#ref-back')) refHome(); const n = e.target.closest('[data-ref]'); if (n) showRef(document.querySelectorAll('#ref .ref-item')[n.dataset.ref]); });
 document.querySelectorAll('.seg-btn').forEach(b => b.addEventListener('click', () => { level = b.dataset.set; markLevel(); }));
 $('search').addEventListener('input', e => { const q = e.target.value.trim().toLowerCase(); if (q) document.querySelectorAll('details.domain').forEach(d => { d.open = true; }); document.querySelectorAll('[data-name]').forEach(r => { r.hidden = !r.dataset.name.includes(q); }); });
 

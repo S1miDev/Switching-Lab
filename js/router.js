@@ -7,7 +7,7 @@ const KEYS = {
   config: ['hostname', 'interface', 'line console 0', 'line vty 0 4', 'router ospf 1', 'router eigrp 100', 'router rip', 'ip route', 'no ip route', 'cdp run', 'no cdp run', 'lldp run', 'no lldp run', 'exit', 'end', ...SHOWS],
   line: ['exit', 'end'],
   router: ['exit', 'end'],
-  ifc: ['description', 'ip address', 'ipv6 address', 'no ip address', 'no ipv6 address', 'cdp enable', 'no cdp enable', 'no shutdown', 'shutdown', 'exit', 'end', ...SHOWS]
+  ifc: ['interface', 'description', 'ip address', 'ipv6 address', 'no ip address', 'no ipv6 address', 'cdp enable', 'no cdp enable', 'no shutdown', 'shutdown', 'exit', 'end', ...SHOWS]
 };
 
 function iface(name){ return {name, ip:null, mask:null, ip6:null, ll:null, desc:null, aclIn:null, aclOut:null, helpers:[], nat:null, cdp:true, shut:true}; }
@@ -32,7 +32,7 @@ const CMDS = {
   priv: ['configure', 'copy', 'disable', 'exit', 'ping', 'show', 'terminal', 'write'],
   config: ['hostname', 'interface', 'ip', 'cdp', 'lldp', 'no', 'ntp', 'logging', 'access-list', 'line', 'router', 'exit', 'end', 'show'],
   line: ['no', 'exit', 'end', 'show'], router: ['no', 'exit', 'end', 'show'],
-  ifc: ['description', 'ip', 'ipv6', 'shutdown', 'no', 'cdp', 'exit', 'end', 'show', 'encapsulation'], nacl: ['permit', 'deny', 'exit', 'end', 'show'], dhcp: ['network', 'default-router', 'dns-server', 'domain-name', 'exit', 'end']
+  ifc: ['interface', 'description', 'ip', 'ipv6', 'shutdown', 'no', 'cdp', 'exit', 'end', 'show', 'encapsulation'], nacl: ['permit', 'deny', 'exit', 'end', 'show'], dhcp: ['network', 'default-router', 'dns-server', 'domain-name', 'exit', 'end']
 };
 // Cisco-style short forms: an exact word wins, otherwise a unique prefix does
 function pick(t, opts){
@@ -127,7 +127,7 @@ function run(raw){
   else if (c === 'ping') ping(w[1]);
   else if (c === 'terminal' && pick(w[1], ['length'])) { /* no output */ }
   else if (c === 'hostname' && m === 'config' && w[1]) state.host = raw.trim().split(/\s+/)[1];
-  else if (c === 'interface' && m === 'config' && ifKey(w[1])) { state.iface = ifKey(w[1]); state.mode = 'ifc'; }
+  else if (c === 'interface' && (m === 'config' || m === 'ifc') && ifKey(w[1])) { state.iface = ifKey(w[1]); state.mode = 'ifc'; }
   else if (c === 'ip' && m === 'config' && pick(w[1], ['dhcp']) && pick(w[2], ['pool']) && w[3]) { state.dhcp[w[3]] = state.dhcp[w[3]] || {net:null, mask:null, gw:null, dns:[], domain:null}; state.dhcpName = w[3]; state.mode = 'dhcp'; }
   else if (c === 'ip' && m === 'config' && pick(w[1], ['dhcp']) && pick(w[2], ['excluded-address']) && DOTTED.test(w[3] || '')) state.dhcpEx.push([w[3], DOTTED.test(w[4] || '') ? w[4] : w[3]]);
   else if (c === 'ip' && m === 'config' && pick(w[1], ['nat']) && pick(w[2], ['inside']) && pick(w[3], ['source']) && pick(w[4], ['list']) && w.length === 9 && pick(w[6], ['interface']) && ifKey(w[7]) && pick(w[8], ['overload'])) state.nat.pat.push({acl: w[5], iface: state.ifs[ifKey(w[7])].name});

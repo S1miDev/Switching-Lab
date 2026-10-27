@@ -127,6 +127,8 @@ const NEXT = {
 };
 // the words typed so far -> the rows that may follow (null when a word is not valid here)
 function nextRows(words, mode) {
+  // "interface ..." also works from interface mode, so its help comes from the config table
+  if (mode === 'ifc' && words[0] && words[0].length >= 3 && 'interface'.startsWith(words[0])) mode = 'config';
   const sw = dev === 'S1', tab = NEXT[mode === 'user' || mode === 'priv' ? 'exec' : mode];
   if (!tab) return null;
   const roots = [...new Set(Object.keys(tab).map(k => k.split(' ')[0]).filter(k => k !== '*'))].map(k => [k, '']);

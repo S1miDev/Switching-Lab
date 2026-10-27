@@ -5,7 +5,7 @@ const SW_CMDS = {
   config: ['hostname', 'interface', 'line', 'vlan', 'spanning-tree', 'port-channel', 'exit', 'end', 'show'],
   vlan: ['name', 'exit', 'end'],
   line: ['no', 'exit', 'end', 'show'],
-  ifc: ['description', 'no', 'shutdown', 'switchport', 'channel-group', 'spanning-tree', 'exit', 'end', 'show']
+  ifc: ['interface', 'description', 'no', 'shutdown', 'switchport', 'channel-group', 'spanning-tree', 'exit', 'end', 'show']
 };
 const SW_SHOWS = ['show vlan brief', 'show interfaces status', 'show running-config', 'show startup-config', 'show etherchannel summary', 'show spanning-tree'];
 const SW_KEYS = {
@@ -14,7 +14,7 @@ const SW_KEYS = {
   config: ['hostname', 'interface', 'line console 0', 'line vty 0 15', 'vlan', 'spanning-tree mode rapid-pvst', 'spanning-tree vlan 10 root primary', 'port-channel load-balance src-dst-ip', 'exit', 'end', ...SW_SHOWS],
   vlan: ['name', 'exit', 'end'],
   line: ['exit', 'end'],
-  ifc: ['description', 'switchport mode access', 'switchport mode trunk', 'switchport access vlan', 'switchport trunk allowed vlan', 'switchport trunk native vlan', 'shutdown', 'no shutdown', 'channel-group 1 mode active', 'spanning-tree portfast', 'spanning-tree bpduguard enable', 'exit', 'end', ...SW_SHOWS]
+  ifc: ['interface', 'description', 'switchport mode access', 'switchport mode trunk', 'switchport access vlan', 'switchport trunk allowed vlan', 'switchport trunk native vlan', 'shutdown', 'no shutdown', 'channel-group 1 mode active', 'spanning-tree portfast', 'spanning-tree bpduguard enable', 'exit', 'end', ...SW_SHOWS]
 };
 function freshSw(){
   const port = (name, shut = true) => ({name, mode:'dynamic', vlan:1, native:1, allowed:null, shut, desc:null, group:null, chanMode:null, portfast:false, bpdu:false, psec:false, psMax:null, psViolation:null, psSticky:false});
@@ -106,7 +106,7 @@ function runSw(raw){
   else if (c === 'vlan' && m === 'config' && /^\d+$/.test(w[1] || '')) { s.vlanId = Number(w[1]); s.vlans[s.vlanId] = s.vlans[s.vlanId] || {name: 'VLAN' + String(s.vlanId).padStart(4, '0')}; s.mode = 'vlan'; }
   else if (c === 'line' && m === 'config' && ((pick(w[1], ['console']) && w.length === 3 && /^\d+$/.test(w[2])) || (pick(w[1], ['vty']) && w.length === 4 && /^\d+$/.test(w[2]) && /^\d+$/.test(w[3])))) s.mode = 'line';
   else if (c === 'name' && m === 'vlan' && w[1]) s.vlans[s.vlanId].name = raw.trim().split(/\s+/)[1];
-  else if (c === 'interface' && m === 'config' && swKey(w[1])) { s.iface = swKey(w[1]); s.mode = 'ifc'; }
+  else if (c === 'interface' && (m === 'config' || m === 'ifc') && swKey(w[1])) { s.iface = swKey(w[1]); s.mode = 'ifc'; }
   else if (c === 'switchport' && m === 'ifc') swSwitchport(w);
   else if (c === 'description' && m === 'ifc' && w.length > 1) port().desc = raw.trim().slice(raw.trim().indexOf(' ') + 1);
   else if (c === 'shutdown' && m === 'ifc') port().shut = true;

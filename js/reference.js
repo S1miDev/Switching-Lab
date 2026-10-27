@@ -184,7 +184,9 @@ function showRef(card){
   h += `<div class="ref-two"><div><h3 class="ref-h">Verify it</h3><ul class="ref-list ref-verify">${(info.verify || []).map(v => `<li><code>${esc(v)}</code></li>`).join('')}</ul></div><div><h3 class="ref-h">Common mistakes</h3><ul class="ref-list ref-warn">${mistakes.map(m => `<li>${esc(m)}</li>`).join('')}</ul></div></div>`;
   if (info.lab) h += `<div class="ref-cta"><div><strong>${esc(info.cta || 'Practise this in the lab')}</strong><p>Generated labs, graded against the simulated network state.</p></div><button id="ref-lab" data-lab="${esc(info.lab)}">Start lab →</button></div>`;
   else h += `<p class="note">No lab for this topic yet.</p>`;
-  $('ref-detail').innerHTML = `<button class="ghost" id="ref-back">Back to reference</button>` + h;
+  const all = [...document.querySelectorAll('#ref .ref-item')], i = all.indexOf(card);
+  const nav = `<span class="ref-nav"><button class="ghost" data-ref="${i - 1}"${i > 0 ? '' : ' disabled'}>← Previous</button><button class="ghost" data-ref="${i + 1}"${i < all.length - 1 ? '' : ' disabled'}>Next →</button></span>`;
+  $('ref-detail').innerHTML = `<button class="ghost" id="ref-back">Back to reference</button>` + nav + h;
   document.querySelector('#ref .domains').hidden = true;
   $('ref-detail').hidden = false;
   window.scrollTo(0, 0);
