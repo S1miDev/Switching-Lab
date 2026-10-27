@@ -55,10 +55,10 @@ function showDevice(name){
 // Tab: complete word by word, so abbreviations work ("conf t", "sh ip int") and interface names after "interface"
 function complete(){
   const text = input.value.toLowerCase(), tw = text.split(/\s+/), sw = dev === 'S1', mode = sw ? swState.mode : state.mode;
-  let hits;
+  let hits, isIf = false;
   if (tw.length === 2 && tw[0].length >= 3 && 'interface'.startsWith(tw[0]) && mode === 'config') {
     const names = sw ? Object.values(swState.ports).map(p => p.name) : Object.values(state.ifs).map(i => i.name);
-    hits = names.filter(n => n.toLowerCase().startsWith(tw[1])).map(n => 'interface ' + n);
+    hits = names.filter(n => n.toLowerCase().startsWith(tw[1])).map(n => 'interface ' + n); isIf = true;
   } else {
     hits = keysNow().filter(k => { const kw = k.split(' '); return tw.length <= kw.length && tw.every((w, i) => kw[i].startsWith(w)); });
   }
@@ -73,7 +73,7 @@ function complete(){
   const last = tw.length - 1, whole = parts.every(h => h[last] === parts[0][last] && h.length > tw.length);
   const joined = out.join(' ') + (whole ? ' ' : '');
   if (joined.length > text.length || joined !== input.value) input.value = joined;
-  if (joined.toLowerCase() === text) print(hits.join('   '));
+  if (joined.toLowerCase() === text || isIf) print(hits.map(h => isIf ? h.slice(10) : h).join('   '));
 }
 function addStep(text){ const li = document.createElement('li'); li.textContent = text; $('steps').appendChild(li); }
 function markLevel(){
