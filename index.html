@@ -14,7 +14,7 @@
 <nav class="side" aria-label="Main">
   <p class="side-head">Workspace</p>
   <button class="nav-item active" id="nav-labs">Labs</button>
-  <span class="nav-item off" title="Coming soon">Practice</span>
+  <button class="nav-item" id="nav-topo">Topology</button>
   <span class="nav-item off" title="Coming soon">Mock exam</span>
   <button class="nav-item" id="nav-ref">Reference</button>
   <span class="nav-item off" title="Coming soon">Progress</span>
@@ -304,6 +304,34 @@
   </main>
 </section>
 
+<section id="topo-view" hidden>
+  <header class="lab-top">
+    <div>
+      <h1>Topology</h1>
+      <p>Cable the devices together to match each task.</p>
+    </div>
+  </header>
+  <div class="topo-grid">
+    <section class="card">
+      <div class="req-head"><h2 id="topo-title">Task</h2><span id="topo-count">0/0</span></div>
+      <p class="note" id="topo-desc"></p>
+      <ul class="reqs" id="topo-reqs"></ul>
+      <div class="actions">
+        <button id="topo-check">Check</button>
+        <button class="ghost" id="topo-clear">Clear cables</button>
+        <button class="ghost" id="topo-next">New task</button>
+      </div>
+      <p class="note" id="topo-msg" style="margin:12px 0 0"></p>
+    </section>
+    <section class="card">
+      <h2>Cabling</h2>
+      <p class="note">Click a device, then another device, to run a cable. Click the same device twice to cancel.</p>
+      <div id="topo-canvas"></div>
+      <ul class="cables" id="topo-cables"></ul>
+    </section>
+  </div>
+</section>
+
 <section id="ref" hidden>
   <header>
     <p class="eyebrow">Reference</p>
@@ -395,6 +423,7 @@
 <script src="js/switch.js"></script>
 <script src="js/labs.js"></script>
 <script src="js/reference.js"></script>
+<script src="js/topology.js"></script>
 <script src="js/script.js"></script>
 </body>
 </html>

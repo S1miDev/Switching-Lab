@@ -128,3 +128,19 @@ details.card summary{cursor:pointer;font:12px "IBM Plex Mono",ui-monospace,monos
 @media (max-width:760px){#ref-detail .ref-two{grid-template-columns:1fr}}
 #ref-detail .ref-cta{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:32px;padding:16px 18px;background:var(--card);border:1px solid var(--line);border-radius:10px}
 #ref-detail .ref-cta p{margin:4px 0 0;color:var(--muted);font-size:.9rem}
+
+.topo-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr);gap:16px;padding:16px 20px 24px;align-items:start}
+@media (max-width:760px){.topo-grid{grid-template-columns:1fr}}
+#topo-view header{padding:20px 20px 4px}
+#topo-view h1{margin:0;font-size:1.35rem;font-weight:600}
+#topo-view header p{margin:2px 0 0;color:var(--muted)}
+#topo-canvas [data-dev]{cursor:pointer}
+#topo-canvas .box{fill:#131a22;stroke:#2a3644;stroke-width:1.5}
+#topo-canvas [data-dev]:hover .box{stroke:#5eead4}
+#topo-canvas [data-dev].sel .box{stroke:#5eead4;stroke-width:2}
+#topo-canvas .icon{fill:none;stroke:#8fb3c9;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+#topo-canvas text{dominant-baseline:auto}
+#topo-canvas .name{fill:#e6edf3;font:600 13px "IBM Plex Sans",system-ui,sans-serif;text-anchor:start}
+#topo-canvas .sub{fill:#8b949e;font:10px "IBM Plex Mono",ui-monospace,monospace;text-anchor:start}
+#topo-canvas .link{stroke:#3b4a5a;stroke-width:2}
+.cables{font:13px/1.8 "IBM Plex Mono",ui-monospace,monospace;color:var(--muted);margin:12px 0 0;padding-left:18px}
