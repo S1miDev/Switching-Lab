@@ -51,7 +51,12 @@ function showDevice(name){
   }
   input.focus();
 }
-function help(){ keysNow().forEach(k => print(k)); }
+// ? in user EXEC mode prints the real Cisco list with descriptions; other modes list command names
+const USER_HELP = [['<1-99>', 'Session number to resume'], ['connect', 'Open a terminal connection'], ['disable', 'Turn off privileged commands'], ['disconnect', 'Disconnect an existing network connection'], ['enable', 'Turn on privileged commands'], ['exit', 'Exit from the EXEC'], ['logout', 'Exit from the EXEC'], ['ping', 'Send echo messages'], ['resume', 'Resume an active network connection'], ['show', 'Show running system information'], ['ssh', 'Open a secure shell client connection'], ['telnet', 'Open a telnet connection'], ['terminal', 'Set terminal line parameters'], ['traceroute', 'Trace route to destination']];
+function help(){
+  if ((dev === 'S1' ? swState.mode : state.mode) === 'user') { print('Exec commands:'); USER_HELP.forEach(([c, d]) => print('  ' + c.padEnd(12) + d)); }
+  else keysNow().forEach(k => print(k));
+}
 function complete(){
   const text = input.value.toLowerCase();
   const hits = keysNow().filter(k => k.startsWith(text));
