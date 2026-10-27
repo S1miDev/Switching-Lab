@@ -231,6 +231,7 @@ input.addEventListener('keydown', e => {
     if (line) past.push(line);
     pos = past.length;
     run(input.value);
+    renderReqs(REQS.map(r => r.ok(state) || null)); // live: ticks met items, leaves the rest neutral (no hints)
     input.value = '';
   } else if (e.key === 'Tab') {
     e.preventDefault();
