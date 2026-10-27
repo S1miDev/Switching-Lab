@@ -152,3 +152,5 @@ details.card summary{cursor:pointer;font:12px "IBM Plex Mono",ui-monospace,monos
 #topo-canvas{touch-action:none;user-select:none}
 #topo-canvas [data-dev]{cursor:grab}
 .topo-grid .actions{flex-wrap:wrap}
+.topo-level{display:flex;align-items:center;gap:8px;margin:0 0 12px;color:var(--muted);font-size:.9rem}
+.topo-level select{font:inherit;padding:6px 8px;border-radius:6px;border:1px solid var(--line);background:var(--card);color:var(--ink)}

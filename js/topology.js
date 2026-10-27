@@ -4,15 +4,17 @@ const TOPO_TYPES = {
   switch: {prefix:'S', label:'switch', ports:['Fa0/1', 'Fa0/2', 'Fa0/3', 'Fa0/4', 'Fa0/5', 'Fa0/6', 'Fa0/7', 'Fa0/8']},
   pc: {prefix:'PC', label:'PC', ports:['NIC']}
 };
+const TOPO_LEVELS = ['beginner', 'intermediate', 'advanced', 'expert'];
 const TOPO_TASKS = [
-  {title:'Connect the router to the switch', devices:[{name:'R1', type:'router'}, {name:'S1', type:'switch'}], links:[['R1', 'S1']]},
-  {title:'Connect the switch to a PC', devices:[{name:'S1', type:'switch'}, {name:'PC1', type:'pc'}], links:[['S1', 'PC1']]},
-  {title:'Connect R1, S1 and PC1 in a line', devices:[{name:'R1', type:'router'}, {name:'S1', type:'switch'}, {name:'PC1', type:'pc'}], links:[['R1', 'S1'], ['S1', 'PC1']]},
-  {title:'Connect the switch to both PCs', devices:[{name:'S1', type:'switch'}, {name:'PC1', type:'pc'}, {name:'PC2', type:'pc'}], links:[['S1', 'PC1'], ['S1', 'PC2']]},
-  {title:'Build the full topology', devices:[{name:'R1', type:'router'}, {name:'S1', type:'switch'}, {name:'PC1', type:'pc'}, {name:'PC2', type:'pc'}], links:[['R1', 'S1'], ['S1', 'PC1'], ['S1', 'PC2']]}
+  {level:'beginner', title:'Connect the router to the switch', devices:[{name:'R1', type:'router'}, {name:'S1', type:'switch'}], links:[['R1', 'S1']]},
+  {level:'beginner', title:'Connect the switch to a PC', devices:[{name:'S1', type:'switch'}, {name:'PC1', type:'pc'}], links:[['S1', 'PC1']]},
+  {level:'intermediate', title:'Connect R1, S1 and PC1 in a line', devices:[{name:'R1', type:'router'}, {name:'S1', type:'switch'}, {name:'PC1', type:'pc'}], links:[['R1', 'S1'], ['S1', 'PC1']]},
+  {level:'intermediate', title:'Connect the switch to both PCs', devices:[{name:'S1', type:'switch'}, {name:'PC1', type:'pc'}, {name:'PC2', type:'pc'}], links:[['S1', 'PC1'], ['S1', 'PC2']]},
+  {level:'advanced', title:'Chain two switches behind the router', devices:[{name:'R1', type:'router'}, {name:'S1', type:'switch'}, {name:'S2', type:'switch'}], links:[['R1', 'S1'], ['S1', 'S2']]},
+  {level:'expert', title:'Build the full topology with two switches', devices:[{name:'R1', type:'router'}, {name:'S1', type:'switch'}, {name:'S2', type:'switch'}, {name:'PC1', type:'pc'}, {name:'PC2', type:'pc'}], links:[['R1', 'S1'], ['S1', 'S2'], ['S1', 'PC1'], ['S2', 'PC2']]}
 ];
 const NODE_W = 150, NODE_H = 52, TOPO_W = 528, TOPO_H = 220;
-let topoTask = null, topoNodes = [], topoCables = [], topoSel = null, topoDrag = null;
+let topoLevel = 'beginner', topoTask = null, topoNodes = [], topoCables = [], topoSel = null, topoDrag = null;
 const nodeOf = name => topoNodes.find(n => n.name === name);
 const linked = (x, y) => topoCables.some(c => (c.a === x && c.b === y) || (c.a === y && c.b === x));
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
@@ -77,7 +79,8 @@ function topoRender(){
 }
 function topoNewTask(){
   let next;
-  do { next = TOPO_TASKS[Math.floor(Math.random() * TOPO_TASKS.length)]; } while (next === topoTask && TOPO_TASKS.length > 1);
+  const pool = TOPO_TASKS.filter(t => t.level === topoLevel);
+  do { next = pool[Math.floor(Math.random() * pool.length)]; } while (next === topoTask && pool.length > 1);
   topoTask = next; topoNodes = []; topoCables = []; topoSel = null;
   document.getElementById('topo-title').textContent = topoTask.title;
   document.getElementById('topo-desc').textContent = 'Drag the devices you need from the bar onto the canvas, then cable them.';
@@ -135,6 +138,7 @@ document.getElementById('nav-topo').addEventListener('click', () => { show('topo
 document.getElementById('topo-remove').addEventListener('click', topoRemoveSelected);
 document.getElementById('topo-clear').addEventListener('click', () => { topoNodes = []; topoCables = []; topoSel = null; topoMsg('Cleared the canvas.'); topoRender(); });
 document.getElementById('topo-next').addEventListener('click', topoNewTask);
+document.getElementById('topo-level').addEventListener('change', e => { topoLevel = e.target.value; topoNewTask(); });
 document.getElementById('topo-check').addEventListener('click', () => {
   const reqs = topoReqs();
   topoMsg(reqs.every(r => r.ok) ? 'Task complete.' : `${reqs.filter(r => !r.ok).length} requirement(s) not met yet.`);
