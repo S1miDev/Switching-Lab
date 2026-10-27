@@ -9,8 +9,9 @@ let swState;
 const past = [];
 let pos = 0;
 
-let REQS = [], SOLUTION = [], lastNet = null, level = 'intermediate', topic = 'ipv4';
+let hintN = 0, REQS = [], SOLUTION = [], lastNet = null, level = 'intermediate', topic = 'ipv4';
 function reset(){
+  hintN = 0; hintLabel();
   swState = freshSw();
   state = {mode:'user', iface:null, host:'R1', cdp:true, lldp:false, routes:[], saved:null, acls:{}, aclName:null, dhcp:{}, dhcpEx:[], dhcpName:null, nat:{pat:[], stat:[]}, svc:{ntp:[], log:[], dns:[]}, sw:swState, ifs:{'gi0/0':iface('Gi0/0'), 'gi0/1':iface('Gi0/1'), 'gi0/2':iface('Gi0/2'), 'gi0/3':iface('Gi0/3')}};
   Object.values(logs).forEach(l => { l.textContent = ''; });
@@ -129,14 +130,15 @@ function check(){
   const failed = results.filter(x => !x).length;
   print(failed ? `[lab] ${failed} requirement(s) not met.` : '[lab] All requirements met.', failed ? 'ln-err' : 'ln-ok');
 }
-// Commands card: only what this lab uses, shown as syntax (values stripped so answers are not given away)
-function renderCmds(){
-  const gen = c => c.replace(/\(.*?\)/g, '').replace(/\s+on\s+\S*\d\S*$/i, '').trim()
+// Strip values from a command so it shows syntax only
+function cmdSyntax(c){ return c.replace(/\(.*?\)/g, '').replace(/\s+on\s+\S*\d\S*$/i, '').trim()
     .replace(/^conf t$/, 'configure terminal').replace(/^int \S+$/, 'interface <name>')
     .replace(/\b\d{1,3}(\.\d{1,3}){3}\b/g, '<ip>').replace(/\S*:\S*:\S*/g, '<addr/len>')
-    .replace(/^(name|description) .+/, '$1 <text>').replace(/(?<=\s)\d+(,\d+)*(?=\s|$)/g, '<n>');
+    .replace(/^(name|description) .+/, '$1 <text>').replace(/(?<=\s)\d+(,\d+)*(?=\s|$)/g, '<n>'); }
+// Commands card: only what this lab uses, shown as syntax (values stripped so answers are not given away)
+function renderCmds(){
   const src = SOLUTION.length ? SOLUTION : REQS.flatMap(r => (r.hint || '').split(/,\s*(?:then\s+)?(?=[a-z])/i));
-  const list = ['enable', 'configure terminal', ...src.map(gen).filter(c => c && c !== 'enable'), 'show running-config', 'exit', 'end'];
+  const list = ['enable', 'configure terminal', ...src.map(cmdSyntax).filter(c => c && c !== 'enable'), 'show running-config', 'exit', 'end'];
   $('cmds').textContent = [...new Set(list)].join(' · ');
 }
 function newLab(lvl = level, t = topic){
@@ -247,6 +249,22 @@ input.addEventListener('keydown', e => {
 });
 term.addEventListener('click', () => input.focus());
 $('check').addEventListener('click', check);
+// Hints: 1 = which command to think about, 2 = its syntax, 3 = the full configuration
+function hintLabel(){ $('hint').textContent = hintN < 3 ? `Hint (${3 - hintN} left)` : 'Hint (none left)'; $('hint').disabled = hintN >= 3; }
+$('hint').addEventListener('click', () => {
+  const r = REQS.find(q => !q.ok(state));
+  if (!r) return print('[hint] Every requirement is already met.', 'ln-ok');
+  const raw = /^[\d.]+ /.test(r.hint) ? 'ip address ' + r.hint : /^[0-9a-f:]+\/\d+$/i.test(r.hint) ? 'ipv6 address ' + r.hint : r.hint || '';
+  const parts = raw.split(/,\s*(?:then\s+)?(?=[a-z])/i).map(cmdSyntax);
+  hintN++;
+  if (hintN === 1) print(`[hint 1/3] Next up: "${r.text}". Which command, in which mode, does that? Try ${parts[0].split(' ').slice(0, 2).join(' ')} ...`, 'ln-ok');
+  else if (hintN === 2) print(`[hint 2/3] Syntax: ${parts.join(' then ')}`, 'ln-ok');
+  else {
+    print(`[hint 3/3] Full configuration${SOLUTION.length ? '' : ' (enter each line under the right interface or mode)'}:`, 'ln-ok');
+    (SOLUTION.length ? SOLUTION : ['enable', 'configure terminal', ...REQS.flatMap(q => (q.hint || '').split(/,\s*(?:then\s+)?(?=[a-z])/i))]).forEach(c => print('  ' + c, 'ln-ok'));
+  }
+  hintLabel();
+});
 $('reset').addEventListener('click', () => newLab());
 $('back').addEventListener('click', () => show('dash'));
 $('nav-labs').addEventListener('click', () => show('dash'));
