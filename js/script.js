@@ -53,6 +53,7 @@ function showDevice(name){
   input.focus();
 }
 // Tab: complete word by word, so abbreviations work ("conf t", "sh ip int") and interface names after "interface"
+let lastTabText = ''; // the line left by the previous Tab, so a second Tab on an interface prefix lists the ports
 function complete(){
   const text = input.value.toLowerCase(), tw = text.split(/\s+/), sw = dev === 'S1', mode = sw ? swState.mode : state.mode;
   let hits, isIf = false;
@@ -72,8 +73,10 @@ function complete(){
   }
   const last = tw.length - 1, whole = parts.every(h => h[last] === parts[0][last] && h.length > tw.length);
   const joined = out.join(' ') + (whole ? ' ' : '');
-  if (joined.length > text.length || joined !== input.value) input.value = joined;
-  if (joined.toLowerCase() === text || isIf) print(hits.map(h => isIf ? h.slice(10) : h).join('   '));
+  const printList = joined.toLowerCase() === text || (isIf && text === lastTabText);
+  input.value = joined;
+  if (printList) print(hits.map(h => isIf ? h.slice(10) : h).join('   '));
+  lastTabText = input.value.toLowerCase();
 }
 function addStep(text){ const li = document.createElement('li'); li.textContent = text; $('steps').appendChild(li); }
 function markLevel(){
