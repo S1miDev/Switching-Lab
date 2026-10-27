@@ -129,6 +129,16 @@ function check(){
   const failed = results.filter(x => !x).length;
   print(failed ? `[lab] ${failed} requirement(s) not met.` : '[lab] All requirements met.', failed ? 'ln-err' : 'ln-ok');
 }
+// Commands card: only what this lab uses, shown as syntax (values stripped so answers are not given away)
+function renderCmds(){
+  const gen = c => c.replace(/\(.*?\)/g, '').replace(/\s+on\s+\S*\d\S*$/i, '').trim()
+    .replace(/^conf t$/, 'configure terminal').replace(/^int \S+$/, 'interface <name>')
+    .replace(/\b\d{1,3}(\.\d{1,3}){3}\b/g, '<ip>').replace(/\S*:\S*:\S*/g, '<addr/len>')
+    .replace(/^(name|description) .+/, '$1 <text>').replace(/(?<=\s)\d+(,\d+)*(?=\s|$)/g, '<n>');
+  const src = SOLUTION.length ? SOLUTION : REQS.flatMap(r => (r.hint || '').split(/,\s*(?:then\s+)?(?=[a-z])/i));
+  const list = ['enable', 'configure terminal', ...src.map(gen).filter(c => c && c !== 'enable'), 'show running-config', 'exit', 'end'];
+  $('cmds').textContent = [...new Set(list)].join(' · ');
+}
 function newLab(lvl = level, t = topic){
   level = lvl; topic = t; markLevel();
   const T = TOPICS[topic], cfg = T.levels[level];
@@ -146,6 +156,7 @@ function newLab(lvl = level, t = topic){
     cfg.steps.forEach(addStep);
     $('topo').innerHTML = drawTopo(RT_NODES, RT_LINKS, 180);
     renderTabs(['R1', 'PC1', 'R2', 'R3']);
+    renderCmds();
     reset();
     return;
   }
@@ -194,6 +205,7 @@ function newLab(lvl = level, t = topic){
     $('topo').innerHTML = drawTopo(topoNodes, topoLinks, H);
     renderTabs(topoNodes.map(p => p.id));
   }
+  renderCmds();
   reset();
 }
 function show(view){
