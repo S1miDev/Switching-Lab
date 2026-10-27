@@ -268,9 +268,9 @@ show('dash');
 
 // smooth open/close for the collapsible sections; plain toggle if the user prefers reduced motion
 document.addEventListener('click', e => {
-  const sum = e.target.closest('details.domain > summary');
+  const sum = e.target.closest('details.domain > summary, details.card > summary');
   if (!sum) return;
-  const d = sum.parentElement, rows = d.querySelector('.rows');
+  const d = sum.parentElement, rows = d.querySelector('.rows, .dbody');
   if (!rows || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   e.preventDefault();
   if (rows.anim) rows.anim.cancel();
