@@ -244,3 +244,23 @@ SOLUTION.forEach(run);
 console.assert(REQS.every(r => r.ok(state)), 'self-check: known-good config failed');
 newLab();
 show('dash');
+
+// smooth open/close for the collapsible sections; plain toggle if the user prefers reduced motion
+document.addEventListener('click', e => {
+  const sum = e.target.closest('details.domain > summary');
+  if (!sum) return;
+  const d = sum.parentElement, rows = d.querySelector('.rows');
+  if (!rows || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  e.preventDefault();
+  if (rows.anim) rows.anim.cancel();
+  const opening = !d.open || d.classList.contains('closing');
+  if (opening) d.open = true;
+  const cs = getComputedStyle(rows), h = rows.scrollHeight;
+  d.classList.toggle('closing', !opening);
+  const shut = {height:'0px', paddingTop:'0px', paddingBottom:'0px', opacity:0};
+  const full = {height:h + 'px', paddingTop:cs.paddingTop, paddingBottom:cs.paddingBottom, opacity:1};
+  rows.style.overflow = 'hidden';
+  rows.anim = rows.animate(opening ? [shut, full] : [full, shut], {duration:260, easing:'cubic-bezier(.4,0,.2,1)'});
+  rows.anim.onfinish = () => { rows.style.overflow = ''; rows.anim = null; d.classList.remove('closing'); if (!opening) d.open = false; };
+  rows.anim.oncancel = () => { rows.style.overflow = ''; };
+});

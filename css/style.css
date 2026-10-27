@@ -77,8 +77,8 @@ details.card summary{cursor:pointer;font:12px "IBM Plex Mono",ui-monospace,monos
 .domains{padding:0}
 .domain summary{list-style:none;display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--line);cursor:pointer;font:12px "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.06em;text-transform:uppercase}
 .domain summary::-webkit-details-marker{display:none}
-.domain summary::before{content:"";width:6px;height:6px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(-45deg);flex-shrink:0}
-.domain[open] summary::before{transform:rotate(45deg)}
+.domain summary::before{transition:transform .25s ease;content:"";width:6px;height:6px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(-45deg);flex-shrink:0}
+.domain[open]:not(.closing) summary::before{transform:rotate(45deg)}
 .dom-title{color:var(--ink)}
 .dom-meta{color:var(--muted)}
 #ref header{padding:32px 32px 8px}
