@@ -27,9 +27,15 @@ const TOPO_TASKS = [
   {level:'expert', title:'Core switching with a DHCP server and two PCs', devices:[{name:'MLS1', type:'mls'}, {name:'S1', type:'switch'}, {name:'PC1', type:'pc'}, {name:'PC2', type:'pc'}, {name:'DHCP1', type:'dhcp'}], links:[['MLS1', 'S1'], ['MLS1', 'DHCP1'], ['S1', 'PC1'], ['S1', 'PC2']]}
 ];
 const NODE_W = 120, NODE_H = 44, TOPO_W = 600, TOPO_H = 340, EDGE = 8;
+// copper rule from the CCNA course: unlike ends (host/router vs switch) use straight-through, like ends use crossover
+const SWITCHY = new Set(['switch', 'mls']);
+const CABLE_NAMES = {straight:'straight-through', cross:'crossover'};
+const rightCable = (x, y) => SWITCHY.has(nodeOf(x).type) === SWITCHY.has(nodeOf(y).type) ? 'cross' : 'straight';
+let cableType = 'straight';
 let topoLevel = 'beginner', topoTask = null, topoNodes = [], topoCables = [], topoSel = null, topoDrag = null;
 const nodeOf = name => topoNodes.find(n => n.name === name);
-const linked = (x, y) => topoCables.some(c => (c.a === x && c.b === y) || (c.a === y && c.b === x));
+const cableOf = (x, y) => topoCables.find(c => (c.a === x && c.b === y) || (c.a === y && c.b === x));
+const linked = (x, y) => !!cableOf(x, y);
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 function topoMsg(text){ document.getElementById('topo-msg').textContent = text; }
 function nextName(type){
@@ -51,8 +57,8 @@ function topoConnect(a, b){
   if (linked(a, b)) return topoMsg(`${a} and ${b} are already cabled.`);
   const pa = freePort(a), pb = freePort(b);
   if (!pa || !pb) return topoMsg(`No free port on ${pa ? b : a}.`);
-  topoCables.push({a, b, pa, pb});
-  topoMsg(`Cabled ${a} ${pa} to ${b} ${pb}.`);
+  topoCables.push({a, b, pa, pb, type:cableType});
+  topoMsg(`Cabled ${a} ${pa} to ${b} ${pb} with a ${CABLE_NAMES[cableType]} cable.`);
 }
 function topoClick(name){
   if (!topoSel) { topoSel = name; topoMsg(`Selected ${name}. Click another device to cable them.`); }
@@ -71,7 +77,10 @@ function topoRemoveSelected(){
 }
 function topoReqs(){
   const devs = topoTask.devices.map(d => ({text:`Add a ${TOPO_TYPES[d.type].label} (${d.name})`, ok:!!nodeOf(d.name)}));
-  const links = topoTask.links.map(([x, y]) => ({text:`Cable ${x} to ${y}`, ok:linked(x, y)}));
+  const links = topoTask.links.map(([x, y]) => {
+    const c = cableOf(x, y), ok = !!c && c.type === rightCable(x, y);
+    return {text:`Cable ${x} to ${y} with the right cable${c && !ok ? ' (wrong cable type)' : ''}`, ok};
+  });
   return [...devs, ...links, {text:'No extra cables', ok:topoCables.length === topoTask.links.length}];
 }
 function svgPoint(e){
@@ -88,7 +97,7 @@ function topoSvg(){
   s += `<rect width="${TOPO_W}" height="${TOPO_H}" fill="url(#topo-dots)"/>`;
   topoCables.forEach(c => {
     const a = mid(nodeOf(c.a)), b = mid(nodeOf(c.b));
-    s += `<line class="link" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/>`;
+    s += `<line class="link${c.type === 'cross' ? ' cross' : ''}" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/>`;
   });
   topoNodes.forEach(n => {
     const label = TOPO_TYPES[n.type].sub;
@@ -106,7 +115,7 @@ function topoRender(){
   document.getElementById('topo-reqs').innerHTML = reqs.map(r => `<li class="${r.ok ? 'ok' : ''}">${r.ok ? '✓' : '○'} ${r.text}</li>`).join('');
   document.getElementById('topo-canvas').innerHTML = topoSvg();
   if (topoSel && nodeOf(topoSel)) document.querySelector(`#topo-canvas [data-dev="${topoSel}"]`).classList.add('sel');
-  document.getElementById('topo-cables').innerHTML = topoCables.map(c => `<li>${c.a} ${c.pa} ↔ ${c.b} ${c.pb}</li>`).join('') || '<li>No cables yet.</li>';
+  document.getElementById('topo-cables').innerHTML = topoCables.map(c => `<li>${c.a} ${c.pa} ↔ ${c.b} ${c.pb} (${CABLE_NAMES[c.type]})</li>`).join('') || '<li>No cables yet.</li>';
 }
 function topoNewTask(){
   let next;
@@ -175,3 +184,9 @@ document.getElementById('topo-check').addEventListener('click', () => {
   topoMsg(reqs.every(r => r.ok) ? 'Task complete.' : `${reqs.filter(r => !r.ok).length} requirement(s) not met yet.`);
   topoRender();
 });
+
+document.querySelectorAll('.cable-btn').forEach(b => b.addEventListener('click', () => {
+  cableType = b.dataset.cable;
+  document.querySelectorAll('.cable-btn').forEach(x => x.classList.toggle('on', x === b));
+  topoMsg(`New cables will be ${CABLE_NAMES[cableType]}.`);
+}));
