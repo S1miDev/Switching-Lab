@@ -51,7 +51,7 @@ function showDevice(name){
   }
   input.focus();
 }
-function help(){ print(keysNow().join('   ')); }
+function help(){ keysNow().forEach(k => print(k)); }
 function complete(){
   const text = input.value.toLowerCase();
   const hits = keysNow().filter(k => k.startsWith(text));
