@@ -15,8 +15,8 @@
   <p class="side-head">Workspace</p>
   <button class="nav-item active" id="nav-labs">Labs</button>
   <button class="nav-item" id="nav-topo">Topology</button>
-  <span class="nav-item off" title="Coming soon">Mock exam</span>
   <button class="nav-item" id="nav-ref">Reference</button>
+  <button class="nav-item" id="nav-exam">Mock exam</button>
   <span class="nav-item off" title="Coming soon">Progress</span>
   <p class="side-head">Account</p>
   <span class="nav-item off" title="Coming soon">Account</span>
@@ -350,6 +350,16 @@
   <div id="topo-ghost" class="topo-ghost" hidden></div>
 </section>
 
+<section id="exam-view" hidden>
+  <header class="lab-top">
+    <div>
+      <h1>Mock exam</h1>
+      <p>A timed set of CCNA multiple-choice questions.</p>
+    </div>
+  </header>
+  <div class="exam-wrap"><section class="card" id="exam-card"></section></div>
+</section>
+
 <section id="ref" hidden>
   <header>
     <p class="eyebrow">Reference</p>
@@ -442,6 +452,7 @@
 <script src="js/labs.js"></script>
 <script src="js/reference.js"></script>
 <script src="js/topology.js"></script>
+<script src="js/exam.js"></script>
 <script src="js/script.js"></script>
 </body>
 </html>

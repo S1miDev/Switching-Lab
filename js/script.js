@@ -193,10 +193,12 @@ function show(view){
   $('lab').hidden = view !== 'lab';
   $('ref').hidden = view !== 'ref';
   $('topo-view').hidden = view !== 'topo';
+  $('exam-view').hidden = view !== 'exam';
   if (view === 'ref') refHome();
   $('nav-labs').classList.toggle('active', view === 'dash' || view === 'lab');
   $('nav-ref').classList.toggle('active', view === 'ref');
   $('nav-topo').classList.toggle('active', view === 'topo');
+  $('nav-exam').classList.toggle('active', view === 'exam');
   window.scrollTo(0, 0);
   if (view === 'lab') input.focus();
 }

@@ -154,3 +154,14 @@ details.card summary{cursor:pointer;font:12px "IBM Plex Mono",ui-monospace,monos
 .topo-grid .actions{flex-wrap:wrap}
 .topo-level{display:flex;align-items:center;gap:8px;margin:0 0 12px;color:var(--muted);font-size:.9rem}
 .topo-level select{font:inherit;padding:6px 8px;border-radius:6px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
+#exam-view header{padding:20px 20px 4px}
+#exam-view h1{margin:0;font-size:1.35rem;font-weight:600}
+#exam-view header p{margin:2px 0 0;color:var(--muted)}
+.exam-wrap{padding:16px 20px 24px;max-width:820px}
+.exam-q{border:0;margin:0 0 20px;padding:0;min-width:0}
+.exam-q legend{font-weight:600;padding:0;margin-bottom:6px}
+.exam-opt{display:block;padding:8px 12px;margin:6px 0;border:1px solid var(--line);border-radius:8px;cursor:pointer}
+.exam-opt:hover{border-color:var(--accent)}
+.exam-q.ok legend{color:var(--ok)}
+.exam-q.bad legend{color:var(--bad)}
+.exam-opt.right{border-color:var(--ok);color:var(--ok)}
