@@ -65,6 +65,15 @@ function complete(){
 function addStep(text){ const li = document.createElement('li'); li.textContent = text; $('steps').appendChild(li); }
 function markLevel(){
   document.querySelectorAll('.seg-btn').forEach(b => b.classList.toggle('active', b.dataset.set === level));
+  moveSeg();
+}
+// slide the highlight under the active difficulty button (needs the bar to be visible to measure it)
+function moveSeg(){
+  const seg = document.querySelector('.seg'), a = seg.querySelector('.active');
+  if (!a || !a.offsetWidth) return;
+  seg.style.setProperty('--x', a.offsetLeft + 'px');
+  seg.style.setProperty('--w', a.offsetWidth + 'px');
+  requestAnimationFrame(() => seg.classList.add('ready'));
 }
 function renderReqs(results){
   const ul = $('reqs'); ul.textContent = '';
@@ -195,6 +204,7 @@ function show(view){
   $('topo-view').hidden = view !== 'topo';
   $('exam-view').hidden = view !== 'exam';
   if (view === 'ref') refHome();
+  if (view === 'dash') moveSeg();
   $('nav-labs').classList.toggle('active', view === 'dash' || view === 'lab');
   $('nav-ref').classList.toggle('active', view === 'ref');
   $('nav-topo').classList.toggle('active', view === 'topo');
@@ -264,3 +274,4 @@ document.addEventListener('click', e => {
   rows.anim.onfinish = () => { rows.style.overflow = ''; rows.anim = null; d.classList.remove('closing'); if (!opening) d.open = false; };
   rows.anim.oncancel = () => { rows.style.overflow = ''; };
 });
+window.addEventListener('resize', moveSeg);
