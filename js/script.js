@@ -82,11 +82,12 @@ function renderReqs(results){
     const li = document.createElement('li');
     const res = results ? results[i] : null;
     if (res !== null) li.className = res ? 'ok' : 'bad';
-    li.textContent = (res === null ? '\u25CB ' : res ? '\u2713 ' : '\u2717 ') + r.text + (res === false && r.hint ? ` \u2014 expected: ${r.hint}` : '');
+    const tx = document.createElement('span'); tx.className = 'rtext'; tx.textContent = (res === null ? '\u25CB ' : res ? '\u2713 ' : '\u2717 ') + r.text + (res === false && r.hint ? ` \u2014 expected: ${r.hint}` : '');
+    li.appendChild(tx);
     ul.appendChild(li);
     const n = reqHints[i] || 0;
-    for (let k = 0; k < n; k++) { const d = document.createElement('div'); d.className = 'rhint'; d.textContent = `Hint ${k + 1}/3: ` + hintLines(r, k); li.appendChild(d); }
     if (res !== true && n < 3) { const b = document.createElement('button'); b.className = 'ghost rhint-btn'; b.dataset.i = i; b.textContent = `Hint (${3 - n} left)`; li.appendChild(b); }
+    for (let k = 0; k < n; k++) { const d = document.createElement('div'); d.className = 'rhint'; d.textContent = `Hint ${k + 1}/3: ` + hintLines(r, k); li.appendChild(d); }
   });
 }
 function node(id, type, x, y, name, sub){
