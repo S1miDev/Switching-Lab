@@ -144,3 +144,10 @@ details.card summary{cursor:pointer;font:12px "IBM Plex Mono",ui-monospace,monos
 #topo-canvas .sub{fill:#8b949e;font:10px "IBM Plex Mono",ui-monospace,monospace;text-anchor:start}
 #topo-canvas .link{stroke:#3b4a5a;stroke-width:2}
 .cables{font:13px/1.8 "IBM Plex Mono",ui-monospace,monospace;color:var(--muted);margin:12px 0 0;padding-left:18px}
+
+.topo-palette{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 8px}
+.topo-chip{background:var(--card);color:var(--ink);border:1px solid var(--line);cursor:grab;touch-action:none;user-select:none}
+.topo-chip:hover{border-color:var(--accent)}
+.topo-ghost{position:fixed;pointer-events:none;background:var(--accent);color:var(--btn-ink);padding:6px 10px;border-radius:6px;font-size:13px;z-index:10}
+#topo-canvas{touch-action:none;user-select:none}
+#topo-canvas [data-dev]{cursor:grab}

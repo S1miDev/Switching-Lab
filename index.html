@@ -318,18 +318,26 @@
       <ul class="reqs" id="topo-reqs"></ul>
       <div class="actions">
         <button id="topo-check">Check</button>
-        <button class="ghost" id="topo-clear">Clear cables</button>
+        <button class="ghost" id="topo-remove">Remove selected</button>
+        <button class="ghost" id="topo-clear">Clear all</button>
         <button class="ghost" id="topo-next">New task</button>
       </div>
       <p class="note" id="topo-msg" style="margin:12px 0 0"></p>
     </section>
     <section class="card">
       <h2>Cabling</h2>
-      <p class="note">Click a device, then another device, to run a cable. Click the same device twice to cancel.</p>
+      <div class="topo-palette">
+        <span class="note">Drag onto the canvas:</span>
+        <button class="topo-chip" data-type="router">Router</button>
+        <button class="topo-chip" data-type="switch">Switch</button>
+        <button class="topo-chip" data-type="pc">PC</button>
+      </div>
+      <p class="note">Drag a device to move it. Click one device, then another, to cable them.</p>
       <div id="topo-canvas"></div>
       <ul class="cables" id="topo-cables"></ul>
     </section>
   </div>
+  <div id="topo-ghost" class="topo-ghost" hidden></div>
 </section>
 
 <section id="ref" hidden>
