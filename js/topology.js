@@ -97,7 +97,8 @@ function topoSvg(){
   s += `<rect width="${TOPO_W}" height="${TOPO_H}" fill="url(#topo-dots)"/>`;
   topoCables.forEach(c => {
     const a = mid(nodeOf(c.a)), b = mid(nodeOf(c.b));
-    s += `<line class="link${c.type === 'cross' ? ' cross' : ''}" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/>`;
+    s += `<line class="link${c.type === 'cross' ? ' cross' : ''}" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/>` +
+      `<line class="hit" data-cable="${c.a}|${c.b}" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"><title>Click to remove this cable</title></line>`;
   });
   topoNodes.forEach(n => {
     const label = TOPO_TYPES[n.type].sub;
@@ -115,7 +116,7 @@ function topoRender(){
   document.getElementById('topo-reqs').innerHTML = reqs.map(r => `<li class="${r.ok ? 'ok' : ''}">${r.ok ? '✓' : '○'} ${r.text}</li>`).join('');
   document.getElementById('topo-canvas').innerHTML = topoSvg();
   if (topoSel && nodeOf(topoSel)) document.querySelector(`#topo-canvas [data-dev="${topoSel}"]`).classList.add('sel');
-  document.getElementById('topo-cables').innerHTML = topoCables.map(c => `<li>${c.a} ${c.pa} ↔ ${c.b} ${c.pb} (${CABLE_NAMES[c.type]})</li>`).join('') || '<li>No cables yet.</li>';
+  document.getElementById('topo-cables').innerHTML = topoCables.map(c => `<li>${c.a} ${c.pa} ↔ ${c.b} ${c.pb} (${CABLE_NAMES[c.type]}) <button class="ghost cable-x" data-rm="${c.a}|${c.b}">Remove</button></li>`).join('') || '<li>No cables yet.</li>';
 }
 function topoNewTask(){
   let next;
@@ -190,3 +191,13 @@ document.querySelectorAll('.cable-btn').forEach(b => b.addEventListener('click',
   document.querySelectorAll('.cable-btn').forEach(x => x.classList.toggle('on', x === b));
   topoMsg(`New cables will be ${CABLE_NAMES[cableType]}.`);
 }));
+
+// remove a cable: click it on the canvas or use its Remove button in the list
+function topoRemoveCable(key){
+  const [x, y] = key.split('|');
+  topoCables = topoCables.filter(c => !((c.a === x && c.b === y) || (c.a === y && c.b === x)));
+  topoMsg(`Removed the cable between ${x} and ${y}.`);
+  topoRender();
+}
+topoCanvas.addEventListener('click', e => { const l = e.target.closest('[data-cable]'); if (l) topoRemoveCable(l.dataset.cable); });
+document.getElementById('topo-cables').addEventListener('click', e => { const b = e.target.closest('[data-rm]'); if (b) topoRemoveCable(b.dataset.rm); });
