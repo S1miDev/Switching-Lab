@@ -110,6 +110,7 @@ function run(raw){
   const line = raw.trim();
   echo(line);
   if (!line) return;
+  if (line.length > 1 && line.endsWith('?')) return helpNext(line);
   if (dev === 'S1') return runSw(line);
   if (dev !== 'R1') return print('% Not configurable in this lab', 'ln-err');
   if (line === '?' || line === 'help') return help();
