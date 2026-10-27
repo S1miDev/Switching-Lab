@@ -2,16 +2,18 @@
 const SW_CMDS = {
   user: ['enable', 'exit', 'show'],
   priv: ['configure', 'copy', 'disable', 'exit', 'show', 'write'],
-  config: ['hostname', 'interface', 'vlan', 'spanning-tree', 'port-channel', 'exit', 'end', 'show'],
+  config: ['hostname', 'interface', 'line', 'vlan', 'spanning-tree', 'port-channel', 'exit', 'end', 'show'],
   vlan: ['name', 'exit', 'end'],
+  line: ['no', 'exit', 'end', 'show'],
   ifc: ['description', 'no', 'shutdown', 'switchport', 'channel-group', 'spanning-tree', 'exit', 'end', 'show']
 };
 const SW_SHOWS = ['show vlan brief', 'show interfaces status', 'show running-config', 'show startup-config', 'show etherchannel summary', 'show spanning-tree'];
 const SW_KEYS = {
   user: ['enable', 'exit', 'show vlan brief', 'show interfaces status', 'show running-config'],
   priv: ['configure terminal', 'copy running-config startup-config', 'disable', 'exit', 'write memory', ...SW_SHOWS],
-  config: ['hostname', 'interface', 'vlan', 'spanning-tree mode rapid-pvst', 'spanning-tree vlan 10 root primary', 'port-channel load-balance src-dst-ip', 'exit', 'end', ...SW_SHOWS],
+  config: ['hostname', 'interface', 'line console 0', 'line vty 0 15', 'vlan', 'spanning-tree mode rapid-pvst', 'spanning-tree vlan 10 root primary', 'port-channel load-balance src-dst-ip', 'exit', 'end', ...SW_SHOWS],
   vlan: ['name', 'exit', 'end'],
+  line: ['exit', 'end'],
   ifc: ['description', 'switchport mode access', 'switchport mode trunk', 'switchport access vlan', 'switchport trunk allowed vlan', 'switchport trunk native vlan', 'shutdown', 'no shutdown', 'channel-group 1 mode active', 'spanning-tree portfast', 'spanning-tree bpduguard enable', 'exit', 'end', ...SW_SHOWS]
 };
 function freshSw(){
@@ -102,6 +104,7 @@ function runSw(raw){
   else if (c === 'copy' && pick(w[1], ['running-config']) && pick(w[2], ['startup-config'])) swSave();
   else if (c === 'hostname' && m === 'config' && w[1]) s.host = raw.trim().split(/\s+/)[1];
   else if (c === 'vlan' && m === 'config' && /^\d+$/.test(w[1] || '')) { s.vlanId = Number(w[1]); s.vlans[s.vlanId] = s.vlans[s.vlanId] || {name: 'VLAN' + String(s.vlanId).padStart(4, '0')}; s.mode = 'vlan'; }
+  else if (c === 'line' && m === 'config' && ((pick(w[1], ['console']) && w.length === 3 && /^\d+$/.test(w[2])) || (pick(w[1], ['vty']) && w.length === 4 && /^\d+$/.test(w[2]) && /^\d+$/.test(w[3])))) s.mode = 'line';
   else if (c === 'name' && m === 'vlan' && w[1]) s.vlans[s.vlanId].name = raw.trim().split(/\s+/)[1];
   else if (c === 'interface' && m === 'config' && swKey(w[1])) { s.iface = swKey(w[1]); s.mode = 'ifc'; }
   else if (c === 'switchport' && m === 'ifc') swSwitchport(w);
@@ -115,7 +118,7 @@ function runSw(raw){
   else if (c === 'spanning-tree' && m === 'ifc' && pick(w[1], ['bpduguard']) && pick(w[2], ['enable'])) port().bpdu = true;
   else if (c === 'channel-group' && m === 'ifc' && /^\d+$/.test(w[1] || '') && pick(w[2], ['mode']) && pick(w[3], ['active', 'passive', 'on', 'desirable', 'auto'])) { port().group = Number(w[1]); port().chanMode = pick(w[3], ['active', 'passive', 'on', 'desirable', 'auto']); }
   else if (c === 'port-channel' && m === 'config' && pick(w[1], ['load-balance']) && w[2]) s.lb = w[2];
-  else if (c === 'exit') s.mode = {ifc:'config', vlan:'config', config:'priv', priv:'user', user:'user'}[m];
+  else if (c === 'exit') s.mode = {ifc:'config', vlan:'config', line:'config', config:'priv', priv:'user', user:'user'}[m];
   else if (c === 'end' && m !== 'user' && m !== 'priv') s.mode = 'priv';
   else print('% Invalid input detected', 'ln-err');
   renderPrompt();

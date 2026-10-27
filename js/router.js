@@ -4,7 +4,9 @@ const SHOWS = ['show ip interface brief', 'show ipv6 interface brief', 'show cdp
 const KEYS = {
   user: ['enable', 'exit', 'ping', 'terminal length 0', ...SHOWS],
   priv: ['configure terminal', 'copy running-config startup-config', 'disable', 'exit', 'ping', 'terminal length 0', 'write memory', ...SHOWS],
-  config: ['hostname', 'interface', 'ip route', 'no ip route', 'cdp run', 'no cdp run', 'lldp run', 'no lldp run', 'exit', 'end', ...SHOWS],
+  config: ['hostname', 'interface', 'line console 0', 'line vty 0 4', 'router ospf 1', 'router eigrp 100', 'router rip', 'ip route', 'no ip route', 'cdp run', 'no cdp run', 'lldp run', 'no lldp run', 'exit', 'end', ...SHOWS],
+  line: ['exit', 'end'],
+  router: ['exit', 'end'],
   ifc: ['description', 'ip address', 'ipv6 address', 'no ip address', 'no ipv6 address', 'cdp enable', 'no cdp enable', 'no shutdown', 'shutdown', 'exit', 'end', ...SHOWS]
 };
 
@@ -28,7 +30,8 @@ function neighbors(proto){
 const CMDS = {
   user: ['enable', 'exit', 'ping', 'show', 'terminal'],
   priv: ['configure', 'copy', 'disable', 'exit', 'ping', 'show', 'terminal', 'write'],
-  config: ['hostname', 'interface', 'ip', 'cdp', 'lldp', 'no', 'ntp', 'logging', 'access-list', 'exit', 'end', 'show'],
+  config: ['hostname', 'interface', 'ip', 'cdp', 'lldp', 'no', 'ntp', 'logging', 'access-list', 'line', 'router', 'exit', 'end', 'show'],
+  line: ['no', 'exit', 'end', 'show'], router: ['no', 'exit', 'end', 'show'],
   ifc: ['description', 'ip', 'ipv6', 'shutdown', 'no', 'cdp', 'exit', 'end', 'show', 'encapsulation'], nacl: ['permit', 'deny', 'exit', 'end', 'show'], dhcp: ['network', 'default-router', 'dns-server', 'domain-name', 'exit', 'end']
 };
 // Cisco-style short forms: an exact word wins, otherwise a unique prefix does
@@ -145,6 +148,8 @@ function run(raw){
   else if (c === 'description' && m === 'ifc' && w.length > 1) cur().desc = raw.trim().slice(raw.trim().indexOf(' ') + 1);
   else if (c === 'encapsulation' && m === 'ifc' && pick(w[1], ['dot1q']) && /^\d+$/.test(w[2] || '')) cur().encap = Number(w[2]);
   else if (c === 'shutdown' && m === 'ifc') cur().shut = true;
+  else if (c === 'line' && m === 'config' && ((pick(w[1], ['console']) && w.length === 3 && /^\d+$/.test(w[2])) || (pick(w[1], ['vty']) && w.length === 4 && /^\d+$/.test(w[2]) && /^\d+$/.test(w[3])))) state.mode = 'line';
+  else if (c === 'router' && m === 'config' && ((pick(w[1], ['ospf', 'eigrp']) && w.length === 3 && /^\d+$/.test(w[2]) && Number(w[2]) >= 1 && Number(w[2]) <= 65535) || (pick(w[1], ['rip']) && w.length === 2))) { state.proto = pick(w[1], ['ospf', 'eigrp', 'rip']); state.mode = 'router'; }
   else if (c === 'cdp' && m === 'ifc' && pick(w[1], ['enable'])) cur().cdp = true;
   else if (c === 'cdp' && m === 'config' && pick(w[1], ['run'])) state.cdp = true;
   else if (c === 'lldp' && m === 'config' && pick(w[1], ['run'])) state.lldp = true;
@@ -159,8 +164,8 @@ function run(raw){
   else if (c === 'dns-server' && m === 'dhcp' && DOTTED.test(w[1] || '')) state.dhcp[state.dhcpName].dns.push(w[1]);
   else if (c === 'domain-name' && m === 'dhcp' && w[1]) state.dhcp[state.dhcpName].domain = w[1];
   else if ((c === 'permit' || c === 'deny') && m === 'nacl') state.acls[state.aclName].entries.push(w.join(' '));
-  else if (c === 'exit') state.mode = {ifc:'config', config:'priv', priv:'user', user:'user', nacl:'config', dhcp:'config'}[m];
-  else if (c === 'end' && (m === 'config' || m === 'ifc' || m === 'nacl' || m === 'dhcp')) state.mode = 'priv';
+  else if (c === 'exit') state.mode = {ifc:'config', config:'priv', priv:'user', user:'user', nacl:'config', dhcp:'config', line:'config', router:'config'}[m];
+  else if (c === 'end' && (m === 'config' || m === 'ifc' || m === 'nacl' || m === 'dhcp' || m === 'line' || m === 'router')) state.mode = 'priv';
   else print('% Invalid input detected', 'ln-err');
   renderPrompt();
 }
