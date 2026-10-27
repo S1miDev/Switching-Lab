@@ -231,6 +231,13 @@ function show(view){
 }
 
 input.addEventListener('keydown', e => {
+  if (e.key === '?' && (dev === 'R1' || dev === 'S1')) { // like IOS: show the options at once, keep what was typed
+    e.preventDefault();
+    const typed = input.value;
+    echo(typed + '?');
+    if (typed.trim()) helpNext(typed + '?'); else help();
+    return;
+  }
   if (e.key === 'Enter') {
     e.preventDefault();
     const line = input.value.trim();
