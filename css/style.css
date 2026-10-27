@@ -140,8 +140,8 @@ details.card summary{cursor:pointer;font:12px "IBM Plex Mono",ui-monospace,monos
 #topo-canvas [data-dev].sel .box{stroke:#5eead4;stroke-width:2}
 #topo-canvas .icon{fill:none;stroke:#8fb3c9;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
 #topo-canvas text{dominant-baseline:auto}
-#topo-canvas .name{fill:#e6edf3;font:600 13px "IBM Plex Sans",system-ui,sans-serif;text-anchor:start}
-#topo-canvas .sub{fill:#8b949e;font:10px "IBM Plex Mono",ui-monospace,monospace;text-anchor:start}
+#topo-canvas .name{fill:#e6edf3;font:600 12px "IBM Plex Sans",system-ui,sans-serif;text-anchor:start}
+#topo-canvas .sub{fill:#8b949e;font:9px "IBM Plex Mono",ui-monospace,monospace;text-anchor:start}
 #topo-canvas .link{stroke:#3b4a5a;stroke-width:2}
 .cables{font:13px/1.8 "IBM Plex Mono",ui-monospace,monospace;color:var(--muted);margin:12px 0 0;padding-left:18px}
 
