@@ -9,9 +9,9 @@ let swState;
 const past = [];
 let pos = 0;
 
-let hintN = 0, REQS = [], SOLUTION = [], lastNet = null, level = 'intermediate', topic = 'ipv4';
+let reqHints = [], REQS = [], SOLUTION = [], lastNet = null, level = 'intermediate', topic = 'ipv4';
 function reset(){
-  hintN = 0; hintLabel();
+  reqHints = [];
   swState = freshSw();
   state = {mode:'user', iface:null, host:'R1', cdp:true, lldp:false, routes:[], saved:null, acls:{}, aclName:null, dhcp:{}, dhcpEx:[], dhcpName:null, nat:{pat:[], stat:[]}, svc:{ntp:[], log:[], dns:[]}, sw:swState, ifs:{'gi0/0':iface('Gi0/0'), 'gi0/1':iface('Gi0/1'), 'gi0/2':iface('Gi0/2'), 'gi0/3':iface('Gi0/3')}};
   Object.values(logs).forEach(l => { l.textContent = ''; });
@@ -84,6 +84,9 @@ function renderReqs(results){
     if (res !== null) li.className = res ? 'ok' : 'bad';
     li.textContent = (res === null ? '\u25CB ' : res ? '\u2713 ' : '\u2717 ') + r.text + (res === false && r.hint ? ` \u2014 expected: ${r.hint}` : '');
     ul.appendChild(li);
+    const n = reqHints[i] || 0;
+    for (let k = 0; k < n; k++) { const d = document.createElement('div'); d.className = 'rhint'; d.textContent = `Hint ${k + 1}/3: ` + hintLines(r, k); li.appendChild(d); }
+    if (res !== true && n < 3) { const b = document.createElement('button'); b.className = 'ghost rhint-btn'; b.dataset.i = i; b.textContent = `Hint (${3 - n} left)`; li.appendChild(b); }
   });
 }
 function node(id, type, x, y, name, sub){
@@ -249,21 +252,21 @@ input.addEventListener('keydown', e => {
 });
 term.addEventListener('click', () => input.focus());
 $('check').addEventListener('click', check);
-// Hints: 1 = which command to think about, 2 = its syntax, 3 = the full configuration
-function hintLabel(){ $('hint').textContent = hintN < 3 ? `Hint (${3 - hintN} left)` : 'Hint (none left)'; $('hint').disabled = hintN >= 3; }
-$('hint').addEventListener('click', () => {
-  const r = REQS.find(q => !q.ok(state));
-  if (!r) return print('[hint] Every requirement is already met.', 'ln-ok');
+// Hints per requirement: 1 = which command to think about, 2 = its syntax, 3 = the exact commands
+function hintLines(r, k){
   const raw = /^[\d.]+ /.test(r.hint) ? 'ip address ' + r.hint : /^[0-9a-f:]+\/\d+$/i.test(r.hint) ? 'ipv6 address ' + r.hint : r.hint || '';
-  const parts = raw.split(/,\s*(?:then\s+)?(?=[a-z])/i).map(cmdSyntax);
-  hintN++;
-  if (hintN === 1) print(`[hint 1/3] Next up: "${r.text}". Which command, in which mode, does that? Try ${parts[0].split(' ').slice(0, 2).join(' ')} ...`, 'ln-ok');
-  else if (hintN === 2) print(`[hint 2/3] Syntax: ${parts.join(' then ')}`, 'ln-ok');
-  else {
-    print(`[hint 3/3] Full configuration${SOLUTION.length ? '' : ' (enter each line under the right interface or mode)'}:`, 'ln-ok');
-    (SOLUTION.length ? SOLUTION : ['enable', 'configure terminal', ...REQS.flatMap(q => (q.hint || '').split(/,\s*(?:then\s+)?(?=[a-z])/i))]).forEach(c => print('  ' + c, 'ln-ok'));
-  }
-  hintLabel();
+  const cmds = raw.split(/,\s*(?:then\s+)?(?=[a-z])/i);
+  if (k === 0) return `Think about which mode you need, then the command "${cmdSyntax(cmds[0]).split(' ').slice(0, 2).join(' ')} ..."`;
+  if (k === 1) return 'Syntax: ' + cmds.map(cmdSyntax).join(' \u2192 ');
+  const m = r.text.match(/^(?:[RS]\d )?((?:Gi|Fa|Po|Port-channel)\S*)/i);
+  return 'Commands: ' + [m ? 'interface ' + m[1] : '', ...cmds].filter(Boolean).join(' \u2192 ');
+}
+$('reqs').addEventListener('click', e => {
+  const b = e.target.closest('button.rhint-btn');
+  if (!b) return;
+  const i = Number(b.dataset.i);
+  reqHints[i] = (reqHints[i] || 0) + 1;
+  renderReqs(REQS.map(r => r.ok(state) || null));
 });
 $('reset').addEventListener('click', () => newLab());
 $('back').addEventListener('click', () => show('dash'));

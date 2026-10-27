@@ -168,3 +168,6 @@ details.card summary{cursor:pointer;font:12px "IBM Plex Mono",ui-monospace,monos
 .exam-q.ok legend{color:var(--ok)}
 .exam-q.bad legend{color:var(--bad)}
 .exam-opt.right{border-color:var(--ok);color:var(--ok)}
+
+.rhint{color:var(--muted);font-size:.85rem;margin:2px 0 0 1.2em}
+.rhint-btn{display:block;margin:4px 0 0 1.2em;padding:1px 8px;font-size:.78rem;color:var(--muted);border-color:var(--line)}
