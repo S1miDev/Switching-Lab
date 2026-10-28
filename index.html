@@ -216,6 +216,7 @@
           <div class="actions">
             <button id="check">Check</button>
             <button class="ghost" id="reset">Reset</button>
+            <button class="ghost" id="new-net">New network</button>
           </div>
         </section>
         <details class="card" open>
@@ -315,10 +316,11 @@
   <!-- Reference: each title must match a key of REF_INFO in js/reference.js -->
   <section id="ref" class="page" hidden>
     <header class="ref-head">
-      <p class="eyebrow">Reference</p>
       <h1>CCNA command reference</h1>
       <p>Each topic covered by the labs, grouped by CCNA area.</p>
+      <input type="search" id="ref-search" placeholder="Search topics and commands" aria-label="Search the reference" autocomplete="off">
     </header>
+    <p id="ref-empty" class="note" hidden>No topics match.</p>
     <div id="ref-detail" hidden></div>
     <div class="domains">
       <details class="domain" open>

@@ -1328,6 +1328,25 @@ function refHome() {
   document.querySelector('#ref .domains').hidden = false;
 }
 
+// Filter the list by title, description or any command/verify line; groups with a match are opened
+document.getElementById('ref-search').addEventListener('input', e => {
+  const q = e.target.value.trim().toLowerCase();
+  let shown = 0;
+  document.querySelectorAll('#ref .domain').forEach(group => {
+    let hits = 0;
+    group.querySelectorAll('.ref-item').forEach(card => {
+      const info = REF_INFO[card.querySelector('.row-title').textContent];
+      const text = (card.textContent + ' ' + info.commands.map(c => c[0]).join(' ') + ' ' + info.verify.join(' ')).toLowerCase();
+      card.hidden = !text.includes(q);
+      hits += !card.hidden;
+    });
+    group.hidden = !hits;
+    if (q && hits) group.open = true;
+    shown += hits;
+  });
+  document.getElementById('ref-empty').hidden = !!shown;
+});
+
 // Open a topic by click, Enter or Space. (The lab button inside a topic is handled in script.js.)
 const refPage = document.getElementById('ref');
 refPage.addEventListener('click', e => {

@@ -410,7 +410,8 @@ $('lab').addEventListener('click', e => {
 });
 term.addEventListener('click', () => input.focus());
 $('check').addEventListener('click', check);
-$('reset').addEventListener('click', () => newLab());
+$('reset').addEventListener('click', reset);
+$('new-net').addEventListener('click', () => newLab());
 $('reqs').addEventListener('click', e => {
   const b = e.target.closest('.rhint-btn');
   if (!b) return;

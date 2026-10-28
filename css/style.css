@@ -1201,6 +1201,18 @@ details.card summary {
 }
 
 #ref .eyebrow,
+#ref-search {
+  width: 100%;
+  max-width: 420px;
+  margin-top: 16px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
 #ref-detail .ref-eyebrow {
   margin: 0 0 8px;
   font: 11px var(--mono);
