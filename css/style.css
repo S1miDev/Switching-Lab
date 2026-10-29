@@ -187,20 +187,6 @@ button:disabled {
   color: var(--accent);
 }
 
-/* "coming soon" items */
-.nav-item.off {
-  cursor: default;
-  opacity: .6;
-}
-
-.nav-item.off:hover {
-  color: var(--muted);
-}
-
-.nav-support {
-  margin-left: auto;
-}
-
 #theme-toggle {
   flex: none;
   display: grid;
@@ -208,7 +194,7 @@ button:disabled {
   width: 34px;
   height: 34px;
   padding: 0;
-  margin-left: 8px;
+  margin-left: auto;
   border-radius: 8px;
   background: none;
   border: 0;
@@ -240,20 +226,6 @@ button:disabled {
 
 [data-theme="light"] #theme-toggle .moon {
   display: none;
-}
-
-.avatar {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  margin-left: 8px;
-  border-radius: 50%;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  font-size: 13px;
-  font-weight: 600;
 }
 
 /* ---- page shell ---- */
@@ -736,6 +708,17 @@ button:disabled {
   font-size: 12px;
 }
 
+.solution {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--accent);
+  font: 13px var(--mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;
@@ -930,10 +913,6 @@ details.card summary {
 .console {
   padding: 0;
   overflow: hidden;
-}
-
-.console:focus-within {
-  border-color: var(--accent);
 }
 
 .console-head {

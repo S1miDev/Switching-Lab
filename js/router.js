@@ -2,15 +2,16 @@
 
 const DOTTED = /^\d{1,3}(\.\d{1,3}){3}$/; // an IPv4 address or mask
 const isNum = text => /^\d+$/.test(text);
+const isPid = text => isNum(text) && Number(text) >= 1 && Number(text) <= 65535; // routing process ID
 
 // The words each mode accepts. Short forms are resolved against these lists (see pick).
 const CMDS = {
   user: ['enable', 'exit', 'ping', 'show', 'terminal'],
   priv: ['configure', 'copy', 'disable', 'exit', 'ping', 'show', 'terminal', 'write'],
-  config: ['hostname', 'interface', 'ip', 'cdp', 'lldp', 'no', 'ntp', 'logging', 'access-list', 'line', 'router', 'exit', 'end', 'show'],
+  config: ['hostname', 'interface', 'ip', 'ipv6', 'cdp', 'lldp', 'no', 'ntp', 'logging', 'access-list', 'line', 'router', 'enable', 'service', 'banner', 'exit', 'end', 'show'],
   ifc: ['interface', 'description', 'ip', 'ipv6', 'shutdown', 'no', 'cdp', 'exit', 'end', 'show', 'encapsulation'],
-  line: ['no', 'exit', 'end', 'show'],
-  router: ['no', 'exit', 'end', 'show'],
+  line: ['password', 'login', 'logging', 'exec-timeout', 'no', 'exit', 'end', 'show'],
+  router: ['network', 'router-id', 'passive-interface', 'default-information', 'version', 'eigrp', 'no', 'exit', 'end', 'show'],
   nacl: ['permit', 'deny', 'exit', 'end', 'show'],
   dhcp: ['network', 'default-router', 'dns-server', 'domain-name', 'exit', 'end'],
 };
@@ -21,12 +22,12 @@ const SHOWS = ['show ip interface brief', 'show ipv6 interface brief', 'show cdp
 const KEYS = {
   user: ['enable', 'exit', 'ping', 'terminal length 0', ...SHOWS],
   priv: ['configure terminal', 'copy running-config startup-config', 'disable', 'exit', 'ping', 'terminal length 0', 'write memory', ...SHOWS],
-  config: ['hostname', 'interface', 'line console 0', 'line vty 0 4', 'router ospf 1', 'router eigrp 100', 'router rip', 'ip route',
-    'no ip route', 'cdp run', 'no cdp run', 'lldp run', 'no lldp run', 'exit', 'end', ...SHOWS],
-  ifc: ['interface', 'description', 'ip address', 'ipv6 address', 'no ip address', 'no ipv6 address', 'cdp enable', 'no cdp enable',
-    'no shutdown', 'shutdown', 'exit', 'end', ...SHOWS],
-  line: ['exit', 'end'],
-  router: ['exit', 'end'],
+  config: ['hostname', 'interface', 'line console 0', 'line vty 0 4', 'router ospf 1', 'ipv6 router ospf 1', 'ipv6 unicast-routing',
+    'enable secret', 'service password-encryption', 'banner motd', 'no ip domain-lookup', 'router eigrp 100', 'router rip', 'ip route', 'no ip route', 'cdp run', 'no cdp run', 'lldp run', 'no lldp run', 'exit', 'end', ...SHOWS],
+  ifc: ['interface', 'description', 'ip address', 'ipv6 address', 'ip ospf 1 area 0', 'ipv6 ospf 1 area 0', 'no ip address', 'no ipv6 address',
+    'cdp enable', 'no cdp enable', 'no shutdown', 'shutdown', 'exit', 'end', ...SHOWS],
+  line: ['password', 'login', 'logging synchronous', 'exec-timeout 5 0', 'exit', 'end'],
+  router: ['network', 'router-id', 'passive-interface', 'no passive-interface', 'default-information originate', 'version 2', 'eigrp router-id','no auto-summary', 'exit', 'end'],
   nacl: ['permit', 'deny', 'exit', 'end'],
   dhcp: ['network', 'default-router', 'dns-server', 'domain-name', 'exit', 'end'],
 };
@@ -43,12 +44,45 @@ function freshRouter() {
     dhcp: {}, dhcpEx: [], dhcpName: null,
     nat: {pat: [], stat: []},
     svc: {ntp: [], log: [], dns: []},
+    v6routing: false,
+    sec: {secret: false, enc: false, banner: null, nolookup: false}, line: null, // line = console or vty while in line mode
+    lines: {console: freshLine(), vty: freshLine()},
+    ospf: freshProc(), ospf6: freshProc(), eigrp: freshProc(), rip: freshProc(), // router ospf / ipv6 router ospf / router eigrp / router rip
   };
 }
 
-function iface(name) {
-  return {name, ip: null, mask: null, ip6: null, ll: null, desc: null, encap: null, aclIn: null, aclOut: null, helpers: [], nat: null, cdp: true, shut: true};
+function freshLine() {
+  return {pw: null, login: false, sync: false, timeout: null};
 }
+
+// pid is null until the process is started (0 for RIP, which has no process ID); ver and nosum are for RIP and EIGRP
+function freshProc() {
+  return {pid: null, rid: null, nets: [], passive: [], originate: false, ver: null, nosum: false};
+}
+
+// ospf and ospf6 are {pid, area} once "ip ospf" / "ipv6 ospf" is set on the interface
+function iface(name) {
+  return {name, ip: null, mask: null, ip6: null, ll: null, desc: null, encap: null, aclIn: null, aclOut: null, helpers: [], nat: null,
+    ospf: null, ospf6: null, cdp: true, shut: true};
+}
+
+// OSPF areas may be typed as 0 or 0.0.0.0; both are stored as a number
+const areaNum = text => isNum(text) ? Number(text) : DOTTED.test(text) ? ipInt(text) : null;
+
+// The first network statement of a process that covers the interface's address, or undefined
+function netHit(st, proto, k) {
+  const i = st.ifs[k];
+  return i.ip && st[proto].nets.find(n => ((ipInt(i.ip) | ipInt(n.wc)) >>> 0) === ((ipInt(n.net) | ipInt(n.wc)) >>> 0));
+}
+
+// The OSPFv2 area an interface is in, from "ip ospf" or a matching network statement, or null
+function ospfArea(st, k) {
+  if (st.ifs[k].ospf) return st.ifs[k].ospf.area;
+  return netHit(st, 'ospf', k)?.area ?? null;
+}
+
+// The wildcard of the classful network an address belongs to (used by "network" under RIP and EIGRP)
+const classWc = ip => Number(ip.split('.')[0]) < 128 ? '0.255.255.255' : Number(ip.split('.')[0]) < 192 ? '0.0.255.255' : '0.0.0.255';
 
 // Cisco-style short forms: an exact word wins, otherwise a unique prefix does
 function pick(word, options) {
@@ -86,6 +120,10 @@ const prefixLen = mask => ipInt(mask).toString(2).split('').filter(bit => bit ==
 
 function configLines() {
   const lines = [`hostname ${state.host}`, state.cdp ? 'cdp run' : 'no cdp run'];
+  if (state.sec.secret) lines.push('enable secret 5 $1$mERr$hashed');
+  if (state.sec.enc) lines.push('service password-encryption');
+  if (state.sec.nolookup) lines.push('no ip domain-lookup');
+  if (state.sec.banner) lines.push(`banner motd ^C${state.sec.banner}^C`);
   if (state.lldp) lines.push('lldp run');
   for (const i of Object.values(state.ifs)) {
     lines.push(`interface ${i.name}`);
@@ -96,6 +134,8 @@ function configLines() {
     if (i.ip) lines.push(` ip address ${i.ip} ${i.mask}`);
     if (i.ip6) lines.push(` ipv6 address ${i.ip6}`);
     if (i.ll) lines.push(` ipv6 address ${i.ll} link-local`);
+    if (i.ospf) lines.push(` ip ospf ${i.ospf.pid} area ${i.ospf.area}`);
+    if (i.ospf6) lines.push(` ipv6 ospf ${i.ospf6.pid} area ${i.ospf6.area}`);
     if (!i.cdp) lines.push(' no cdp enable');
     lines.push(i.shut ? ' shutdown' : ' no shutdown', '!');
   }
@@ -114,6 +154,29 @@ function configLines() {
   for (const ip of state.svc.log) lines.push(`logging host ${ip}`);
   for (const ip of state.svc.dns) lines.push(`ip name-server ${ip}`);
   for (const r of state.routes) lines.push(`ip route ${r.net} ${r.mask} ${r.nh}${r.dist !== 1 ? ' ' + r.dist : ''}`);
+  if (state.v6routing) lines.push('ipv6 unicast-routing');
+  for (const [name, head] of [['console', 'line console 0'], ['vty', 'line vty 0 4']]) {
+    const l = state.lines[name];
+    lines.push(head);
+    if (l.timeout) lines.push(` exec-timeout ${l.timeout}`);
+    if (l.pw) lines.push(state.sec.enc ? ' password 7 0822455D0A16' : ` password ${l.pw}`);
+    if (l.sync) lines.push(' logging synchronous');
+    if (l.login) lines.push(' login');
+    lines.push('!');
+  }
+  for (const [head, o] of [['router ospf', state.ospf], ['ipv6 router ospf', state.ospf6], ['router eigrp', state.eigrp], ['router rip', state.rip]]) {
+    if (o.pid === null) continue;
+    lines.push(head === 'router rip' ? head : `${head} ${o.pid}`);
+    if (o.ver) lines.push(` version ${o.ver}`);
+    if (o.rid) lines.push(head === 'router eigrp' ? ` eigrp router-id ${o.rid}` : ` router-id ${o.rid}`);
+    for (const p of o.passive) lines.push(` passive-interface ${p}`);
+    for (const n of o.nets) {
+      lines.push(head === 'router ospf' ? ` network ${n.net} ${n.wc} area ${n.area}` : ` network ${n.net}${head === 'router eigrp' && !n.cf ? ' ' + n.wc : ''}`);
+    }
+    if (o.nosum) lines.push(' no auto-summary');
+    if (o.originate) lines.push(' default-information originate');
+    lines.push('!');
+  }
   return lines;
 }
 
@@ -207,6 +270,8 @@ function run(raw) {
     || (c === 'interface' && enterInterface(state, ifKey(w[1])))
     || (mode === 'config' && configCommand(c, w, line))
     || (mode === 'ifc' && interfaceCommand(c, w, line))
+    || (mode === 'router' && routerCommand(c, w))
+    || (mode === 'line' && lineCommand(c, w, line))
     || (mode === 'dhcp' && dhcpCommand(c, w))
     || (mode === 'nacl' && aclCommand(c, w))
     || leaveMode(c, state);
@@ -220,7 +285,7 @@ function run(raw) {
 // User and privileged EXEC, shared with S1 (st is R1's or S1's state, save its save function).
 // Only R1 lists ping and terminal in CMDS, so S1 never reaches those two.
 function execCommand(c, w, st, save) {
-  if (c === 'enable') st.mode = 'priv';
+  if (c === 'enable' && st.mode === 'user') st.mode = 'priv'; // in config mode "enable secret" is a configuration command
   else if (c === 'disable') st.mode = 'user';
   else if (c === 'configure' && pick(w[1], ['terminal'])) st.mode = 'config';
   else if (c === 'write' || (c === 'copy' && pick(w[1], ['running-config']) && pick(w[2], ['startup-config']))) save();
@@ -282,10 +347,30 @@ function configCommand(c, w, line) {
   else if (c === 'no' && pick(w[1], ['ip']) && pick(w[2], ['route']) && w.length === 6) {
     state.routes = state.routes.filter(r => !(r.net === w[3] && r.mask === w[4] && r.nh === w[5]));
   }
-  else if (c === 'line' && isLineCmd(w)) state.mode = 'line';
-  else if (c === 'router' && ((pick(w[1], ['ospf', 'eigrp']) && w.length === 3 && isNum(w[2]) && Number(w[2]) >= 1 && Number(w[2]) <= 65535)
-    || (pick(w[1], ['rip']) && w.length === 2))) {
+  else if (c === 'line' && isLineCmd(w)) {
+    state.line = pick(w[1], ['console', 'vty']);
+    state.mode = 'line';
+  }
+  else if (c === 'enable' && pick(w[1], ['secret']) && w.length === 3) state.sec.secret = true;
+  else if (c === 'service' && pick(w[1], ['password-encryption']) && w.length === 2) state.sec.enc = true;
+  else if (c === 'no' && pick(w[1], ['service']) && pick(w[2], ['password-encryption']) && w.length === 3) state.sec.enc = false;
+  else if (c === 'no' && pick(w[1], ['ip']) && pick(w[2], ['domain-lookup']) && w.length === 3) state.sec.nolookup = true;
+  // banner motd <delimiter>text<delimiter>
+  else if (c === 'banner' && pick(w[1], ['motd'])) {
+    const m = line.match(/^\S+\s+\S+\s+(\S)(.+)\1\s*$/);
+    if (!m) return false;
+    state.sec.banner = m[2];
+  }
+  else if (c === 'router' && ((pick(w[1], ['ospf', 'eigrp']) && w.length === 3 && isPid(w[2])) || (pick(w[1], ['rip']) && w.length === 2))) {
     state.proto = pick(w[1], ['ospf', 'eigrp', 'rip']);
+    state[state.proto].pid = state.proto === 'rip' ? 0 : Number(w[2]);
+    state.mode = 'router';
+  }
+  else if (c === 'ipv6' && pick(w[1], ['unicast-routing']) && w.length === 2) state.v6routing = true;
+  else if (c === 'no' && pick(w[1], ['ipv6']) && pick(w[2], ['unicast-routing']) && w.length === 3) state.v6routing = false;
+  else if (c === 'ipv6' && pick(w[1], ['router']) && pick(w[2], ['ospf']) && w.length === 4 && isPid(w[3])) {
+    state.proto = 'ospf6';
+    state.ospf6.pid = Number(w[3]);
     state.mode = 'router';
   }
   else if (c === 'cdp' && pick(w[1], ['run'])) state.cdp = true;
@@ -305,6 +390,11 @@ function interfaceCommand(c, w, line) {
   else if (c === 'ip' && pick(w[1], ['access-group']) && w[2] && pick(w[3], ['in', 'out'])) {
     i[pick(w[3], ['in', 'out']) === 'in' ? 'aclIn' : 'aclOut'] = w[2];
   }
+  // ip ospf <pid> area <area> / ipv6 ospf <pid> area <area>
+  else if ((c === 'ip' || c === 'ipv6') && pick(w[1], ['ospf']) && w.length === 5 && isPid(w[2]) && pick(w[3], ['area']) && areaNum(w[4]) !== null) {
+    i[c === 'ip' ? 'ospf' : 'ospf6'] = {pid: Number(w[2]), area: areaNum(w[4])};
+  }
+  else if (c === 'no' && pick(w[1], ['ip', 'ipv6']) && pick(w[2], ['ospf'])) i[pick(w[1], ['ip', 'ipv6']) === 'ip' ? 'ospf' : 'ospf6'] = null;
   else if (c === 'ipv6' && pick(w[1], ['address']) && w.length === 3) i.ip6 = w[2];
   else if (c === 'ipv6' && pick(w[1], ['address']) && w.length === 4 && pick(w[3], ['link-local'])) i.ll = w[2];
   else if (c === 'description' && w.length > 1) i.desc = line.slice(line.indexOf(' ') + 1);
@@ -316,6 +406,50 @@ function interfaceCommand(c, w, line) {
   else if (c === 'no' && pick(w[1], ['ip']) && pick(w[2], ['address'])) Object.assign(i, {ip: null, mask: null});
   else if (c === 'no' && pick(w[1], ['ipv6']) && pick(w[2], ['address'])) Object.assign(i, {ip6: null, ll: null});
   else if (c === 'no' && pick(w[1], ['cdp']) && pick(w[2], ['enable'])) i.cdp = false;
+  else return false;
+  return true;
+}
+
+// router ospf / ipv6 router ospf / router eigrp / router rip configuration; state.proto names the process in state
+function routerCommand(c, w) {
+  const p = state.proto;
+  const o = state[p];
+  // the interface may be typed as one word or two: Gi0/0 or GigabitEthernet 0/0
+  const passiveKey = from => w.length > from && ifKey(w.slice(from).join(''));
+  // network <net> <wildcard> area <area> (OSPFv3 has no network command)
+  if (c === 'network' && p === 'ospf' && w.length === 5 && DOTTED.test(w[1]) && DOTTED.test(w[2]) && pick(w[3], ['area']) && areaNum(w[4]) !== null) {
+    o.nets.push({net: w[1], wc: w[2], area: areaNum(w[4])});
+  }
+  // network <net> [wildcard] for EIGRP, network <net> for RIP; without a wildcard it is the whole classful network
+  else if (c === 'network' && (p === 'eigrp' || p === 'rip') && DOTTED.test(w[1]) && (w.length === 2 || (p === 'eigrp' && w.length === 3 && DOTTED.test(w[2])))) {
+    const cf = w.length === 2;
+    const wc = cf ? classWc(w[1]) : w[2];
+    o.nets.push({net: cf ? netText(w[1], [255, 255, 255, 255].map((b, n) => b ^ Number(wc.split('.')[n])).join('.')) : w[1], wc, cf});
+  }
+  else if (c === 'version' && p === 'rip' && w.length === 2 && (w[1] === '1' || w[1] === '2')) o.ver = Number(w[1]);
+  else if (c === 'no' && pick(w[1], ['auto-summary']) && w.length === 2 && (p === 'eigrp' || p === 'rip')) o.nosum = true;
+  else if (c === 'router-id' && p.startsWith('ospf') && w.length === 2 && DOTTED.test(w[1])) o.rid = w[1];
+  else if (c === 'eigrp' && p === 'eigrp' && pick(w[1], ['router-id']) && w.length === 3 && DOTTED.test(w[2])) o.rid = w[2];
+  else if (c === 'passive-interface' && passiveKey(1)) {
+    const name = state.ifs[passiveKey(1)].name;
+    if (!o.passive.includes(name)) o.passive.push(name);
+  }
+  else if (c === 'no' && pick(w[1], ['passive-interface']) && passiveKey(2)) {
+    o.passive = o.passive.filter(p => p !== state.ifs[passiveKey(2)].name);
+  }
+  else if (c === 'default-information' && p !== 'eigrp' && pick(w[1], ['originate']) && w.length === 2) o.originate = true;
+  else return false;
+  return true;
+}
+
+// line console 0 / line vty 0 4 configuration
+function lineCommand(c, w, line) {
+  const l = state.lines[state.line];
+  if (c === 'password' && w.length === 2) l.pw = line.split(/\s+/)[1];
+  else if (c === 'login' && w.length === 1) l.login = true;
+  else if (c === 'logging' && pick(w[1], ['synchronous']) && w.length === 2) l.sync = true;
+  else if (c === 'exec-timeout' && (w.length === 2 || w.length === 3) && w.slice(1).every(isNum)) l.timeout = w.slice(1).join(' ') + (w.length === 2 ? ' 0' : '');
+  else if (c === 'no' && pick(w[1], ['login']) && w.length === 2) l.login = false;
   else return false;
   return true;
 }

@@ -83,6 +83,16 @@ const ROUTING_COMMON = [
   ['timers', 'Adjust routing timers'],
 ];
 
+const OSPF_HELP = {head: 'Router configuration commands:', rows: byName([
+  ['area', 'OSPF area parameters'],
+  ['auto-cost', 'Calculate OSPF interface cost according to bandwidth'],
+  ['compatible', 'OSPF router compatibility list'],
+  ['log-adjacency-changes', 'Log changes in adjacency state'],
+  ['router-id', 'router-id for this OSPF process'],
+  ['summary-address', 'Configure IP address summaries'],
+  ...ROUTING_COMMON,
+])};
+
 const ROUTER_HELP = {
   user: {head: 'Exec commands:', rows: EXEC_USER},
   priv: {head: 'Exec commands:', rows: [
@@ -168,15 +178,8 @@ const ROUTER_HELP = {
   line: LINE,
   // per routing protocol (state.proto)
   router: {
-    ospf: {head: 'Router configuration commands:', rows: byName([
-      ['area', 'OSPF area parameters'],
-      ['auto-cost', 'Calculate OSPF interface cost according to bandwidth'],
-      ['compatible', 'OSPF router compatibility list'],
-      ['log-adjacency-changes', 'Log changes in adjacency state'],
-      ['router-id', 'router-id for this OSPF process'],
-      ['summary-address', 'Configure IP address summaries'],
-      ...ROUTING_COMMON,
-    ])},
+    ospf: OSPF_HELP,
+    ospf6: OSPF_HELP,
     eigrp: {head: 'Router configuration commands:', rows: byName([
       ['auto-summary', 'Enable automatic network number summarization'],
       ['eigrp', 'EIGRP specific commands'],
@@ -357,6 +360,10 @@ const NEXT = {
       ['eigrp', 'Enhanced Interior Gateway Routing Protocol (EIGRP)'],
       ['rip', 'Routing Information Protocol (RIP)'],
     ],
+    'router ospf': [arg('<1-65535>', 'Process ID')],
+    'ipv6': [['unicast-routing', 'Enable unicast routing', 'r'], ['router', 'Enable an IPV6 routing process', 'r']],
+    'ipv6 router': [['ospf', 'Open Shortest Path First (OSPF)']],
+    'ipv6 router ospf': [arg('<1-65535>', 'Process ID')],
     'ntp': [['server', 'Configure NTP server']],
     'logging': [['host', 'Set syslog server IP address and parameters']],
     'no': [
@@ -376,14 +383,21 @@ const NEXT = {
       ['access-group', 'Specify access control for packets', 'r'],
       ['helper-address', 'Specify a destination address for UDP broadcasts', 'r'],
       ['nat', 'NAT interface commands', 'r'],
+      ['ospf', 'OSPF interface commands', 'r'],
     ],
+    'ip ospf': [arg('<1-65535>', 'Process ID')],
+    'ip ospf *': [['area', 'Set the OSPF area ID']],
+    'ip ospf * area': [arg('<0-4294967295>', 'OSPF area ID as a decimal value'), arg('A.B.C.D', 'OSPF area ID in IP address format')],
+    'ipv6 ospf': [arg('<1-65535>', 'Process ID')],
+    'ipv6 ospf *': [['area', 'Set the OSPF area ID']],
+    'ipv6 ospf * area': [arg('<0-4294967295>', 'OSPF area ID as a decimal value'), arg('A.B.C.D', 'OSPF area ID in IP address format')],
     'ip address': [IP_ARG],
     'ip address *': [arg('A.B.C.D', 'IP subnet mask')],
     'ip access-group': [arg('<1-199>', 'IP access list (standard or extended)'), arg('WORD', 'Access-list name')],
     'ip access-group *': [['in', 'inbound packets'], ['out', 'outbound packets']],
     'ip helper-address': [IP_ARG],
     'ip nat': [['inside', 'Inside interface for address translation'], ['outside', 'Outside interface for address translation']],
-    'ipv6': [['address', 'Configure IPv6 address on interface']],
+    'ipv6': [['address', 'Configure IPv6 address on interface'], ['ospf', 'OSPF interface commands', 'r']],
     'ipv6 address': [arg('X:X:X:X::X/<0-128>', 'IPv6 prefix'), ['FE80::1', 'Link-local address']],
     'no': [
       ['shutdown', 'Shutdown the selected interface'],
@@ -423,6 +437,26 @@ const NEXT = {
       ['portfast', 'Enable an interface to move directly to forwarding on link up'],
       ['bpduguard', "Don't accept BPDUs on this interface"],
     ],
+  },
+  router: {
+    'network': [IP_ARG],
+    'network *': [arg('A.B.C.D', 'OSPF wild card bits')],
+    'network * *': [['area', 'Set the OSPF area ID']],
+    'network * * area': [arg('<0-4294967295>', 'OSPF area ID as a decimal value'), arg('A.B.C.D', 'OSPF area ID in IP address format')],
+    'router-id': [arg('A.B.C.D', 'OSPF router-id in IP address format')],
+    'passive-interface': [['GigabitEthernet', 'GigabitEthernet IEEE 802.3z']],
+    'passive-interface *': [],
+    'passive-interface GigabitEthernet': [arg('<0-0>/<0-3>', 'GigabitEthernet interface number')],
+    'default-information': [['originate', 'Distribute a default route']],
+    'version': [arg('<1-2>', 'version')],
+    'eigrp': [['router-id', 'router-id for this EIGRP process']],
+    'eigrp router-id': [arg('A.B.C.D', 'EIGRP router-id in IP address format')],
+    'no': [['auto-summary', 'Enable automatic network number summarization'], ['passive-interface', 'Suppress routing updates on an interface']],
+    'no passive-interface': [['GigabitEthernet', 'GigabitEthernet IEEE 802.3z']],
+    'no passive-interface *': [],
+    'no passive-interface GigabitEthernet': [arg('<0-0>/<0-3>', 'GigabitEthernet interface number')],
+    'exit': [],
+    'end': [],
   },
 };
 

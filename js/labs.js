@@ -513,6 +513,214 @@ const DEFROUTE = {
   },
 };
 
+// OSPFv2 and OSPFv3 on R1, process 1
+const ospfIn = (k, area, hint) => ({text: `${portName(k)} runs OSPF in area ${area}`, ok: st => ospfArea(st, k) === area, hint});
+const ospfIfCmd = (k, area) => ({
+  text: `${portName(k)} is put in area ${area} with the interface command`,
+  ok: st => st.ifs[k].ospf?.pid === 1 && st.ifs[k].ospf.area === area,
+  hint: `ip ospf 1 area ${area}`,
+});
+const ospf6In = (k, area) => ({
+  text: `${portName(k)} runs OSPFv3 in area ${area}`,
+  ok: st => st.ifs[k].ospf6?.pid === 1 && st.ifs[k].ospf6.area === area,
+  hint: `ipv6 ospf 1 area ${area}`,
+});
+const ospfRid = (v6, rid) => ({
+  text: `The ${v6 ? 'OSPFv3' : 'OSPF'} router ID is ${rid}`,
+  ok: st => st[v6 ? 'ospf6' : 'ospf'].rid === rid,
+  hint: `${v6 ? 'ipv6 router ospf 1' : 'router ospf 1'}, router-id ${rid}`,
+});
+const ospfPassive = (v6, k) => ({
+  text: `${portName(k)} is passive in ${v6 ? 'OSPFv3' : 'OSPF'}`,
+  ok: st => st[v6 ? 'ospf6' : 'ospf'].passive.includes(portName(k)),
+  hint: `passive-interface ${portName(k)}`,
+});
+const OSPF_ORIGINATE = {text: 'OSPF advertises the default route', ok: st => st.ospf.originate, hint: 'router ospf 1, default-information originate'};
+const v6If = (k, ip) => [
+  {text: `${portName(k)} is ${ip}`, ok: st => st.ifs[k].ip6 === ip, hint: `ipv6 address ${ip}`},
+  {text: `${portName(k)} is up`, ok: st => !st.ifs[k].shut, hint: 'no shutdown'},
+];
+const V6_ROUTING = {text: 'IPv6 routing is on', ok: st => st.v6routing, hint: 'ipv6 unicast-routing'};
+
+const OSPF_LEAD = x => `R1 Gi0/0 serves 192.168.${x}.0/24. R2 is an OSPF neighbour on Gi0/1.`;
+const OSPF_BASE = x => [...BOTH_IFS(x), ospfIn('gi0/0', 0, `network 192.168.${x}.0 0.0.0.255 area 0`), ospfIn('gi0/1', 0, 'network 10.0.0.0 0.0.0.3 area 0')];
+const OSPF = {
+  beginner: {
+    sub: 'Run OSPF process 1 in area 0 on the LAN and the link to R2',
+    lead: OSPF_LEAD,
+    steps: ['Address Gi0/0 and Gi0/1 on R1 and bring them up.', 'Start router ospf 1.',
+      'Add network statements for 192.168.x.0/24 and 10.0.0.0/30, both in area 0.'],
+    build: OSPF_BASE,
+  },
+  intermediate: {
+    sub: 'As Beginner, with router ID 1.1.1.1 and no OSPF hellos sent to the LAN',
+    lead: OSPF_LEAD,
+    steps: ['Keep OSPF running on both networks.', 'Set the router ID to 1.1.1.1.', 'Make Gi0/0 a passive interface.'],
+    build: x => [...OSPF_BASE(x), ospfRid(false, '1.1.1.1'), ospfPassive(false, 'gi0/0')],
+  },
+  advanced: {
+    sub: 'As Intermediate, and bring R3 on Gi0/2 into area 0 with the interface command',
+    lead: x => `R1 Gi0/0 serves 192.168.${x}.0/24. R2 is on Gi0/1 and R3 on Gi0/2.`,
+    steps: ['Keep the Intermediate settings.', 'Address Gi0/2 as 10.0.1.1/30 and bring it up.', 'On Gi0/2, use ip ospf 1 area 0 instead of a network statement.'],
+    build: x => [...OSPF.intermediate.build(x), ...R3_IF, ospfIfCmd('gi0/2', 0)],
+  },
+  expert: {
+    sub: 'As Advanced, and advertise a default route via R2 into OSPF',
+    lead: x => `R1 Gi0/0 serves 192.168.${x}.0/24. R2 is the way out on Gi0/1; R3 is on Gi0/2.`,
+    steps: ['Keep the Advanced settings.', 'Add a static default route via 10.0.0.2.', 'Under router ospf 1, add default-information originate.'],
+    build: x => [...OSPF.advanced.build(x), DEFAULT_VIA_R2, OSPF_ORIGINATE],
+  },
+};
+
+const OSPF6_LEAD = x => `Your prefix is 2001:db8:${x}::/48. R2 is an OSPFv3 neighbour on Gi0/1.`;
+const OSPF6_BASE = x => [V6_ROUTING, ...v6If('gi0/0', `2001:db8:${x}:1::1/64`), ...v6If('gi0/1', `2001:db8:${x}:12::1/64`),
+  ospfRid(true, '1.1.1.1'), ospf6In('gi0/0', 0), ospf6In('gi0/1', 0)];
+const OSPF6 = {
+  beginner: {
+    sub: 'Run OSPFv3 process 1 in area 0 on the LAN and the link to R2',
+    lead: OSPF6_LEAD,
+    steps: ['Turn on ipv6 unicast-routing.', 'Address Gi0/0 as 2001:db8:x:1::1/64 and Gi0/1 as 2001:db8:x:12::1/64, and bring them up.',
+      'Start ipv6 router ospf 1 with router ID 1.1.1.1 (R1 has no IPv4 address to borrow one from).', 'On both interfaces, add ipv6 ospf 1 area 0.'],
+    build: OSPF6_BASE,
+  },
+  intermediate: {
+    sub: 'As Beginner, and stop OSPFv3 hellos on the LAN',
+    lead: OSPF6_LEAD,
+    steps: ['Keep OSPFv3 running on both interfaces.', 'Under ipv6 router ospf 1, make Gi0/0 passive.'],
+    build: x => [...OSPF6_BASE(x), ospfPassive(true, 'gi0/0')],
+  },
+  advanced: {
+    sub: 'As Intermediate, and put the link to R3 on Gi0/2 in area 1',
+    lead: x => `Your prefix is 2001:db8:${x}::/48. R2 is on Gi0/1 (area 0) and R3 on Gi0/2 (area 1).`,
+    steps: ['Keep the Intermediate settings.', 'Address Gi0/2 as 2001:db8:x:13::1/64 and bring it up.', 'Add ipv6 ospf 1 area 1 on Gi0/2.'],
+    build: x => [...OSPF6.intermediate.build(x), ...v6If('gi0/2', `2001:db8:${x}:13::1/64`), ospf6In('gi0/2', 1)],
+  },
+  expert: {
+    sub: 'As Advanced, with the link-local address fe80::1 on every interface',
+    lead: x => `Your prefix is 2001:db8:${x}::/48. R2 is on Gi0/1 (area 0) and R3 on Gi0/2 (area 1).`,
+    steps: ['Keep the Advanced settings.', 'Give Gi0/0, Gi0/1 and Gi0/2 the link-local address fe80::1, so OSPFv3 neighbours see a simple next hop.'],
+    build: x => [...OSPF6.advanced.build(x), ...['gi0/0', 'gi0/1', 'gi0/2'].map(k => ({
+      text: `${portName(k)} has the link-local address fe80::1`, ok: st => st.ifs[k].ll === 'fe80::1', hint: 'ipv6 address fe80::1 link-local'}))],
+  },
+};
+
+// RIP and EIGRP on R1 (EIGRP uses AS 100)
+const IGP_NAME = {rip: 'RIP', eigrp: 'EIGRP'};
+const igpIn = (p, k, hint) => ({text: `${portName(k)} runs ${IGP_NAME[p]}`, ok: st => !!netHit(st, p, k), hint});
+const igpPassive = (p, k) => ({
+  text: `${portName(k)} is passive in ${IGP_NAME[p]}`,
+  ok: st => st[p].passive.includes(portName(k)),
+  hint: `passive-interface ${portName(k)}`,
+});
+const igpNoSum = p => ({text: `${IGP_NAME[p]} auto-summary is off`, ok: st => st[p].nosum, hint: 'no auto-summary'});
+const RIP_V2 = {text: 'RIP runs version 2', ok: st => st.rip.ver === 2, hint: 'router rip, version 2'};
+const RIP_ORIGINATE = {text: 'RIP advertises the default route', ok: st => st.rip.originate, hint: 'router rip, default-information originate'};
+const eigrpRid = rid => ({text: `The EIGRP router ID is ${rid}`, ok: st => st.eigrp.rid === rid, hint: `router eigrp 100, eigrp router-id ${rid}`});
+const EIGRP_AS = {text: 'EIGRP runs as AS 100', ok: st => st.eigrp.pid === 100, hint: 'router eigrp 100'};
+const EIGRP_CLASSFUL = {text: 'EIGRP covers 10.0.0.0 with one classful network statement', ok: st => st.eigrp.nets.some(n => n.cf && n.net === '10.0.0.0'), hint: 'network 10.0.0.0'};
+
+const RIP_LEAD = x => `R1 Gi0/0 serves 192.168.${x}.0/24. R2 is a RIP neighbour on Gi0/1.`;
+const RIP_BASE = x => [...BOTH_IFS(x), RIP_V2, igpIn('rip', 'gi0/0', `network 192.168.${x}.0`), igpIn('rip', 'gi0/1', 'network 10.0.0.0')];
+const RIP = {
+  beginner: {
+    sub: 'Run RIP version 2 on the LAN and the link to R2',
+    lead: RIP_LEAD,
+    steps: ['Address Gi0/0 and Gi0/1 on R1 and bring them up.', 'Start router rip and set version 2.',
+      'Add network 192.168.x.0 and network 10.0.0.0 (RIP networks are classful).'],
+    build: RIP_BASE,
+  },
+  intermediate: {
+    sub: 'As Beginner, with auto-summary off and no RIP updates sent to the LAN',
+    lead: RIP_LEAD,
+    steps: ['Keep RIPv2 running on both networks.', 'Turn off auto-summary.', 'Make Gi0/0 a passive interface.'],
+    build: x => [...RIP_BASE(x), igpNoSum('rip'), igpPassive('rip', 'gi0/0')],
+  },
+  advanced: {
+    sub: 'As Intermediate, and advertise a default route via R2 into RIP',
+    lead: x => `R1 Gi0/0 serves 192.168.${x}.0/24. R2 is the way out on Gi0/1.`,
+    steps: ['Keep the Intermediate settings.', 'Add a static default route via 10.0.0.2.', 'Under router rip, add default-information originate.'],
+    build: x => [...RIP.intermediate.build(x), DEFAULT_VIA_R2, RIP_ORIGINATE],
+  },
+  expert: {
+    sub: 'As Advanced, and bring up R3 on Gi0/2 without sending it RIP updates',
+    lead: x => `R1 Gi0/0 serves 192.168.${x}.0/24. R2 is the way out on Gi0/1; R3 is on Gi0/2.`,
+    steps: ['Keep the Advanced settings.', 'Address Gi0/2 as 10.0.1.1/30 and bring it up (network 10.0.0.0 already covers it).', 'Make Gi0/2 a passive interface.'],
+    build: x => [...RIP.advanced.build(x), ...R3_IF, igpIn('rip', 'gi0/2', 'network 10.0.0.0'), igpPassive('rip', 'gi0/2')],
+  },
+};
+
+const EIGRP_LEAD = x => `R1 Gi0/0 serves 192.168.${x}.0/24. R2 is an EIGRP neighbour on Gi0/1.`;
+const EIGRP_BASE = x => [...BOTH_IFS(x), EIGRP_AS, igpIn('eigrp', 'gi0/0', `network 192.168.${x}.0 0.0.0.255`), igpIn('eigrp', 'gi0/1', 'network 10.0.0.0 0.0.0.3')];
+const EIGRP = {
+  beginner: {
+    sub: 'Run EIGRP AS 100 on the LAN and the link to R2',
+    lead: EIGRP_LEAD,
+    steps: ['Address Gi0/0 and Gi0/1 on R1 and bring them up.', 'Start router eigrp 100.',
+      'Add network 192.168.x.0 0.0.0.255 and network 10.0.0.0 0.0.0.3.'],
+    build: EIGRP_BASE,
+  },
+  intermediate: {
+    sub: 'As Beginner, with router ID 1.1.1.1 and no EIGRP hellos sent to the LAN',
+    lead: EIGRP_LEAD,
+    steps: ['Keep EIGRP running on both networks.', 'Set the router ID to 1.1.1.1.', 'Make Gi0/0 a passive interface.'],
+    build: x => [...EIGRP_BASE(x), eigrpRid('1.1.1.1'), igpPassive('eigrp', 'gi0/0')],
+  },
+  advanced: {
+    sub: 'As Intermediate, with auto-summary off and R3 on Gi0/2 in EIGRP',
+    lead: x => `R1 Gi0/0 serves 192.168.${x}.0/24. R2 is on Gi0/1 and R3 on Gi0/2.`,
+    steps: ['Keep the Intermediate settings.', 'Turn off auto-summary.', 'Address Gi0/2 as 10.0.1.1/30 and bring it up.', 'Add network 10.0.1.0 0.0.0.3.'],
+    build: x => [...EIGRP.intermediate.build(x), igpNoSum('eigrp'), ...R3_IF, igpIn('eigrp', 'gi0/2', 'network 10.0.1.0 0.0.0.3')],
+  },
+  expert: {
+    sub: 'As Advanced, and cover both 10.0.x.0/30 links with one classful network statement',
+    lead: x => `R1 Gi0/0 serves 192.168.${x}.0/24. R2 is on Gi0/1 and R3 on Gi0/2.`,
+    steps: ['Keep the Advanced settings.', 'Add network 10.0.0.0 with no wildcard mask, which EIGRP treats as the whole classful network.'],
+    build: x => [...EIGRP.advanced.build(x), EIGRP_CLASSFUL],
+  },
+};
+
+// Device hardening best practices on R1
+const lineCheck = (name, text, hint, ok) => ({text, ok: st => ok(st.lines[name]), hint});
+const hardenLine = (name, cmd) => [
+  lineCheck(name, `${name === 'vty' ? 'VTY lines have' : 'The console has'} a password`, `${cmd}, password <word>`, l => !!l.pw),
+  lineCheck(name, `${name === 'vty' ? 'VTY lines require' : 'The console requires'} a login`, `${cmd}, login`, l => l.login),
+];
+const HARDEN_BASE = [
+  {text: 'The hostname is EDGE1', ok: st => st.host === 'EDGE1', hint: 'hostname EDGE1'},
+  {text: 'The privileged EXEC mode is protected by an enable secret', ok: st => st.sec.secret, hint: 'enable secret <word>'},
+  {text: 'Stored passwords are encrypted', ok: st => st.sec.enc, hint: 'service password-encryption'},
+];
+const HARDEN = {
+  beginner: {
+    sub: 'Name the router EDGE1, protect privileged mode and encrypt stored passwords',
+    lead: 'R1 is a fresh router with no security configured.',
+    steps: ['Set the hostname to EDGE1.', 'Set an enable secret.', 'Turn on service password-encryption.'],
+    build: () => HARDEN_BASE,
+  },
+  intermediate: {
+    sub: 'As Beginner, with a login banner and no DNS lookups for mistyped commands',
+    lead: 'R1 is a fresh router with no security configured.',
+    steps: ['Keep the Beginner settings.', 'Add a banner, for example banner motd #Authorized access only#.', 'Turn off DNS lookups with no ip domain-lookup.'],
+    build: () => [...HARDEN_BASE, {text: 'A MOTD banner is set', ok: st => !!st.sec.banner, hint: 'banner motd #Authorized access only#'},
+      {text: 'DNS lookups for mistyped commands are off', ok: st => st.sec.nolookup, hint: 'no ip domain-lookup'}],
+  },
+  advanced: {
+    sub: 'As Intermediate, and lock down the console line',
+    lead: 'R1 is a fresh router with no security configured.',
+    steps: ['Keep the Intermediate settings.', 'Under line console 0, set a password and login.', 'Add logging synchronous so log messages do not interrupt typing.'],
+    build: () => [...HARDEN.intermediate.build(), ...hardenLine('console', 'line console 0'),
+      lineCheck('console', 'The console uses logging synchronous', 'line console 0, logging synchronous', l => l.sync)],
+  },
+  expert: {
+    sub: 'As Advanced, and lock down the VTY lines with an idle timeout on every line',
+    lead: 'R1 is a fresh router with no security configured.',
+    steps: ['Keep the Advanced settings.', 'Under line vty 0 4, set a password and login.', 'Set exec-timeout 5 0 on the console and on the VTY lines.'],
+    build: () => [...HARDEN.advanced.build(), ...hardenLine('vty', 'line vty 0 4'),
+      lineCheck('console', 'The console logs out after 5 idle minutes', 'line console 0, exec-timeout 5 0', l => l.timeout === '5 0'),
+      lineCheck('vty', 'VTY lines log out after 5 idle minutes', 'line vty 0 4, exec-timeout 5 0', l => l.timeout === '5 0')],
+  },
+};
+
 const TELNET_ACL = [aclEntries('110', 'extended', ['deny tcp any any eq telnet', 'permit ip any any']), aclApplied('gi0/0', 'in', '110')];
 const ACL = {
   beginner: {
@@ -704,6 +912,11 @@ const TOPICS = {
   portsec: {name: 'Port Security', kind: 'sw', lead: SW_LEAD, levels: PORTSEC},
   static: {name: 'Static Routing', kind: 'rt', levels: STATIC},
   defroute: {name: 'Default Routes', kind: 'rt', levels: DEFROUTE},
+  ospf: {name: 'OSPFv2 (IPv4)', kind: 'rt', levels: OSPF},
+  ospfv3: {name: 'OSPFv3 (IPv6)', kind: 'rt', levels: OSPF6},
+  rip: {name: 'RIPv2', kind: 'rt', levels: RIP},
+  eigrp: {name: 'EIGRP', kind: 'rt', levels: EIGRP},
+  harden: {name: 'Device Hardening (Best Practices)', kind: 'rt', levels: HARDEN},
   acl: {name: 'Standard and Extended ACLs (IPv4)', kind: 'rt', levels: ACL},
   dhcp: {name: 'DHCP', kind: 'rt', levels: DHCP},
   dhcprelay: {name: 'DHCP Relay', kind: 'rt', levels: DHCPRELAY},

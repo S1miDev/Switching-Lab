@@ -241,6 +241,9 @@ function cmdSyntax(c) {
     .replace(/\b\d{1,3}(\.\d{1,3}){3}\b/g, '<ip>')
     .replace(/\S*:\S*:\S*/g, '<addr/len>')           // IPv6 addresses
     .replace(/^(name|description) .+/, '$1 <text>')
+    .replace(/^hostname .+/, 'hostname <name>')
+    .replace(/^domain-name .+/, 'domain-name <name>')
+    .replace(/^(banner \w+) .+/, '$1 #text#')
     .replace(/(?<=\s)\d+(,\d+)*(?=\s|$)/g, '<n>');   // numbers and lists such as 10,20
 }
 
@@ -285,6 +288,11 @@ function reset() {
   for (const out of Object.values(logs)) out.textContent = '';
   cmdHistory.length = 0;
   historyPos = 0;
+  $('solution').hidden = true;
+  $('cmds-card').open = false;
+  clearTimeout(solutionTimer);
+  solutionTimer = null;
+  $('show-solution').textContent = 'Show solution';
   showDevice('R1');
   renderReqs(null);
 }
@@ -412,6 +420,23 @@ term.addEventListener('click', () => input.focus());
 $('check').addEventListener('click', check);
 $('reset').addEventListener('click', reset);
 $('new-net').addEventListener('click', () => newLab());
+// a lab with a known-good config shows that; the others show the exact commands of every requirement's last hint
+// showing it needs a second click within 3 seconds, so it is not revealed by accident
+let solutionTimer = null;
+$('show-solution').addEventListener('click', e => {
+  const box = $('solution');
+  if (box.hidden && !solutionTimer) {
+    e.target.textContent = 'Click again to confirm';
+    solutionTimer = setTimeout(() => { solutionTimer = null; e.target.textContent = 'Show solution'; }, 3000);
+    return;
+  }
+  clearTimeout(solutionTimer);
+  solutionTimer = null;
+  box.hidden = !box.hidden;
+  e.target.textContent = box.hidden ? 'Show solution' : 'Hide solution';
+  box.textContent = solution.length ? solution.join('\n')
+    : [...new Set(reqs.map(r => hintLines(r, 2).replace('Commands: ', '')))].join('\n');
+});
 $('reqs').addEventListener('click', e => {
   const b = e.target.closest('.rhint-btn');
   if (!b) return;
