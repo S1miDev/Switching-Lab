@@ -1,0 +1,4 @@
+/* Tailwind without preflight: css/style.css owns the base styles, a reset would shift them. */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);

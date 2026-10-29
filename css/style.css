@@ -28,25 +28,6 @@
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-[data-theme="light"] {
-  --bg: #F4F7FD;
-  --surface: #FFFFFF;
-  --surface-2: #EEF2FA;
-  --border: #D5DDEE;
-  --canvas: #F8FAFE;
-  --text: #0F1A33;
-  --muted: #5B6785;
-  --accent: #2F6FE4;
-  --accent-ink: #FFFFFF;
-  --success: #247A5C;
-  --bad: #C62828;
-  --warn: #8A5A00;
-  --accent-tint: rgba(47, 111, 228, .12);
-  --bad-tint: rgba(198, 40, 40, .3);
-  --grid-line: rgba(15, 26, 51, .06);
-  color-scheme: light;
-}
-
 /* ---- base ---- */
 * {
   box-sizing: border-box;
@@ -185,47 +166,6 @@ button:disabled {
 .nav-item.active {
   background: var(--accent-tint);
   color: var(--accent);
-}
-
-#theme-toggle {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  padding: 0;
-  margin-left: auto;
-  border-radius: 8px;
-  background: none;
-  border: 0;
-  color: var(--muted);
-}
-
-#theme-toggle:hover {
-  color: var(--text);
-  filter: none;
-}
-
-#theme-toggle svg {
-  width: 18px;
-  height: 18px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.6;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-#theme-toggle .sun {
-  display: none;
-}
-
-[data-theme="light"] #theme-toggle .sun {
-  display: block;
-}
-
-[data-theme="light"] #theme-toggle .moon {
-  display: none;
 }
 
 /* ---- page shell ---- */
@@ -1121,51 +1061,6 @@ details.card summary {
 /* ---- Mock exam ---- */
 .exam-wrap {
   max-width: 820px;
-}
-
-.exam-q {
-  min-width: 0;
-  margin: 0 0 20px;
-  padding: 0;
-  border: 0;
-}
-
-.exam-q legend {
-  margin-bottom: 8px;
-  padding: 0;
-  font-weight: 600;
-}
-
-.exam-opt {
-  display: block;
-  margin: 6px 0;
-  padding: 10px 14px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--surface-2);
-  cursor: pointer;
-}
-
-.exam-opt:hover {
-  border-color: var(--accent);
-}
-
-.exam-opt input {
-  accent-color: var(--accent);
-}
-
-.exam-q.ok legend {
-  color: var(--success);
-}
-
-.exam-q.bad legend {
-  color: var(--bad);
-}
-
-/* the correct answer, shown after submitting */
-.exam-opt.right {
-  border-color: var(--success);
-  color: var(--success);
 }
 
 /* ---- Reference ---- */

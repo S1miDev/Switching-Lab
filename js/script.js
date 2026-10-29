@@ -184,9 +184,9 @@ function renderReqs(results) {
       li.classList.add('cur');
     }
     li.append(el('span', 'mark', res === null ? '○' : res ? '✓' : '✗'));
-    li.append(el('span', 'rtext', r.text + (res === false ? ` — expected: ${r.hint}` : '')));
+    li.append(el('span', 'rtext', r.text + (res === false && !examRunning ? ` — expected: ${r.hint}` : '')));
     const used = reqHints[i] || 0;
-    if (res !== true && used < 3) {
+    if (res !== true && used < 3 && !examRunning) {
       const b = el('button', 'ghost rhint-btn', `Hint (${3 - used} left)`);
       b.dataset.i = i;
       li.append(b);
@@ -472,13 +472,6 @@ document.addEventListener('click', e => {
 window.addEventListener('resize', () => {
   moveSeg($('dash-seg'));
   moveSeg($('topo-seg'));
-});
-
-// the saved theme is applied in index.html before the page first paints
-$('theme-toggle').addEventListener('click', () => {
-  const theme = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
-  document.documentElement.dataset.theme = theme;
-  try { localStorage.setItem('theme', theme); } catch {} // storage can be blocked; the switch still works for this visit
 });
 
 // ---- start ----

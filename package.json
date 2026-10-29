@@ -1,0 +1,25 @@
+{
+  "name": "switching-lab",
+  "version": "1.0.0",
+  "description": "Webové virtuální prostředí na switching a routing ve stylu Cisco labů. Vybereš si téma a obtížnost a dostaneš náhodnou úlohu.",
+  "main": "index.html",
+  "scripts": {
+    "dev:css": "tailwindcss -i ./css/input.css -o ./css/output.css --watch",
+    "build:css": "tailwindcss -i ./css/input.css -o ./css/output.css --minify"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/S1miDev/Switching-Lab.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/S1miDev/Switching-Lab/issues"
+  },
+  "homepage": "https://github.com/S1miDev/Switching-Lab#readme",
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.3.3",
+    "tailwindcss": "^4.3.3"
+  }
+}

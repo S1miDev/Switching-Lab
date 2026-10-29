@@ -6,15 +6,7 @@
   <title>SwitchingLab</title>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-  <script>
-    // runs before the first paint, so the page never flashes the wrong theme
-    (function () {
-      var theme;
-      try { theme = localStorage.getItem('theme'); } catch (e) {}
-      if (theme !== 'light' && theme !== 'dark') theme = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
-      document.documentElement.dataset.theme = theme;
-    })();
-  </script>
+  <link rel="stylesheet" href="css/output.css">
   <link rel="stylesheet" href="css/style.css">
 </head>
 
@@ -25,10 +17,6 @@
     <button class="nav-item" id="nav-topo">Topology</button>
     <button class="nav-item" id="nav-exam">Mock exam</button>
     <button class="nav-item" id="nav-ref">Reference</button>
-    <button id="theme-toggle" type="button" aria-label="Toggle light/dark theme">
-      <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
-      <svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
-    </button>
   </nav>
 
   <!-- Labs: data-lab names a topic in js/labs.js, data-name is what the search box matches -->
@@ -224,6 +212,14 @@
         <button class="ghost" id="back">Back to labs</button>
       </div>
     </header>
+    <!-- Mock exam progress: js/exam.js shows it only during an exam -->
+    <div id="exam-bar" hidden>
+      <div class="my-3 flex items-center justify-between gap-4 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-4 py-2">
+        <span class="font-semibold">Mock exam: lab <span id="exam-pos"></span></span>
+        <span id="exam-time" class="font-mono text-[color:var(--muted)]"></span>
+        <button id="exam-next">Next lab</button>
+      </div>
+    </div>
     <main class="lab-grid">
       <div class="lab-col">
         <section class="card">
@@ -331,10 +327,10 @@
     <header class="page-head">
       <div>
         <h1>Mock exam</h1>
-        <p>A timed set of CCNA multiple-choice questions.</p>
+        <p>A set of labs at one difficulty, with or without a time limit. Pass mark 80%.</p>
       </div>
     </header>
-    <div class="exam-wrap"><section class="card" id="exam-card"></section></div>
+    <div class="exam-wrap"><div id="exam-card"></div></div>
   </section>
 
   <!-- Reference: each title must match a key of REF_INFO in js/reference.js -->
