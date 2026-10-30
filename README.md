@@ -2,7 +2,7 @@
 
 Webové virtuální prostředí na switching a routing ve stylu Cisco labů. Vybereš si téma a obtížnost a dostaneš náhodnou úlohu.
 
-🔗 **Živá verze:** https://s1midev.github.io/Switching-Lab/
+🔗 **Živá verze:** https://switching-lab.netlify.app/
 
 <img width="1877" height="974" alt="Snímek obrazovky 2026-10-29 102401" src="https://github.com/user-attachments/assets/0a565623-2690-4700-ab0b-873035fc6f3f" />
 
