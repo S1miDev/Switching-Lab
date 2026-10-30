@@ -1,17 +1,28 @@
 // Mock exam: a few random labs from the chosen topics at one difficulty, optionally timed, passed at 80%.
-// The labs are the normal lab page (newLab in script.js); the exam only picks them, times them and adds up their requirements.
+// Each lab is a lab session (session.js) shown on the lab page in exam mode (lab.js); the exam picks them, times them and adds up their requirements.
 const EXAM_PASS = 80;
 // the number of labs: at least one per chosen topic, at most 10 more than that (30 in all)
 const examRange = n => [Math.max(1, n), Math.min(30, n + 10)];
 const EXAM_MIN_PER_LAB = {beginner: 5, intermediate: 8, advanced: 12, expert: 15};
 let examLabs = [];    // {topic, met, total} for each lab of this exam
 let examPos = 0;      // the open lab
+let examSession = null; // the open lab's session
 let examLevel = '';
 let examEnd = 0;      // when the time runs out (ms timestamp), 0 = no time limit
 let examTimer = null;
 let examRunning = false;
 let examDone = false;
 const examCard = document.getElementById('exam-card');
+
+// the progress bar shown above the open lab: which lab, the time left and the way on
+const examBar = document.createElement('div');
+examBar.innerHTML = `
+  <div class="my-3 flex items-center justify-between gap-4 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-4 py-2">
+    <span class="font-semibold">Mock exam: lab <span data-pos></span></span>
+    <span data-time class="font-mono text-[color:var(--muted)]"></span>
+    <button data-next>Next lab</button>
+  </div>`;
+const examPosEl = examBar.querySelector('[data-pos]'), examTimeEl = examBar.querySelector('[data-time]'), examNext = examBar.querySelector('[data-next]');
 
 const secondsLeft = () => Math.max(0, Math.round((examEnd - Date.now()) / 1000));
 const clock = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
@@ -20,28 +31,26 @@ const cap = s => s[0].toUpperCase() + s.slice(1);
 // keep the open lab's result before moving on
 function examSave() {
   const lab = examLabs[examPos];
-  lab.met = reqs.filter(r => r.ok(state)).length;
-  lab.total = reqs.length;
+  lab.met = examSession.grade().filter(Boolean).length;
+  lab.total = examSession.reqs.length;
 }
 
-// an exam is plain: no command list, hints or solution, and no way back to the Labs page
-function examAids(on) {
-  $('exam-bar').hidden = on;
-  $('back').hidden = !on;
-  $('cmds-card').hidden = !on;
-  $('show-solution').hidden = !on;
+// an exam is plain: the lab page leaves out the command list, hints and solution, and the way back to the Labs page
+function examMount() {
+  labPage.open(examSession, {mode: 'exam', crumb: 'Mock exam / ' + CATALOGUE[examSession.topic].name, bar: examBar});
 }
 
 function examOpen() {
-  newLab(examLevel, examLabs[examPos].topic);
-  $('exam-pos').textContent = `${examPos + 1}/${examLabs.length}`;
-  $('exam-next').textContent = examPos === examLabs.length - 1 ? 'Finish exam' : 'Next lab';
-  $('crumb').textContent = 'Mock exam / ' + TOPICS[examLabs[examPos].topic].name;
+  examSession = createSession({topic: examLabs[examPos].topic, level: examLevel, net: randomNet(examSession?.net)});
+  examPosEl.textContent = `${examPos + 1}/${examLabs.length}`;
+  examNext.textContent = examPos === examLabs.length - 1 ? 'Finish exam' : 'Next lab';
+  examMount();
   examShowLab();
 }
 
 // the lab page, but with Mock exam staying the highlighted tab
 function examShowLab() {
+  if (!labPage.shows(examSession)) examMount(); // another lab was opened meanwhile
   show('lab');
   $('nav-labs').classList.remove('active');
   $('nav-exam').classList.add('active');
@@ -62,13 +71,12 @@ function examStart(form) {
   examEnd = data.get('timed') === '1' ? Date.now() + EXAM_MIN_PER_LAB[examLevel] * 60000 * topics.length : 0;
   clearInterval(examTimer);
   if (examEnd) examTimer = setInterval(examTick, 1000);
-  examAids(false);
   examTick();
   examOpen();
 }
 
 function examTick() {
-  $('exam-time').textContent = examEnd ? 'Time left ' + clock(secondsLeft()) : 'No time limit';
+  examTimeEl.textContent = examEnd ? 'Time left ' + clock(secondsLeft()) : 'No time limit';
   if (examEnd && !secondsLeft()) examFinish();
 }
 
@@ -77,7 +85,6 @@ function examFinish() {
   clearInterval(examTimer);
   examRunning = false;
   examDone = true;
-  examAids(true);
   show('exam');
   examRender();
 }
@@ -103,7 +110,7 @@ function setupHtml() {
     `<label class="${TILE} flex-col !items-start gap-0.5"><span class="flex items-center gap-2 font-medium">` +
     `<input type="radio" name="level" value="${l}" class="accent-[color:var(--accent)]"${l === level ? ' checked' : ''}>${cap(l)}</span>` +
     `<span class="pl-6 text-xs text-[color:var(--muted)]">${EXAM_MIN_PER_LAB[l]} min per lab</span></label>`);
-  const topics = Object.entries(TOPICS).map(([k, t]) =>
+  const topics = Object.entries(CATALOGUE).filter(([, t]) => t.labLevels.length).map(([k, t]) =>
     `<label class="${TILE} text-sm"><input type="checkbox" name="topic" value="${k}" class="accent-[color:var(--accent)]">${esc(t.name)}</label>`);
   const timed = (v, text, on) =>
     `<label class="${TILE}"><input type="radio" name="timed" value="${v}" class="accent-[color:var(--accent)]"${on ? ' checked' : ''}>${text}</label>`;
@@ -126,7 +133,7 @@ function resultHtml() {
   const pass = met * 100 >= EXAM_PASS * total; // compared exactly, so 79.6% never rounds up to a pass
   const rows = examLabs.map(l =>
     `<li class="flex items-center justify-between gap-4 rounded-[10px] border border-[color:var(--border)] bg-[color:var(--surface-2)] px-4 py-3">` +
-    `<span class="font-medium">${esc(TOPICS[l.topic].name)}</span>` +
+    `<span class="font-medium">${esc(CATALOGUE[l.topic].name)}</span>` +
     `<span class="font-mono text-[13px] text-[color:var(--muted)]"><span class="text-[color:var(--text)]">${l.met}/${l.total}</span></span></li>`);
   return '<div class="grid gap-5">' +
     `<div class="${BOX} flex flex-wrap items-center justify-between gap-4">` +
@@ -163,7 +170,7 @@ function examSync() {
 examCard.addEventListener('change', e => {
   if (e.target.name === 'topic' || e.target.name === 'count') examSync();
 });
-document.getElementById('exam-next').addEventListener('click', () => {
+examNext.addEventListener('click', () => {
   examSave();
   if (examPos === examLabs.length - 1) return examFinish();
   examPos++;

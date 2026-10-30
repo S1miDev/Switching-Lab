@@ -19,7 +19,7 @@
     <button class="nav-item" id="nav-ref">Reference</button>
   </nav>
 
-  <!-- Labs: data-lab names a topic in js/labs.js, data-name is what the search box matches -->
+  <!-- Labs: the topic rows are built from CATALOGUE in js/topics.js (renderDashboard in js/script.js) -->
   <section id="dash" class="page">
     <header class="page-head">
       <div>
@@ -37,170 +37,10 @@
       </div>
     </header>
 
-    <div class="domains">
-      <details class="domain" open>
-        <summary><span class="dom-num">1.0</span><span class="dom-title">Network fundamentals</span><span class="dom-meta">6 topics</span></summary>
-        <div class="rows">
-          <div class="row" data-name="ipv4 addressing">
-            <div class="row-title">IPv4 addressing</div>
-            <div class="row-desc">Split a random 192.168.x.0/24 network into two LANs and configure R1's gateways.</div>
-            <button class="start" data-lab="ipv4">Start lab →</button>
-          </div>
-          <div class="row" data-name="subnetting">
-            <div class="row-title">Subnetting</div>
-            <div class="row-desc">Divide a network into equal blocks.</div>
-            <button class="start" data-lab="subnetting">Start lab →</button>
-          </div>
-          <div class="row" data-name="vlsm">
-            <div class="row-title">VLSM</div>
-            <div class="row-desc">Right-size subnets to host requirements.</div>
-            <button class="start" data-lab="vlsm">Start lab →</button>
-          </div>
-          <div class="row" data-name="ipv6 addressing">
-            <div class="row-title">IPv6 Addressing</div>
-            <div class="row-desc">Global, link-local and prefix configuration.</div>
-            <button class="start" data-lab="ipv6">Start lab →</button>
-          </div>
-          <div class="row" data-name="cdp lldp">
-            <div class="row-title">CDP &amp; LLDP</div>
-            <div class="row-desc">Neighbour discovery and port-level control.</div>
-            <button class="start" data-lab="cdp">Start lab →</button>
-          </div>
-          <div class="row" data-name="device hardening best practices security">
-            <div class="row-title">Device Hardening (Best Practices)</div>
-            <div class="row-desc">Hostname, enable secret, password encryption, banner and secured console and VTY lines.</div>
-            <button class="start" data-lab="harden">Start lab →</button>
-          </div>
-        </div>
-      </details>
-
-      <details class="domain">
-        <summary><span class="dom-num">2.0</span><span class="dom-title">Network access</span><span class="dom-meta">8 topics</span></summary>
-        <div class="rows">
-          <div class="row" data-name="vlans">
-            <div class="row-title">VLANs</div>
-            <div class="row-desc">Put switch ports into separate broadcast domains.</div>
-            <button class="start" data-lab="vlans">Start lab →</button>
-          </div>
-          <div class="row" data-name="access ports">
-            <div class="row-title">Access Ports</div>
-            <div class="row-desc">Carry a single VLAN to an end device such as a PC or printer.</div>
-            <button class="start" data-lab="access">Start lab →</button>
-          </div>
-          <div class="row" data-name="trunking">
-            <div class="row-title">Trunking (802.1Q)</div>
-            <div class="row-desc">Carry several VLANs between switches using tags.</div>
-            <button class="start" data-lab="trunk">Start lab →</button>
-          </div>
-          <div class="row" data-name="inter-vlan routing">
-            <div class="row-title">Inter-VLAN Routing</div>
-            <div class="row-desc">Let hosts in different VLANs talk, using router-on-a-stick or SVIs.</div>
-            <button class="start" data-lab="intervlan">Start lab →</button>
-          </div>
-          <div class="row" data-name="stp">
-            <div class="row-title">Spanning Tree Protocol (STP)</div>
-            <div class="row-desc">Block redundant links to prevent Layer 2 loops.</div>
-            <button class="start" data-lab="stp">Start lab →</button>
-          </div>
-          <div class="row" data-name="etherchannel">
-            <div class="row-title">EtherChannel</div>
-            <div class="row-desc">Bundle several physical links into one logical link for bandwidth and redundancy.</div>
-            <button class="start" data-lab="etherchannel">Start lab →</button>
-          </div>
-          <div class="row" data-name="advanced stp">
-            <div class="row-title">Advanced STP (RSTP, PVST+, Guards)</div>
-            <div class="row-desc">Faster convergence, plus guards against topology changes and rogue switches.</div>
-            <button class="start" data-lab="advstp">Start lab →</button>
-          </div>
-          <div class="row" data-name="advanced etherchannel">
-            <div class="row-title">Advanced EtherChannel</div>
-            <div class="row-desc">Load balancing, Layer 3 EtherChannels and consistency checks.</div>
-            <button class="start" data-lab="advetherchannel">Start lab →</button>
-          </div>
-        </div>
-      </details>
-
-      <details class="domain">
-        <summary><span class="dom-num">3.0</span><span class="dom-title">IP connectivity</span><span class="dom-meta">6 topics</span></summary>
-        <div class="rows">
-          <div class="row" data-name="static routing">
-            <div class="row-title">Static Routing</div>
-            <div class="row-desc">Send traffic between two networks with static routes.</div>
-            <button class="start" data-lab="static">Start lab →</button>
-          </div>
-          <div class="row" data-name="default routes">
-            <div class="row-title">Default Routes</div>
-            <div class="row-desc">The gateway of last resort, used when no more specific route matches.</div>
-            <button class="start" data-lab="defroute">Start lab →</button>
-          </div>
-          <div class="row" data-name="ospf ospfv2 ipv4">
-            <div class="row-title">OSPFv2 (IPv4)</div>
-            <div class="row-desc">Single-area OSPFv2: network statements, router ID and passive interfaces.</div>
-            <button class="start" data-lab="ospf">Start lab →</button>
-          </div>
-          <div class="row" data-name="ospfv3 ospf ipv6">
-            <div class="row-title">OSPFv3 (IPv6)</div>
-            <div class="row-desc">Run OSPF for IPv6 with interface commands and a manual router ID.</div>
-            <button class="start" data-lab="ospfv3">Start lab →</button>
-          </div>
-          <div class="row" data-name="rip ripv2">
-            <div class="row-title">RIPv2</div>
-            <div class="row-desc">Distance-vector routing: classful networks, version 2, auto-summary and passive interfaces.</div>
-            <button class="start" data-lab="rip">Start lab →</button>
-          </div>
-          <div class="row" data-name="eigrp">
-            <div class="row-title">EIGRP</div>
-            <div class="row-desc">EIGRP AS 100: network statements with wildcards, router ID, passive interfaces and auto-summary.</div>
-            <button class="start" data-lab="eigrp">Start lab →</button>
-          </div>
-        </div>
-      </details>
-
-      <details class="domain">
-        <summary><span class="dom-num">4.0</span><span class="dom-title">IP services</span><span class="dom-meta">4 topics</span></summary>
-        <div class="rows">
-          <div class="row" data-name="dhcp">
-            <div class="row-title">DHCP</div>
-            <div class="row-desc">Give hosts their IP settings automatically from a pool.</div>
-            <button class="start" data-lab="dhcp">Start lab →</button>
-          </div>
-          <div class="row" data-name="dhcp relay">
-            <div class="row-title">DHCP Relay</div>
-            <div class="row-desc">Forward DHCP requests across subnets using ip helper-address.</div>
-            <button class="start" data-lab="dhcprelay">Start lab →</button>
-          </div>
-          <div class="row" data-name="nat">
-            <div class="row-title">NAT</div>
-            <div class="row-desc">Translate private addresses for internet access, using static, dynamic or PAT.</div>
-            <button class="start" data-lab="nat">Start lab →</button>
-          </div>
-          <div class="row" data-name="network services">
-            <div class="row-title">Network Services (NTP, Syslog, DNS)</div>
-            <div class="row-desc">Clock sync, central logging and name resolution.</div>
-            <button class="start" data-lab="services">Start lab →</button>
-          </div>
-        </div>
-      </details>
-
-      <details class="domain">
-        <summary><span class="dom-num">5.0</span><span class="dom-title">Security fundamentals</span><span class="dom-meta">2 topics</span></summary>
-        <div class="rows">
-          <div class="row" data-name="acl ipv4">
-            <div class="row-title">Standard and Extended ACLs (IPv4)</div>
-            <div class="row-desc">Filter IPv4 traffic top down, with an implicit deny at the end.</div>
-            <button class="start" data-lab="acl">Start lab →</button>
-          </div>
-          <div class="row" data-name="port security">
-            <div class="row-title">Port Security</div>
-            <div class="row-desc">Limit which MAC addresses can use an access port.</div>
-            <button class="start" data-lab="portsec">Start lab →</button>
-          </div>
-        </div>
-      </details>
-    </div>
+    <div class="domains" id="dash-domains"></div>
   </section>
 
-  <!-- One lab: filled in by newLab() in js/script.js -->
+  <!-- One lab: filled in by labPage.open() in js/lab.js -->
   <section id="lab" class="page" hidden>
     <header>
       <p class="crumb" id="crumb"></p>
@@ -212,14 +52,8 @@
         <button class="ghost" id="back">Back to labs</button>
       </div>
     </header>
-    <!-- Mock exam progress: js/exam.js shows it only during an exam -->
-    <div id="exam-bar" hidden>
-      <div class="my-3 flex items-center justify-between gap-4 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-4 py-2">
-        <span class="font-semibold">Mock exam: lab <span id="exam-pos"></span></span>
-        <span id="exam-time" class="font-mono text-[color:var(--muted)]"></span>
-        <button id="exam-next">Next lab</button>
-      </div>
-    </div>
+    <!-- the mock exam puts its progress bar here (js/exam.js) -->
+    <div id="lab-bar"></div>
     <main class="lab-grid">
       <div class="lab-col">
         <section class="card">
@@ -232,7 +66,6 @@
           <div class="bar"><span id="req-bar"></span></div>
           <ul class="reqs" id="reqs"></ul>
           <div class="actions">
-            <button id="check">Check</button>
             <button class="ghost" id="reset">Reset</button>
             <button class="ghost" id="new-net">New network</button>
             <button class="ghost" id="show-solution">Show solution</button>
@@ -289,7 +122,6 @@
         <div class="bar"><span id="topo-bar"></span></div>
         <p class="note">Drag the devices you need from the bar onto the canvas, then cable them.</p>
         <ul class="reqs" id="topo-reqs"></ul>
-        <button class="wide" id="topo-check">Check</button>
         <div class="actions">
           <button class="ghost" id="topo-remove">Remove selected</button>
           <button class="ghost" id="topo-clear">Clear all</button>
@@ -333,7 +165,7 @@
     <div class="exam-wrap"><div id="exam-card"></div></div>
   </section>
 
-  <!-- Reference: each title must match a key of REF_INFO in js/reference.js -->
+  <!-- Reference: the topic rows are built from CATALOGUE in js/topics.js (js/reference.js) -->
   <section id="ref" class="page" hidden>
     <header class="ref-head">
       <h1>CCNA command reference</h1>
@@ -342,91 +174,24 @@
     </header>
     <p id="ref-empty" class="note" hidden>No topics match.</p>
     <div id="ref-detail" hidden></div>
-    <div class="domains">
-      <details class="domain" open>
-        <summary><span class="dom-title">Core</span><span class="dom-meta">12 topics</span></summary>
-        <div class="rows">
-          <div class="row ref-item" role="button" tabindex="0"><div class="row-title">IPv4 addressing</div><div class="row-desc">Dotted-decimal addresses paired with a mask to split network and host bits.</div></div>
-          <div class="row ref-item" role="button" tabindex="0"><div class="row-title">Subnetting</div><div class="row-desc">Borrow host bits to create smaller networks, then count blocks and hosts.</div></div>
-          <div class="row ref-item" role="button" tabindex="0"><div class="row-title">Variable Length Subnet Masking (VLSM)</div><div class="row-desc">Size each subnet to its host need instead of using one fixed mask.</div></div>
-          <div class="row ref-item" role="button" tabindex="0"><div class="row-title">Static routing</div><div class="row-desc">Manually defined routes to remote networks that stay fixed until someone changes them.</div></div>
-          <div class="row ref-item" role="button" tabindex="0"><div class="row-title">Default routes</div><div class="row-desc">The gateway of last resort, used when no more specific route matches.</div></div>
-          <div class="row ref-item" role="button" tabindex="0"><div class="row-title">OSPFv2 (IPv4)</div><div class="row-desc">Link-state routing for IPv4 that builds a topology map and runs SPF.</div></div>
-          <div class="row ref-item" role="button" tabindex="0"><div class="row-title">VLANs</div><div class="row-desc">Split one switch into separate broadcast domains.</div></div>
-          <div class="row ref-item" role="button" tabindex="0"><div class="row-title">Access ports</div><div class="row-desc">A switch port carrying one VLAN for an end device.</div></div>
-          <div class="row ref-item" role="button" tabindex="0"><div class="row-title">Trunking (802.1Q)</div><div class="row-desc">A link carrying several tagged VLANs, with one untagged native VLAN.</div></div>
-          <div class="row ref-item" role="button" tabindex="0"><div class="row-title">Inter-VLAN routing</div><div class="row-desc">Route between VLANs with a router-on-a-stick or an SVI.</div></div>
-          <div class="row ref-item" role="button" tabindex="0"><div class="row-title">Spanning Tree (STP)</div><div class="row-desc">Blocks redundant Layer 2 links to prevent loops.</div></div>
-          <div class="row ref-item" role="button" tabindex="0"><div class="row-title">EtherChannel</div><div class="row-desc">Bundles links into one logical link for bandwidth and redundancy.</div></div>
-        </div>
-      </details>
-      <details class="domain">
-        <summary><span class="dom-title">IP &amp; routing</span><span class="dom-meta">3 topics</span></summary>
-        <div class="rows">
-          <div class="row ref-item" role="button" tabindex="0"><div class="row-title">OSPFv3</div><div class="row-desc">OSPF for IPv6, run per link and identified by a router ID.</div></div>
-          <div class="row ref-item" role="button" tabindex="0"><div class="row-title">IPv6 addressing</div><div class="row-desc">128-bit addresses with unicast, multicast, and anycast types.</div></div>
-          <div class="row ref-item" role="button" tabindex="0"><div class="row-title">IPv6 routing</div><div class="row-desc">Static routes, RIPng, OSPFv3, and EIGRP for IPv6.</div></div>
-        </div>
-      </details>
-      <details class="domain">
-        <summary><span class="dom-title">Switching</span><span class="dom-meta">3 topics</span></summary>
-        <div class="rows">
-          <div class="row ref-item" role="button" tabindex="0"><div class="row-title">Advanced STP</div><div class="row-desc">Rapid PVST+ and guard features for faster convergence and stability.</div></div>
-          <div class="row ref-item" role="button" tabindex="0"><div class="row-title">Advanced EtherChannel</div><div class="row-desc">Load balancing, Layer 3 bundles, and consistency checks.</div></div>
-          <div class="row ref-item" role="button" tabindex="0"><div class="row-title">CDP and LLDP</div><div class="row-desc">Discover directly connected neighbours using Cisco and open-standard protocols.</div></div>
-        </div>
-      </details>
-      <details class="domain">
-        <summary><span class="dom-title">Services</span><span class="dom-meta">5 topics</span></summary>
-        <div class="rows">
-          <div class="row ref-item" role="button" tabindex="0"><div class="row-title">DHCP</div><div class="row-desc">Automatic IPv4 address assignment using the DORA exchange.</div></div>
-          <div class="row ref-item" role="button" tabindex="0"><div class="row-title">DHCP relay</div><div class="row-desc">Forward DHCP broadcasts across subnets with ip helper-address.</div></div>
-          <div class="row ref-item" role="button" tabindex="0"><div class="row-title">NAT</div><div class="row-desc">Translate private addresses to public ones: static, dynamic, or PAT.</div></div>
-          <div class="row ref-item" role="button" tabindex="0"><div class="row-title">NTP, syslog, DNS</div><div class="row-desc">Clock synchronisation, central logging, and name resolution.</div></div>
-          <div class="row ref-item" role="button" tabindex="0"><div class="row-title">QoS</div><div class="row-desc">Classify, mark, and prioritise traffic during congestion.</div></div>
-        </div>
-      </details>
-      <details class="domain">
-        <summary><span class="dom-title">Security</span><span class="dom-meta">6 topics</span></summary>
-        <div class="rows">
-          <div class="row ref-item" role="button" tabindex="0"><div class="row-title">Standard and extended ACLs</div><div class="row-desc">Filter IPv4 traffic top-down, with an implicit deny at the end.</div></div>
-          <div class="row ref-item" role="button" tabindex="0"><div class="row-title">IPv6 ACLs</div><div class="row-desc">Always named, with implicit permits for neighbour discovery.</div></div>
-          <div class="row ref-item" role="button" tabindex="0"><div class="row-title">Port security</div><div class="row-desc">Limit which MAC addresses an access port will accept.</div></div>
-          <div class="row ref-item" role="button" tabindex="0"><div class="row-title">Device hardening</div><div class="row-desc">Secure local and remote access, and use SSH instead of Telnet.</div></div>
-          <div class="row ref-item" role="button" tabindex="0"><div class="row-title">DHCP snooping</div><div class="row-desc">Filter DHCP messages and build a binding table.</div></div>
-          <div class="row ref-item" role="button" tabindex="0"><div class="row-title">Dynamic ARP inspection</div><div class="row-desc">Check ARP packets against the snooping binding table.</div></div>
-        </div>
-      </details>
-      <details class="domain">
-        <summary><span class="dom-title">Wireless</span><span class="dom-meta">2 topics</span></summary>
-        <div class="rows">
-          <div class="row ref-item" role="button" tabindex="0"><div class="row-title">WLAN fundamentals</div><div class="row-desc">RF basics, access point modes, and controller-based deployment with CAPWAP.</div></div>
-          <div class="row ref-item" role="button" tabindex="0"><div class="row-title">WLAN security</div><div class="row-desc">Open, WPA, and 802.1X authentication options on a WLC.</div></div>
-        </div>
-      </details>
-      <details class="domain">
-        <summary><span class="dom-title">Management</span><span class="dom-meta">2 topics</span></summary>
-        <div class="rows">
-          <div class="row ref-item" role="button" tabindex="0"><div class="row-title">Device management</div><div class="row-desc">Time sync, logging, monitoring, and secure file transfer.</div></div>
-          <div class="row ref-item" role="button" tabindex="0"><div class="row-title">Network automation</div><div class="row-desc">Moving from device-by-device CLI work to APIs and configuration tools.</div></div>
-        </div>
-      </details>
-      <details class="domain">
-        <summary><span class="dom-title">Troubleshooting</span><span class="dom-meta">1 topic</span></summary>
-        <div class="rows">
-          <div class="row ref-item" role="button" tabindex="0"><div class="row-title">Structured troubleshooting</div><div class="row-desc">Work up through the OSI layers to isolate faults instead of guessing.</div></div>
-        </div>
-      </details>
-    </div>
+    <div class="domains" id="ref-groups"></div>
   </section>
 
-  <!-- order matters: router.js holds helpers the others use, and script.js starts the app, so it loads last -->
-  <script src="js/router.js"></script>
-  <script src="js/switch.js"></script>
+  <!-- order matters: topics.js holds the catalogue the others read; the devices need the registry (device.js), the IOS helpers (ios.js) and the help engine (help.js) first; session.js and lab.js come after the devices and labs they use, and script.js starts the app, so it loads last -->
+  <script src="js/topics.js"></script>
+  <script src="js/devices/device.js"></script>
+  <script src="js/devices/ios.js"></script>
   <script src="js/help.js"></script>
+  <script src="js/devices/router.js"></script>
+  <script src="js/devices/switch.js"></script>
+  <script src="js/devices/mls.js"></script>
+  <script src="js/devices/pc.js"></script>
+  <script src="js/devices/readonly.js"></script>
   <script src="js/labs.js"></script>
   <script src="js/reference.js"></script>
   <script src="js/topology.js"></script>
+  <script src="js/session.js"></script>
+  <script src="js/lab.js"></script>
   <script src="js/exam.js"></script>
   <script src="js/script.js"></script>
 </body>

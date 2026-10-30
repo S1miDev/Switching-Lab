@@ -193,6 +193,7 @@ function topoSvg() {
 function topoRender() {
   const reqs = topoReqs(), met = reqs.filter(r => r.ok).length;
   const current = reqs.findIndex(r => !r.ok); // the first unfinished step gets the "current" highlight
+  if (met === reqs.length) topoMsg('Task complete.');
   document.getElementById('topo-count').textContent = `${met}/${reqs.length}`;
   document.getElementById('topo-bar').style.width = `${100 * met / reqs.length}%`;
   document.getElementById('topo-reqs').innerHTML = reqs.map((r, i) =>
@@ -277,11 +278,6 @@ document.getElementById('nav-topo').addEventListener('click', () => {
   if (!topoTask) topoNewTask();
 });
 document.getElementById('topo-next').addEventListener('click', topoNewTask);
-document.getElementById('topo-check').addEventListener('click', () => {
-  const unmet = topoReqs().filter(r => !r.ok).length;
-  topoMsg(unmet ? `${unmet} requirement(s) not met yet.` : 'Task complete.');
-  topoRender();
-});
 document.getElementById('topo-remove').addEventListener('click', topoRemoveSelected);
 document.getElementById('topo-clear').addEventListener('click', () => {
   clearCanvas();

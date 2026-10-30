@@ -1,8 +1,8 @@
 // Lab definitions: every topic and level, with the requirements that grade it.
-// A requirement is {text, ok, hint}: ok(st) is true when it is met (st is R1's state, st.sw is S1's),
-// and hint holds the commands that meet it.
+// A requirement is {text, ok, hint}: ok(s) is true when it is met (s is the lab session, see session.js: s.router is R1's state,
+// s.sw is S1's and s.pcs the PCs), and hint holds the commands that meet it.
 //
-// TOPICS[topic].kind says how a lab is set up (see newLab in script.js):
+// LABS[topic].kind says how a lab is set up (see createSession in session.js):
 //   'v4', 'v6'  addressing on R1; the requirements come from each level's interface list (ifs)
 //   'sw'        the R1-S1 diagram; each level lists its requirements (reqs)
 //   'rt'        the R1-R2-R3 diagram; build(x) makes the requirements for the random network 192.168.x.0
@@ -10,6 +10,24 @@
 // shortcut: fixed values per level on a random network; move labs to data files when the lab library grows
 
 const portName = key => key.replace('fa', 'Fa').replace('gi', 'Gi'); // 'fa0/1' -> 'Fa0/1'
+const MASK24 = '255.255.255.0';
+
+// PCs, configured from their own console (devices/pc.js)
+const pcStatic = (pc, ip, gw) => ({
+  text: `${pc} is ${ip} ${MASK24} with gateway ${gw}`,
+  ok: s => !!s.pcs[pc] && s.pcs[pc].ip === ip && s.pcs[pc].mask === MASK24 && s.pcs[pc].gw === gw,
+  hint: `ip ${ip} ${MASK24} ${gw} (on ${pc})`,
+});
+const pcLease = (pc, net) => ({
+  text: `${pc} gets an address in ${net}.0/24 by DHCP`,
+  ok: s => !!s.pcs[pc] && s.pcs[pc].dhcp && s.pcs[pc].ip.startsWith(net + '.'),
+  hint: `dhcp (on ${pc})`,
+});
+const pcPings = (pc, other) => ({
+  text: `${pc} can ping ${other}`,
+  ok: s => !!s.pcs[other] && !!s.pcs[other].ip && s.devices[pc].canReach(s.pcs[other].ip),
+  hint: `ping <${other}'s address> (on ${pc})`,
+});
 
 // ---- 1.0 network fundamentals: addressing ----
 // ifs lists R1's interfaces: k = interface, host = last octet of its address, net = its subnet inside the /24,
@@ -95,9 +113,9 @@ const IPV6 = {
 };
 
 // CDP and LLDP run on R1. cmds is a known-good config, used by the start-up self-check and the Commands card.
-const LLDP_ON = {text: 'LLDP is enabled globally', ok: st => st.lldp, hint: 'lldp run'};
-const CDP_OFF = {text: 'CDP is disabled globally', ok: st => !st.cdp, hint: 'no cdp run'};
-const learnsS1 = hint => ({text: 'R1 learns S1 over LLDP on Gi0/0', ok: st => st.lldp && !st.ifs['gi0/0'].shut, hint});
+const LLDP_ON = {text: 'LLDP is enabled globally', ok: s => s.router.lldp, hint: 'lldp run'};
+const CDP_OFF = {text: 'CDP is disabled globally', ok: s => !s.router.cdp, hint: 'no cdp run'};
+const learnsS1 = hint => ({text: 'R1 learns S1 over LLDP on Gi0/0', ok: s => s.router.lldp && !s.router.ifs['gi0/0'].shut, hint});
 const CDP_LEAD = 'R1 is connected to S1 on Gi0/0. CDP is running.';
 const CDP = {
   beginner: {
@@ -120,9 +138,9 @@ const CDP = {
     steps: ['Keep CDP and LLDP running for the whole device.', 'Turn CDP off on Gi0/0 only.'],
     cmds: ['lldp run', 'int gi0/0', 'no cdp enable', 'no shutdown', 'exit'],
     reqs: [
-      {text: 'CDP is enabled globally', ok: st => st.cdp, hint: 'cdp run'},
+      {text: 'CDP is enabled globally', ok: s => s.router.cdp, hint: 'cdp run'},
       LLDP_ON,
-      {text: 'Gi0/0 has CDP disabled', ok: st => st.ifs['gi0/0'].cdp === false, hint: 'no cdp enable (on Gi0/0)'},
+      {text: 'Gi0/0 has CDP disabled', ok: s => s.router.ifs['gi0/0'].cdp === false, hint: 'no cdp enable (on Gi0/0)'},
       learnsS1('no shutdown on Gi0/0'),
     ],
   },
@@ -131,7 +149,7 @@ const CDP = {
     lead: CDP_LEAD,
     steps: ['Turn CDP off for the whole device.', 'Keep LLDP running and bring up both interfaces.'],
     cmds: ['no cdp run', 'lldp run', 'int gi0/0', 'no shutdown', 'exit', 'int gi0/1', 'no shutdown', 'exit'],
-    reqs: [CDP_OFF, LLDP_ON, learnsS1('no shutdown on Gi0/0'), {text: 'Gi0/1 is up', ok: st => !st.ifs['gi0/1'].shut, hint: 'no shutdown on Gi0/1'}],
+    reqs: [CDP_OFF, LLDP_ON, learnsS1('no shutdown on Gi0/0'), {text: 'Gi0/1 is up', ok: s => !s.router.ifs['gi0/1'].shut, hint: 'no shutdown on Gi0/1'}],
   },
 };
 
@@ -141,34 +159,34 @@ const CDP = {
 const SW_NODES = [
   {id: 'R1', type: 'router', x: 8, y: 64, sub: 'Router'},
   {id: 'S1', type: 'switch', x: 190, y: 64, sub: 'Switch'},
-  {id: 'PC1', type: 'pc', x: 370, y: 24, sub: 'Host'},
-  {id: 'PC2', type: 'pc', x: 370, y: 104, sub: 'Host'},
+  {id: 'PC1', type: 'pc', x: 370, y: 24, sub: 'Host', at: 'S1 fa0/1'},
+  {id: 'PC2', type: 'pc', x: 370, y: 104, sub: 'Host', at: 'S1 fa0/2'},
 ];
 const SW_LINKS = [{a: 'R1', b: 'S1', port: 'Gi0/0'}, {a: 'S1', b: 'PC1', port: 'Fa0/1'}, {a: 'S1', b: 'PC2', port: 'Fa0/2'}];
 const SW_LEAD = 'R1 Gi0/0 is cabled to S1 Gi0/1. PC1 is on Fa0/1 and PC2 on Fa0/2.';
 
 const swVlan = (id, name) => ({
   text: `VLAN ${id}${name ? ` is named ${name}` : ' exists'}`,
-  ok: st => !!st.sw.vlans[id] && (!name || st.sw.vlans[id].name === name),
+  ok: s => !!s.sw.vlans[id] && (!name || s.sw.vlans[id].name === name),
   hint: name ? `vlan ${id}, name ${name}` : `vlan ${id}`,
 });
 const swAccess = (p, id) => ({
   text: `${portName(p)} is an access port in VLAN ${id}`,
-  ok: st => st.sw.ports[p].mode === 'access' && st.sw.ports[p].vlan === id,
+  ok: s => s.sw.ports[p].mode === 'access' && s.sw.ports[p].vlan === id,
   hint: `switchport mode access, switchport access vlan ${id}`,
 });
-const swMode = p => ({text: `${portName(p)} is an access port`, ok: st => st.sw.ports[p].mode === 'access', hint: 'switchport mode access'});
-const swUp = p => ({text: `${portName(p)} is up`, ok: st => !st.sw.ports[p].shut, hint: 'no shutdown'});
-const swDown = p => ({text: `${portName(p)} is shut down`, ok: st => st.sw.ports[p].shut, hint: 'shutdown'});
-const swDesc = (p, d) => ({text: `${portName(p)} has the description ${d}`, ok: st => st.sw.ports[p].desc === d, hint: `description ${d}`});
-const swTrunk = p => ({text: `${portName(p)} is a trunk`, ok: st => st.sw.ports[p].mode === 'trunk', hint: 'switchport mode trunk'});
+const swMode = p => ({text: `${portName(p)} is an access port`, ok: s => s.sw.ports[p].mode === 'access', hint: 'switchport mode access'});
+const swUp = p => ({text: `${portName(p)} is up`, ok: s => !s.sw.ports[p].shut, hint: 'no shutdown'});
+const swDown = p => ({text: `${portName(p)} is shut down`, ok: s => s.sw.ports[p].shut, hint: 'shutdown'});
+const swDesc = (p, d) => ({text: `${portName(p)} has the description ${d}`, ok: s => s.sw.ports[p].desc === d, hint: `description ${d}`});
+const swTrunk = p => ({text: `${portName(p)} is a trunk`, ok: s => s.sw.ports[p].mode === 'trunk', hint: 'switchport mode trunk'});
 const swAllowed = (p, list) => ({
   text: `${portName(p)} allows only VLANs ${list.join(', ')} on the trunk`,
-  ok: st => !!st.sw.ports[p].allowed && st.sw.ports[p].allowed.join(',') === list.join(','),
+  ok: s => !!s.sw.ports[p].allowed && s.sw.ports[p].allowed.join(',') === list.join(','),
   hint: `switchport trunk allowed vlan ${list.join(',')}`,
 });
-const swNative = (p, id) => ({text: `${portName(p)} uses VLAN ${id} as the native VLAN`, ok: st => st.sw.ports[p].native === id, hint: `switchport trunk native vlan ${id}`});
-const r1Up = {text: 'R1 Gi0/0 is up', ok: st => !st.ifs['gi0/0'].shut, hint: 'no shutdown (on R1 Gi0/0)'};
+const swNative = (p, id) => ({text: `${portName(p)} uses VLAN ${id} as the native VLAN`, ok: s => s.sw.ports[p].native === id, hint: `switchport trunk native vlan ${id}`});
+const r1Up = {text: 'R1 Gi0/0 is up', ok: s => !s.router.ifs['gi0/0'].shut, hint: 'no shutdown (on R1 Gi0/0)'};
 
 const TRUNK_UP = [swTrunk('gi0/1'), swUp('gi0/1'), r1Up];
 const PCS_IN_10_20 = [swAccess('fa0/1', 10), swAccess('fa0/2', 20), swUp('fa0/1'), swUp('fa0/2')];
@@ -246,26 +264,26 @@ const TRUNK = {
 // STP, EtherChannel, inter-VLAN routing
 const swRoot = id => ({
   text: `S1 is root for VLAN ${id}`,
-  ok: st => st.sw.stp.prio[id] !== undefined && st.sw.stp.prio[id] <= 24576,
+  ok: s => s.sw.stp.prio[id] !== undefined && s.sw.stp.prio[id] <= 24576,
   hint: `spanning-tree vlan ${id} root primary`,
 });
-const swPrio = (id, n) => ({text: `VLAN ${id} has spanning-tree priority ${n}`, ok: st => st.sw.stp.prio[id] === n, hint: `spanning-tree vlan ${id} priority ${n}`});
-const swRstp = {text: 'S1 runs Rapid PVST+', ok: st => st.sw.stp.mode === 'rapid-pvst', hint: 'spanning-tree mode rapid-pvst'};
-const swPortfast = p => ({text: `${portName(p)} has PortFast enabled`, ok: st => st.sw.ports[p].portfast === true, hint: 'spanning-tree portfast'});
-const swBpdu = p => ({text: `${portName(p)} has BPDU guard enabled`, ok: st => st.sw.ports[p].bpdu === true, hint: 'spanning-tree bpduguard enable'});
+const swPrio = (id, n) => ({text: `VLAN ${id} has spanning-tree priority ${n}`, ok: s => s.sw.stp.prio[id] === n, hint: `spanning-tree vlan ${id} priority ${n}`});
+const swRstp = {text: 'S1 runs Rapid PVST+', ok: s => s.sw.stp.mode === 'rapid-pvst', hint: 'spanning-tree mode rapid-pvst'};
+const swPortfast = p => ({text: `${portName(p)} has PortFast enabled`, ok: s => s.sw.ports[p].portfast === true, hint: 'spanning-tree portfast'});
+const swBpdu = p => ({text: `${portName(p)} has BPDU guard enabled`, ok: s => s.sw.ports[p].bpdu === true, hint: 'spanning-tree bpduguard enable'});
 const swGroup = (p, n, mode) => ({
   text: `${portName(p)} is in channel-group ${n} with mode ${mode}`,
-  ok: st => st.sw.ports[p].group === n && st.sw.ports[p].chanMode === mode,
+  ok: s => s.sw.ports[p].group === n && s.sw.ports[p].chanMode === mode,
   hint: `channel-group ${n} mode ${mode}`,
 });
-const swLb = v => ({text: `EtherChannel load balancing is ${v}`, ok: st => st.sw.lb === v, hint: `port-channel load-balance ${v}`});
+const swLb = v => ({text: `EtherChannel load balancing is ${v}`, ok: s => s.sw.lb === v, hint: `port-channel load-balance ${v}`});
 // R1 subinterface Gi0/0.<vlan> with 192.168.<vlan>.1/24 (router-on-a-stick)
 const r1Sub = vlan => {
   const key = `gi0/0.${vlan}`, name = `Gi0/0.${vlan}`, ip = `192.168.${vlan}.1`, mask = '255.255.255.0';
   return [
-    {text: `${name} is encapsulation dot1Q ${vlan}`, ok: st => !!st.ifs[key] && st.ifs[key].encap === vlan, hint: `encapsulation dot1Q ${vlan}`},
-    {text: `${name} has the address ${ip} ${mask}`, ok: st => !!st.ifs[key] && st.ifs[key].ip === ip && st.ifs[key].mask === mask, hint: `ip address ${ip} ${mask}`},
-    {text: `${name} is up`, ok: st => !!st.ifs[key] && !st.ifs[key].shut, hint: 'no shutdown'},
+    {text: `${name} is encapsulation dot1Q ${vlan}`, ok: s => !!s.router.ifs[key] && s.router.ifs[key].encap === vlan, hint: `encapsulation dot1Q ${vlan}`},
+    {text: `${name} has the address ${ip} ${mask}`, ok: s => !!s.router.ifs[key] && s.router.ifs[key].ip === ip && s.router.ifs[key].mask === mask, hint: `ip address ${ip} ${mask}`},
+    {text: `${name} is up`, ok: s => !!s.router.ifs[key] && !s.router.ifs[key].shut, hint: 'no shutdown'},
   ];
 };
 const INTER_LEAD = 'R1 Gi0/0 is cabled to S1 Gi0/1 as a trunk. PC1 is on Fa0/1 and PC2 on Fa0/2.';
@@ -364,7 +382,8 @@ const ADVETHER = {
   },
 };
 
-const INTER_ADV = [...TRUNK_UP, ...r1Sub(10), ...r1Sub(20), ...PCS_IN_10_20];
+const INTER_PCS = [pcStatic('PC1', '192.168.10.10', '192.168.10.1'), pcStatic('PC2', '192.168.20.10', '192.168.20.1'), pcPings('PC1', 'PC2')];
+const INTER_ADV = [...TRUNK_UP, ...r1Sub(10), ...r1Sub(20), ...PCS_IN_10_20, ...INTER_PCS];
 const INTERVLAN = {
   beginner: {
     sub: 'Trunk S1 Gi0/1 to R1 and give R1 a VLAN 10 subinterface',
@@ -377,8 +396,9 @@ const INTERVLAN = {
     reqs: [...TRUNK_UP, ...r1Sub(10), ...r1Sub(20)],
   },
   advanced: {
-    sub: 'As Intermediate, and put Fa0/1 in VLAN 10 and Fa0/2 in VLAN 20',
-    steps: ['Keep the subinterfaces working.', 'Put Fa0/1 in VLAN 10 and Fa0/2 in VLAN 20.', 'Bring both ports up.'],
+    sub: 'As Intermediate, put the PCs in VLANs 10 and 20, and make PC1 reach PC2',
+    steps: ['Keep the subinterfaces working.', 'Put Fa0/1 in VLAN 10 and Fa0/2 in VLAN 20, and bring both ports up.',
+      'On PC1, set 192.168.10.10/24 with gateway 192.168.10.1; on PC2, 192.168.20.10/24 with gateway 192.168.20.1.', 'From PC1, ping PC2.'],
     reqs: INTER_ADV,
   },
   expert: {
@@ -388,15 +408,78 @@ const INTERVLAN = {
   },
 };
 
+// Inter-VLAN routing on a multilayer switch (MLS1): SVIs, a routed port to the DHCP server DHCP1, DHCP relay, PCs
+const MLS_NODES = [
+  {id: 'DHCP1', type: 'dhcp', x: 8, y: 64, sub: '192.168.99.10'},
+  {id: 'MLS1', type: 'mls', x: 190, y: 64, sub: 'L3 switch'},
+  {id: 'PC1', type: 'pc', x: 370, y: 24, sub: 'VLAN 10', at: 'MLS1 fa0/1'},
+  {id: 'PC2', type: 'pc', x: 370, y: 104, sub: 'VLAN 20', at: 'MLS1 fa0/2'},
+];
+const MLS_LINKS = [{a: 'DHCP1', b: 'MLS1', port: 'Gi0/1'}, {a: 'MLS1', b: 'PC1', port: 'Fa0/1'}, {a: 'MLS1', b: 'PC2', port: 'Fa0/2'}];
+const MLS_LEAD = 'MLS1 is a multilayer switch. PC1 is on Fa0/1, PC2 on Fa0/2, and the DHCP server DHCP1 (192.168.99.10) on Gi0/1.';
+const DHCP1_IP = '192.168.99.10';
+const mlsPool = vlan => ({name: `VLAN${vlan}`, net: `192.168.${vlan}.0`, mask: MASK24, gw: `192.168.${vlan}.1`,
+  ex: [[`192.168.${vlan}.1`, `192.168.${vlan}.10`]]});
+// DHCP1 answers when MLS1 routes and its routed port Gi0/1 is up on DHCP1's subnet
+const MLS_SERVER = () => ({name: 'DHCP1', ip: DHCP1_IP, pools: [mlsPool(10), mlsPool(20)],
+  reach: s => s.sw.routing && s.sw.ports['gi0/1'].routed && !!usable(s.sw.ports['gi0/1']) && inNet(s.sw.ports['gi0/1'].ip, s.sw.ports['gi0/1'].mask, DHCP1_IP)});
+
+const IP_ROUTING = {text: 'MLS1 routes between VLANs', ok: s => s.sw.routing, hint: 'ip routing'};
+const svi = vlan => {
+  const ip = `192.168.${vlan}.1`, port = s => s.sw.ports[`vlan${vlan}`];
+  return [
+    {text: `Vlan${vlan} has the address ${ip} ${MASK24}`, ok: s => !!port(s) && port(s).ip === ip && port(s).mask === MASK24, hint: `ip address ${ip} ${MASK24}`},
+    {text: `Vlan${vlan} is up`, ok: s => !!port(s) && !port(s).shut, hint: 'no shutdown'},
+  ];
+};
+const sviHelper = vlan => ({
+  text: `Vlan${vlan} relays DHCP to ${DHCP1_IP}`,
+  ok: s => !!s.sw.ports[`vlan${vlan}`] && s.sw.ports[`vlan${vlan}`].helpers.includes(DHCP1_IP),
+  hint: `ip helper-address ${DHCP1_IP}`,
+});
+const ROUTED_UPLINK = [
+  {text: 'Gi0/1 is a routed port', ok: s => s.sw.ports['gi0/1'].routed, hint: 'no switchport'},
+  {text: `Gi0/1 has the address 192.168.99.1 ${MASK24}`, ok: s => s.sw.ports['gi0/1'].ip === '192.168.99.1' && s.sw.ports['gi0/1'].mask === MASK24,
+    hint: `ip address 192.168.99.1 ${MASK24}`},
+  swUp('gi0/1'),
+];
+const MLS_VLAN10 = [IP_ROUTING, swVlan(10), ...svi(10), swAccess('fa0/1', 10), swUp('fa0/1')];
+const MLS_BOTH = [...MLS_VLAN10, swVlan(20), ...svi(20), swAccess('fa0/2', 20), swUp('fa0/2')];
+const MLSVLAN = {
+  beginner: {
+    sub: 'Turn on routing on MLS1 and give VLAN 10 a gateway on an SVI',
+    steps: ['Turn on ip routing.', 'Create VLAN 10, then interface vlan 10 with 192.168.10.1/24, and bring it up.',
+      'Make Fa0/1 an access port in VLAN 10 and bring it up.'],
+    reqs: MLS_VLAN10,
+  },
+  intermediate: {
+    sub: 'Route between VLANs 10 and 20 on MLS1, and make PC1 reach PC2',
+    steps: ['Keep VLAN 10 working.', 'Create VLAN 20 with SVI 192.168.20.1/24, and put Fa0/2 in VLAN 20.',
+      'On PC1, set 192.168.10.10/24 with gateway 192.168.10.1; on PC2, 192.168.20.10/24 with gateway 192.168.20.1.', 'From PC1, ping PC2.'],
+    reqs: [...MLS_BOTH, pcStatic('PC1', '192.168.10.10', '192.168.10.1'), pcStatic('PC2', '192.168.20.10', '192.168.20.1'), pcPings('PC1', 'PC2')],
+  },
+  advanced: {
+    sub: 'Make Gi0/1 a routed port to DHCP1 and relay DHCP for VLAN 10',
+    steps: ['Keep both VLANs and their SVIs.', 'Make Gi0/1 a routed port (no switchport) with 192.168.99.1/24, and bring it up.',
+      'On interface vlan 10, add ip helper-address 192.168.99.10.', 'Open PC1 and type dhcp.'],
+    reqs: [...MLS_BOTH, ...ROUTED_UPLINK, sviHelper(10), pcLease('PC1', '192.168.10')],
+  },
+  expert: {
+    sub: 'As Advanced, relay DHCP for VLAN 20 too, and make PC1 reach PC2 with their DHCP addresses',
+    steps: ['Keep the Advanced settings.', 'On interface vlan 20, add ip helper-address 192.168.99.10.', 'Type dhcp on PC1 and PC2.', 'From PC1, ping PC2.'],
+    reqs: [...MLS_BOTH, ...ROUTED_UPLINK, sviHelper(10), sviHelper(20), pcLease('PC1', '192.168.10'), pcLease('PC2', '192.168.20'), pcPings('PC1', 'PC2')],
+  },
+};
+
 // ---- 5.0 security: port security ----
-const swPsec = p => ({text: `${portName(p)} has port security on`, ok: st => st.sw.ports[p].psec === true, hint: 'switchport port-security'});
+const swPsec = p => ({text: `${portName(p)} has port security on`, ok: s => s.sw.ports[p].psec === true, hint: 'switchport port-security'});
 const swPsMax = (p, n) => ({
   text: `${portName(p)} allows ${n} MAC address${n > 1 ? 'es' : ''}`,
-  ok: st => st.sw.ports[p].psMax === n,
+  ok: s => s.sw.ports[p].psMax === n,
   hint: `switchport port-security maximum ${n}`,
 });
-const swPsViol = (p, v) => ({text: `${portName(p)} violation mode is ${v}`, ok: st => st.sw.ports[p].psViolation === v, hint: `switchport port-security violation ${v}`});
-const swPsSticky = p => ({text: `${portName(p)} learns sticky MAC addresses`, ok: st => st.sw.ports[p].psSticky === true, hint: 'switchport port-security mac-address sticky'});
+const swPsViol = (p, v) => ({text: `${portName(p)} violation mode is ${v}`, ok: s => s.sw.ports[p].psViolation === v, hint: `switchport port-security violation ${v}`});
+const swPsSticky = p => ({text: `${portName(p)} learns sticky MAC addresses`, ok: s => s.sw.ports[p].psSticky === true, hint: 'switchport port-security mac-address sticky'});
 const PS_ADV = [swMode('fa0/1'), swMode('fa0/2'), swUp('fa0/1'), swUp('fa0/2'), swPsec('fa0/1'), swPsec('fa0/2'), swPsSticky('fa0/1'), swPsSticky('fa0/2'),
   swPsMax('fa0/1', 1), swPsMax('fa0/2', 1), swPsViol('fa0/1', 'shutdown'), swPsViol('fa0/2', 'restrict')];
 const PORTSEC = {
@@ -424,19 +507,19 @@ const PORTSEC = {
 
 // ---- 3.0 IP connectivity, 4.0 IP services and 5.0 ACLs: router labs ----
 
-// the R1-R2-R3 diagram used by the router labs
+// the R1-R2-R3 diagram used by the router labs (R2 and R3 are display-only: readonly)
 const RT_NODES = [
   {id: 'R1', type: 'router', x: 8, y: 64, sub: 'Router'},
-  {id: 'PC1', type: 'pc', x: 370, y: 14, sub: 'LAN 1'},
-  {id: 'R2', type: 'router', x: 370, y: 64, sub: '10.0.0.2'},
-  {id: 'R3', type: 'router', x: 370, y: 114, sub: '10.0.1.2'},
+  {id: 'PC1', type: 'pc', x: 370, y: 14, sub: 'LAN 1', at: 'R1 gi0/0'},
+  {id: 'R2', type: 'router', readonly: true, x: 370, y: 64, sub: '10.0.0.2'},
+  {id: 'R3', type: 'router', readonly: true, x: 370, y: 114, sub: '10.0.1.2'},
 ];
 const RT_LINKS = [{a: 'R1', b: 'PC1', port: 'Gi0/0'}, {a: 'R1', b: 'R2', port: 'Gi0/1'}, {a: 'R1', b: 'R3', port: 'Gi0/2'}];
 
 // an R1 interface with its address, and up
 const rtIf = (k, ip, mask) => [
-  {text: `${portName(k)} is ${ip} ${mask}`, ok: st => st.ifs[k].ip === ip && st.ifs[k].mask === mask, hint: `ip address ${ip} ${mask}`},
-  {text: `${portName(k)} is up`, ok: st => !st.ifs[k].shut, hint: 'no shutdown'},
+  {text: `${portName(k)} is ${ip} ${mask}`, ok: s => s.router.ifs[k].ip === ip && s.router.ifs[k].mask === mask, hint: `ip address ${ip} ${mask}`},
+  {text: `${portName(k)} is up`, ok: s => !s.router.ifs[k].shut, hint: 'no shutdown'},
 ];
 const LAN_IF = x => rtIf('gi0/0', `192.168.${x}.1`, '255.255.255.0'); // towards PC1
 const WAN_IF = rtIf('gi0/1', '10.0.0.1', '255.255.255.252'); // towards R2
@@ -444,18 +527,18 @@ const R3_IF = rtIf('gi0/2', '10.0.1.1', '255.255.255.252'); // towards R3
 const BOTH_IFS = x => [...LAN_IF(x), ...WAN_IF];
 const rtRoute = (net, mask, nh, dist = 1) => ({
   text: `R1 has a route to ${net} ${mask} via ${nh}${dist !== 1 ? ` with distance ${dist}` : ''}`,
-  ok: st => st.routes.some(r => r.net === net && r.mask === mask && r.nh === nh && r.dist === dist),
+  ok: s => s.router.routes.some(r => r.net === net && r.mask === mask && r.nh === nh && r.dist === dist),
   hint: `ip route ${net} ${mask} ${nh}${dist !== 1 ? ' ' + dist : ''}`,
 });
 const DEFAULT_VIA_R2 = rtRoute('0.0.0.0', '0.0.0.0', '10.0.0.2');
 const aclEntries = (name, type, expected) => ({
   text: `ACL ${name} has the entries: ${expected.join('; ')}`,
-  ok: st => !!st.acls[name] && st.acls[name].type === type && st.acls[name].entries.join(' | ') === expected.join(' | '),
+  ok: s => !!s.router.acls[name] && s.router.acls[name].type === type && s.router.acls[name].entries.join(' | ') === expected.join(' | '),
   hint: `ip access-list ${type} ${name}, then ${expected.join(', ')}`,
 });
 const aclApplied = (k, dir, name) => ({
   text: `${portName(k)} applies ACL ${name} ${dir === 'in' ? 'inbound' : 'outbound'}`,
-  ok: st => (dir === 'in' ? st.ifs[k].aclIn : st.ifs[k].aclOut) === name,
+  ok: s => (dir === 'in' ? s.router.ifs[k].aclIn : s.router.ifs[k].aclOut) === name,
   hint: `ip access-group ${name} ${dir}`,
 });
 
@@ -514,33 +597,33 @@ const DEFROUTE = {
 };
 
 // OSPFv2 and OSPFv3 on R1, process 1
-const ospfIn = (k, area, hint) => ({text: `${portName(k)} runs OSPF in area ${area}`, ok: st => ospfArea(st, k) === area, hint});
+const ospfIn = (k, area, hint) => ({text: `${portName(k)} runs OSPF in area ${area}`, ok: s => ospfArea(s.router, k) === area, hint});
 const ospfIfCmd = (k, area) => ({
   text: `${portName(k)} is put in area ${area} with the interface command`,
-  ok: st => st.ifs[k].ospf?.pid === 1 && st.ifs[k].ospf.area === area,
+  ok: s => s.router.ifs[k].ospf?.pid === 1 && s.router.ifs[k].ospf.area === area,
   hint: `ip ospf 1 area ${area}`,
 });
 const ospf6In = (k, area) => ({
   text: `${portName(k)} runs OSPFv3 in area ${area}`,
-  ok: st => st.ifs[k].ospf6?.pid === 1 && st.ifs[k].ospf6.area === area,
+  ok: s => s.router.ifs[k].ospf6?.pid === 1 && s.router.ifs[k].ospf6.area === area,
   hint: `ipv6 ospf 1 area ${area}`,
 });
 const ospfRid = (v6, rid) => ({
   text: `The ${v6 ? 'OSPFv3' : 'OSPF'} router ID is ${rid}`,
-  ok: st => st[v6 ? 'ospf6' : 'ospf'].rid === rid,
+  ok: s => s.router[v6 ? 'ospf6' : 'ospf'].rid === rid,
   hint: `${v6 ? 'ipv6 router ospf 1' : 'router ospf 1'}, router-id ${rid}`,
 });
 const ospfPassive = (v6, k) => ({
   text: `${portName(k)} is passive in ${v6 ? 'OSPFv3' : 'OSPF'}`,
-  ok: st => st[v6 ? 'ospf6' : 'ospf'].passive.includes(portName(k)),
+  ok: s => s.router[v6 ? 'ospf6' : 'ospf'].passive.includes(portName(k)),
   hint: `passive-interface ${portName(k)}`,
 });
-const OSPF_ORIGINATE = {text: 'OSPF advertises the default route', ok: st => st.ospf.originate, hint: 'router ospf 1, default-information originate'};
+const OSPF_ORIGINATE = {text: 'OSPF advertises the default route', ok: s => s.router.ospf.originate, hint: 'router ospf 1, default-information originate'};
 const v6If = (k, ip) => [
-  {text: `${portName(k)} is ${ip}`, ok: st => st.ifs[k].ip6 === ip, hint: `ipv6 address ${ip}`},
-  {text: `${portName(k)} is up`, ok: st => !st.ifs[k].shut, hint: 'no shutdown'},
+  {text: `${portName(k)} is ${ip}`, ok: s => s.router.ifs[k].ip6 === ip, hint: `ipv6 address ${ip}`},
+  {text: `${portName(k)} is up`, ok: s => !s.router.ifs[k].shut, hint: 'no shutdown'},
 ];
-const V6_ROUTING = {text: 'IPv6 routing is on', ok: st => st.v6routing, hint: 'ipv6 unicast-routing'};
+const V6_ROUTING = {text: 'IPv6 routing is on', ok: s => s.router.v6routing, hint: 'ipv6 unicast-routing'};
 
 const OSPF_LEAD = x => `R1 Gi0/0 serves 192.168.${x}.0/24. R2 is an OSPF neighbour on Gi0/1.`;
 const OSPF_BASE = x => [...BOTH_IFS(x), ospfIn('gi0/0', 0, `network 192.168.${x}.0 0.0.0.255 area 0`), ospfIn('gi0/1', 0, 'network 10.0.0.0 0.0.0.3 area 0')];
@@ -600,24 +683,24 @@ const OSPF6 = {
     lead: x => `Your prefix is 2001:db8:${x}::/48. R2 is on Gi0/1 (area 0) and R3 on Gi0/2 (area 1).`,
     steps: ['Keep the Advanced settings.', 'Give Gi0/0, Gi0/1 and Gi0/2 the link-local address fe80::1, so OSPFv3 neighbours see a simple next hop.'],
     build: x => [...OSPF6.advanced.build(x), ...['gi0/0', 'gi0/1', 'gi0/2'].map(k => ({
-      text: `${portName(k)} has the link-local address fe80::1`, ok: st => st.ifs[k].ll === 'fe80::1', hint: 'ipv6 address fe80::1 link-local'}))],
+      text: `${portName(k)} has the link-local address fe80::1`, ok: s => s.router.ifs[k].ll === 'fe80::1', hint: 'ipv6 address fe80::1 link-local'}))],
   },
 };
 
 // RIP and EIGRP on R1 (EIGRP uses AS 100)
 const IGP_NAME = {rip: 'RIP', eigrp: 'EIGRP'};
-const igpIn = (p, k, hint) => ({text: `${portName(k)} runs ${IGP_NAME[p]}`, ok: st => !!netHit(st, p, k), hint});
+const igpIn = (p, k, hint) => ({text: `${portName(k)} runs ${IGP_NAME[p]}`, ok: s => !!netHit(s.router, p, k), hint});
 const igpPassive = (p, k) => ({
   text: `${portName(k)} is passive in ${IGP_NAME[p]}`,
-  ok: st => st[p].passive.includes(portName(k)),
+  ok: s => s.router[p].passive.includes(portName(k)),
   hint: `passive-interface ${portName(k)}`,
 });
-const igpNoSum = p => ({text: `${IGP_NAME[p]} auto-summary is off`, ok: st => st[p].nosum, hint: 'no auto-summary'});
-const RIP_V2 = {text: 'RIP runs version 2', ok: st => st.rip.ver === 2, hint: 'router rip, version 2'};
-const RIP_ORIGINATE = {text: 'RIP advertises the default route', ok: st => st.rip.originate, hint: 'router rip, default-information originate'};
-const eigrpRid = rid => ({text: `The EIGRP router ID is ${rid}`, ok: st => st.eigrp.rid === rid, hint: `router eigrp 100, eigrp router-id ${rid}`});
-const EIGRP_AS = {text: 'EIGRP runs as AS 100', ok: st => st.eigrp.pid === 100, hint: 'router eigrp 100'};
-const EIGRP_CLASSFUL = {text: 'EIGRP covers 10.0.0.0 with one classful network statement', ok: st => st.eigrp.nets.some(n => n.cf && n.net === '10.0.0.0'), hint: 'network 10.0.0.0'};
+const igpNoSum = p => ({text: `${IGP_NAME[p]} auto-summary is off`, ok: s => s.router[p].nosum, hint: 'no auto-summary'});
+const RIP_V2 = {text: 'RIP runs version 2', ok: s => s.router.rip.ver === 2, hint: 'router rip, version 2'};
+const RIP_ORIGINATE = {text: 'RIP advertises the default route', ok: s => s.router.rip.originate, hint: 'router rip, default-information originate'};
+const eigrpRid = rid => ({text: `The EIGRP router ID is ${rid}`, ok: s => s.router.eigrp.rid === rid, hint: `router eigrp 100, eigrp router-id ${rid}`});
+const EIGRP_AS = {text: 'EIGRP runs as AS 100', ok: s => s.router.eigrp.pid === 100, hint: 'router eigrp 100'};
+const EIGRP_CLASSFUL = {text: 'EIGRP covers 10.0.0.0 with one classful network statement', ok: s => s.router.eigrp.nets.some(n => n.cf && n.net === '10.0.0.0'), hint: 'network 10.0.0.0'};
 
 const RIP_LEAD = x => `R1 Gi0/0 serves 192.168.${x}.0/24. R2 is a RIP neighbour on Gi0/1.`;
 const RIP_BASE = x => [...BOTH_IFS(x), RIP_V2, igpIn('rip', 'gi0/0', `network 192.168.${x}.0`), igpIn('rip', 'gi0/1', 'network 10.0.0.0')];
@@ -680,15 +763,15 @@ const EIGRP = {
 };
 
 // Device hardening best practices on R1
-const lineCheck = (name, text, hint, ok) => ({text, ok: st => ok(st.lines[name]), hint});
+const lineCheck = (name, text, hint, ok) => ({text, ok: s => ok(s.router.lines[name]), hint});
 const hardenLine = (name, cmd) => [
   lineCheck(name, `${name === 'vty' ? 'VTY lines have' : 'The console has'} a password`, `${cmd}, password <word>`, l => !!l.pw),
   lineCheck(name, `${name === 'vty' ? 'VTY lines require' : 'The console requires'} a login`, `${cmd}, login`, l => l.login),
 ];
 const HARDEN_BASE = [
-  {text: 'The hostname is EDGE1', ok: st => st.host === 'EDGE1', hint: 'hostname EDGE1'},
-  {text: 'The privileged EXEC mode is protected by an enable secret', ok: st => st.sec.secret, hint: 'enable secret <word>'},
-  {text: 'Stored passwords are encrypted', ok: st => st.sec.enc, hint: 'service password-encryption'},
+  {text: 'The hostname is EDGE1', ok: s => s.router.host === 'EDGE1', hint: 'hostname EDGE1'},
+  {text: 'The privileged EXEC mode is protected by an enable secret', ok: s => s.router.sec.secret, hint: 'enable secret <word>'},
+  {text: 'Stored passwords are encrypted', ok: s => s.router.sec.enc, hint: 'service password-encryption'},
 ];
 const HARDEN = {
   beginner: {
@@ -701,8 +784,8 @@ const HARDEN = {
     sub: 'As Beginner, with a login banner and no DNS lookups for mistyped commands',
     lead: 'R1 is a fresh router with no security configured.',
     steps: ['Keep the Beginner settings.', 'Add a banner, for example banner motd #Authorized access only#.', 'Turn off DNS lookups with no ip domain-lookup.'],
-    build: () => [...HARDEN_BASE, {text: 'A MOTD banner is set', ok: st => !!st.sec.banner, hint: 'banner motd #Authorized access only#'},
-      {text: 'DNS lookups for mistyped commands are off', ok: st => st.sec.nolookup, hint: 'no ip domain-lookup'}],
+    build: () => [...HARDEN_BASE, {text: 'A MOTD banner is set', ok: s => !!s.router.sec.banner, hint: 'banner motd #Authorized access only#'},
+      {text: 'DNS lookups for mistyped commands are off', ok: s => s.router.sec.nolookup, hint: 'no ip domain-lookup'}],
   },
   advanced: {
     sub: 'As Intermediate, and lock down the console line',
@@ -754,28 +837,28 @@ const ACL = {
 // DHCP, DHCP relay, NAT, network services
 const dhcpPool = (name, net, mask, gw) => ({
   text: `DHCP pool ${name} serves ${net} ${mask} with default router ${gw}`,
-  ok: st => !!st.dhcp[name] && st.dhcp[name].net === net && st.dhcp[name].mask === mask && st.dhcp[name].gw === gw,
+  ok: s => !!s.router.dhcp[name] && s.router.dhcp[name].net === net && s.router.dhcp[name].mask === mask && s.router.dhcp[name].gw === gw,
   hint: `ip dhcp pool ${name}, network ${net} ${mask}, default-router ${gw}`,
 });
-const dhcpEx = (first, last) => ({text: `DHCP excludes ${first} to ${last}`, ok: st => st.dhcpEx.some(([a, b]) => a === first && b === last), hint: `ip dhcp excluded-address ${first} ${last}`});
-const dhcpDns = (name, ip) => ({text: `DHCP pool ${name} gives DNS server ${ip}`, ok: st => !!st.dhcp[name] && st.dhcp[name].dns.includes(ip), hint: `dns-server ${ip}`});
-const dhcpDomain = (name, d) => ({text: `DHCP pool ${name} sets the domain to ${d}`, ok: st => !!st.dhcp[name] && st.dhcp[name].domain === d, hint: `domain-name ${d}`});
-const helperOn = (k, ip) => ({text: `${portName(k)} forwards DHCP to ${ip}`, ok: st => st.ifs[k].helpers.includes(ip), hint: `ip helper-address ${ip}`});
-const noHelper = k => ({text: `${portName(k)} does not forward DHCP`, ok: st => st.ifs[k].helpers.length === 0, hint: 'no ip helper-address'});
-const natSide = (k, dir) => ({text: `${portName(k)} is NAT ${dir}`, ok: st => st.ifs[k].nat === dir, hint: `ip nat ${dir}`});
+const dhcpEx = (first, last) => ({text: `DHCP excludes ${first} to ${last}`, ok: s => s.router.dhcpEx.some(([a, b]) => a === first && b === last), hint: `ip dhcp excluded-address ${first} ${last}`});
+const dhcpDns = (name, ip) => ({text: `DHCP pool ${name} gives DNS server ${ip}`, ok: s => !!s.router.dhcp[name] && s.router.dhcp[name].dns.includes(ip), hint: `dns-server ${ip}`});
+const dhcpDomain = (name, d) => ({text: `DHCP pool ${name} sets the domain to ${d}`, ok: s => !!s.router.dhcp[name] && s.router.dhcp[name].domain === d, hint: `domain-name ${d}`});
+const helperOn = (k, ip) => ({text: `${portName(k)} forwards DHCP to ${ip}`, ok: s => s.router.ifs[k].helpers.includes(ip), hint: `ip helper-address ${ip}`});
+const noHelper = k => ({text: `${portName(k)} does not forward DHCP`, ok: s => s.router.ifs[k].helpers.length === 0, hint: 'no ip helper-address'});
+const natSide = (k, dir) => ({text: `${portName(k)} is NAT ${dir}`, ok: s => s.router.ifs[k].nat === dir, hint: `ip nat ${dir}`});
 const natPat = (acl, k) => ({
   text: `ACL ${acl} hosts use ${portName(k)} with PAT (overload)`,
-  ok: st => st.nat.pat.some(p => p.acl === acl && p.iface === portName(k)),
+  ok: s => s.router.nat.pat.some(p => p.acl === acl && p.iface === portName(k)),
   hint: `ip nat inside source list ${acl} interface ${portName(k)} overload`,
 });
 const natStatic = (inside, outside) => ({
   text: `${inside} is NATed to ${outside} with a static entry`,
-  ok: st => st.nat.stat.some(p => p.in === inside && p.out === outside),
+  ok: s => s.router.nat.stat.some(p => p.in === inside && p.out === outside),
   hint: `ip nat inside source static ${inside} ${outside}`,
 });
-const svcNtp = ip => ({text: `R1 uses NTP server ${ip}`, ok: st => st.svc.ntp.includes(ip), hint: `ntp server ${ip}`});
-const svcLog = ip => ({text: `R1 sends logs to ${ip}`, ok: st => st.svc.log.includes(ip), hint: `logging host ${ip}`});
-const svcDns = ip => ({text: `R1 uses DNS server ${ip}`, ok: st => st.svc.dns.includes(ip), hint: `ip name-server ${ip}`});
+const svcNtp = ip => ({text: `R1 uses NTP server ${ip}`, ok: s => s.router.svc.ntp.includes(ip), hint: `ntp server ${ip}`});
+const svcLog = ip => ({text: `R1 sends logs to ${ip}`, ok: s => s.router.svc.log.includes(ip), hint: `logging host ${ip}`});
+const svcDns = ip => ({text: `R1 uses DNS server ${ip}`, ok: s => s.router.svc.dns.includes(ip), hint: `ip name-server ${ip}`});
 
 const DHCP_LEAD = x => `PC1 is on 192.168.${x}.0/24 behind Gi0/0 and gets its settings from R1.`;
 const DHCP = {
@@ -783,8 +866,8 @@ const DHCP = {
     sub: 'Create DHCP pool LAN1 for 192.168.x.0/24 with R1 as the default router',
     lead: DHCP_LEAD,
     steps: ['Address Gi0/0 and Gi0/1 on R1 and bring them up.', 'Create ip dhcp pool LAN1 with network 192.168.x.0 255.255.255.0.',
-      'Set default-router to 192.168.x.1.'],
-    build: x => [...BOTH_IFS(x), dhcpPool('lan1', `192.168.${x}.0`, '255.255.255.0', `192.168.${x}.1`)],
+      'Set default-router to 192.168.x.1.', 'Open PC1 and type dhcp to get an address.'],
+    build: x => [...BOTH_IFS(x), dhcpPool('lan1', `192.168.${x}.0`, '255.255.255.0', `192.168.${x}.1`), pcLease('PC1', `192.168.${x}`)],
   },
   intermediate: {
     sub: 'As Beginner, and exclude 192.168.x.1 to 192.168.x.20 from the pool',
@@ -811,8 +894,9 @@ const DHCPRELAY = {
   beginner: {
     sub: 'Forward DHCP from the LAN to the server 172.16.x.10 behind R2',
     lead: x => `PC1 is on 192.168.${x}.0/24 behind Gi0/0. The DHCP server 172.16.x.10 is behind R2.`,
-    steps: ['Address Gi0/0 and Gi0/1 on R1 and bring them up.', 'Add a route to 172.16.x.0/24 via 10.0.0.2.', 'On Gi0/0, add ip helper-address 172.16.x.10.'],
-    build: x => [...BOTH_IFS(x), rtRoute(`172.16.${x}.0`, '255.255.255.0', '10.0.0.2'), helperOn('gi0/0', `172.16.${x}.10`)],
+    steps: ['Address Gi0/0 and Gi0/1 on R1 and bring them up.', 'Add a route to 172.16.x.0/24 via 10.0.0.2.', 'On Gi0/0, add ip helper-address 172.16.x.10.',
+      'Open PC1 and type dhcp to get an address through the relay.'],
+    build: x => [...BOTH_IFS(x), rtRoute(`172.16.${x}.0`, '255.255.255.0', '10.0.0.2'), helperOn('gi0/0', `172.16.${x}.10`), pcLease('PC1', `192.168.${x}`)],
   },
   intermediate: {
     sub: 'Add a second DHCP server 172.17.x.10 behind R2 as a backup helper',
@@ -891,35 +975,39 @@ const SERVICES = {
   },
 };
 
-// The labs behind each "Start lab" button (data-lab in index.html).
+// The lab build for each topic with labs, keyed by its id in CATALOGUE (js/topics.js).
 // showNet and maskRule only matter for the IPv4 addressing topics.
 const NET_LEAD = x => `Your network is 192.168.${x}.0/24. R1 has no addressing yet.`;
-const TOPICS = {
-  ipv4: {name: 'IPv4 addressing', kind: 'v4', showNet: true, maskRule: 'the correct mask', lead: NET_LEAD, levels: IPV4},
-  subnetting: {name: 'Subnetting', kind: 'v4', maskRule: 'the correct mask', lead: NET_LEAD, levels: SUBNET},
-  vlsm: {name: 'VLSM', kind: 'v4', maskRule: 'the smallest mask that fits its hosts',
+const LABS = {
+  ipv4: {kind: 'v4', showNet: true, maskRule: 'the correct mask', lead: NET_LEAD, levels: IPV4},
+  subnetting: {kind: 'v4', maskRule: 'the correct mask', lead: NET_LEAD, levels: SUBNET},
+  vlsm: {kind: 'v4', maskRule: 'the smallest mask that fits its hosts',
     lead: x => `Your network is 192.168.${x}.0/24. Each LAN has a host requirement.`, levels: VLSM},
-  ipv6: {name: 'IPv6 Addressing', kind: 'v6', lead: x => `Your prefix is 2001:db8:${x}::/48. R1 has no IPv6 addressing yet.`, levels: IPV6},
-  cdp: {name: 'CDP & LLDP', kind: 'sw', levels: CDP},
-  vlans: {name: 'VLANs', kind: 'sw', lead: SW_LEAD, levels: VLANS},
-  access: {name: 'Access Ports', kind: 'sw', lead: SW_LEAD, levels: ACCESS},
-  trunk: {name: 'Trunking (802.1Q)', kind: 'sw', lead: SW_LEAD, levels: TRUNK},
-  stp: {name: 'Spanning Tree Protocol (STP)', kind: 'sw', lead: SW_LEAD, levels: STP},
-  advstp: {name: 'Advanced STP', kind: 'sw', lead: SW_LEAD, levels: ADVSTP},
-  etherchannel: {name: 'EtherChannel', kind: 'sw', lead: SW_LEAD, levels: ETHERCHANNEL},
-  advetherchannel: {name: 'Advanced EtherChannel', kind: 'sw', lead: SW_LEAD, levels: ADVETHER},
-  intervlan: {name: 'Inter-VLAN Routing', kind: 'sw', lead: INTER_LEAD, levels: INTERVLAN},
-  portsec: {name: 'Port Security', kind: 'sw', lead: SW_LEAD, levels: PORTSEC},
-  static: {name: 'Static Routing', kind: 'rt', levels: STATIC},
-  defroute: {name: 'Default Routes', kind: 'rt', levels: DEFROUTE},
-  ospf: {name: 'OSPFv2 (IPv4)', kind: 'rt', levels: OSPF},
-  ospfv3: {name: 'OSPFv3 (IPv6)', kind: 'rt', levels: OSPF6},
-  rip: {name: 'RIPv2', kind: 'rt', levels: RIP},
-  eigrp: {name: 'EIGRP', kind: 'rt', levels: EIGRP},
-  harden: {name: 'Device Hardening (Best Practices)', kind: 'rt', levels: HARDEN},
-  acl: {name: 'Standard and Extended ACLs (IPv4)', kind: 'rt', levels: ACL},
-  dhcp: {name: 'DHCP', kind: 'rt', levels: DHCP},
-  dhcprelay: {name: 'DHCP Relay', kind: 'rt', levels: DHCPRELAY},
-  nat: {name: 'NAT', kind: 'rt', levels: NAT},
-  services: {name: 'Network Services (NTP, Syslog, DNS)', kind: 'rt', levels: SERVICES},
+  ipv6: {kind: 'v6', lead: x => `Your prefix is 2001:db8:${x}::/48. R1 has no IPv6 addressing yet.`, levels: IPV6},
+  cdp: {kind: 'sw', levels: CDP},
+  vlans: {kind: 'sw', lead: SW_LEAD, levels: VLANS},
+  access: {kind: 'sw', lead: SW_LEAD, levels: ACCESS},
+  trunk: {kind: 'sw', lead: SW_LEAD, levels: TRUNK},
+  stp: {kind: 'sw', lead: SW_LEAD, levels: STP},
+  advstp: {kind: 'sw', lead: SW_LEAD, levels: ADVSTP},
+  etherchannel: {kind: 'sw', lead: SW_LEAD, levels: ETHERCHANNEL},
+  advetherchannel: {kind: 'sw', lead: SW_LEAD, levels: ADVETHER},
+  intervlan: {kind: 'sw', lead: INTER_LEAD, levels: INTERVLAN},
+  mlsvlan: {kind: 'mls', lead: MLS_LEAD, levels: MLSVLAN, server: MLS_SERVER},
+  portsec: {kind: 'sw', lead: SW_LEAD, levels: PORTSEC},
+  static: {kind: 'rt', levels: STATIC},
+  defroute: {kind: 'rt', levels: DEFROUTE},
+  ospf: {kind: 'rt', levels: OSPF},
+  ospfv3: {kind: 'rt', levels: OSPF6},
+  rip: {kind: 'rt', levels: RIP},
+  eigrp: {kind: 'rt', levels: EIGRP},
+  harden: {kind: 'rt', levels: HARDEN},
+  acl: {kind: 'rt', levels: ACL},
+  dhcp: {kind: 'rt', levels: DHCP},
+  // the DHCP server behind R2: it answers once R1 has Gi0/1 up and a route towards it
+  dhcprelay: {kind: 'rt', levels: DHCPRELAY, server: x => ({name: 'DHCP server', ip: `172.16.${x}.10`,
+    pools: [{name: 'LAN1', net: `192.168.${x}.0`, mask: MASK24, gw: `192.168.${x}.1`, ex: [[`192.168.${x}.1`, `192.168.${x}.10`]]}],
+    reach: s => !!usable(s.router.ifs['gi0/1']) && s.router.routes.some(r => DOTTED.test(r.nh) && inNet(r.nh, s.router.ifs['gi0/1'].mask, s.router.ifs['gi0/1'].ip) && inNet(r.net, r.mask, `172.16.${x}.10`))})},
+  nat: {kind: 'rt', levels: NAT},
+  services: {kind: 'rt', levels: SERVICES},
 };

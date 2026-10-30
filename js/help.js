@@ -1,7 +1,9 @@
-// "?" help for every mode, shaped like Cisco's: an optional heading, then "  command  description" rows.
-// The router lists follow Packet Tracer's router output (user, privileged, config, interface and line were
-// copied from real screenshots). The switch lists use the commands Packet Tracer's switch offers per mode,
-// with the router's descriptions where the command is the same and standard IOS wording otherwise.
+// "?" help, shaped like Cisco's: an optional heading, then "  command  description" rows.
+// This file holds what the devices share: the rows several help tables use, the "<command> ?" next-word table and the engine
+// that prints either. Each device owns its per-mode list of commands (ROUTER_HELP in devices/router.js, SWITCH_HELP in
+// devices/switch.js, PC_HELP in devices/pc.js) and hands it to the engine. The router lists follow Packet Tracer's router output
+// (user, privileged, config, interface and line were copied from real screenshots). The switch lists use the commands Packet
+// Tracer's switch offers per mode, with the router's descriptions where the command is the same and standard IOS wording otherwise.
 
 // rows that appear in several lists
 const H = {
@@ -60,221 +62,6 @@ const LINE = {head: 'Virtual Line configuration commands:', rows: [
   ['stopbits', 'Set async line stop bits'],
   ['transport', 'Define transport protocols for line'],
 ]};
-const ACL_ROWS = [
-  ['default', 'Set a command to its defaults'],
-  ['deny', 'Specify packets to reject'],
-  ['exit', 'Exit from access-list configuration mode'],
-  H.no,
-  ['permit', 'Specify packets to forward'],
-  ['remark', 'Access list entry comment'],
-];
-const ROUTING_COMMON = [
-  ['default-information', 'Control distribution of default information'],
-  ['default-metric', 'Set metric of redistributed routes'],
-  ['distance', 'Define an administrative distance'],
-  ['distribute-list', 'Filter networks in routing updates'],
-  ['exit', 'Exit from routing protocol configuration mode'],
-  ['maximum-paths', 'Forward packets over multiple paths'],
-  ['neighbor', 'Specify a neighbor router'],
-  ['network', 'Enable routing on an IP network'],
-  H.no,
-  ['passive-interface', 'Suppress routing updates on an interface'],
-  ['redistribute', 'Redistribute information from another routing protocol'],
-  ['timers', 'Adjust routing timers'],
-];
-
-const OSPF_HELP = {head: 'Router configuration commands:', rows: byName([
-  ['area', 'OSPF area parameters'],
-  ['auto-cost', 'Calculate OSPF interface cost according to bandwidth'],
-  ['compatible', 'OSPF router compatibility list'],
-  ['log-adjacency-changes', 'Log changes in adjacency state'],
-  ['router-id', 'router-id for this OSPF process'],
-  ['summary-address', 'Configure IP address summaries'],
-  ...ROUTING_COMMON,
-])};
-
-const ROUTER_HELP = {
-  user: {head: 'Exec commands:', rows: EXEC_USER},
-  priv: {head: 'Exec commands:', rows: [
-    H.session, ['auto', 'Exec level Automation'], H.clear, H.clock, H.configure, H.connect, H.copy, H.debug, H.del, H.dir, H.disable,
-    H.disconnect, H.enable, H.erase, H.exit, H.logout, ['mkdir', 'Create new directory'], H.more, ['no', 'Disable debugging informations'],
-    H.ping, H.reload, H.resume, ['rmdir', 'Remove existing directory'], ['send', 'Send a message to other tty lines'], H.setup, H.show,
-    H.ssh, H.telnet, H.terminal, H.traceroute, H.undebug, H.vlan, H.write,
-  ]},
-  config: {head: 'Configure commands:', rows: [
-    ['aaa', 'Authentication, Authorization and Accounting.'],
-    ['access-list', 'Add an access list entry'],
-    ['banner', 'Define a login banner'],
-    ['bba-group', 'Configure BBA Group'],
-    ['boot', 'Modify system boot parameters'],
-    ['cdp', 'Global CDP configuration subcommands'],
-    ['class-map', 'Configure Class Map'],
-    ['clock', 'Configure time-of-day clock'],
-    ['config-register', 'Define the configuration register'],
-    ['crypto', 'Encryption module'],
-    ['default', 'Set a command to its defaults'],
-    ['do', 'To run exec commands in config mode'],
-    ['dot11', 'IEEE 802.11 config commands'],
-    ['enable', 'Modify enable password parameters'],
-    ['end', 'Exit from configure mode'],
-    ['exit', 'Exit from configure mode'],
-    ['flow', 'Global Flow configuration subcommands'],
-    ['hostname', "Set system's network name"],
-    ['interface', 'Select an interface to configure'],
-    ['ip', 'Global IP configuration subcommands'],
-    ['ipv6', 'Global IPv6 configuration commands'],
-    ['key', 'Key management'],
-    ['license', 'Configure license features'],
-    ['line', 'Configure a terminal line'],
-    ['lldp', 'Global LLDP configuration subcommands'],
-    ['logging', 'Modify message logging facilities'],
-    ['login', 'Enable secure login checking'],
-    ['mac-address-table', 'Configure the MAC address table'],
-    ['no', 'Negate a command or set its defaults'],
-    ['ntp', 'Configure NTP'],
-    ['parser', 'Configure parser'],
-    ['policy-map', 'Configure QoS Policy Map'],
-    ['port-channel', 'EtherChannel configuration'],
-    ['priority-list', 'Build a priority list'],
-    ['privilege', 'Command privilege parameters'],
-    ['queue-list', 'Build a custom queue list'],
-    ['router', 'Enable a routing process'],
-    ['secure', 'Secure image and configuration archival commands'],
-    ['security', 'Infra Security CLIs'],
-    ['service', 'Modify use of network based services'],
-    ['snmp-server', 'Modify SNMP engine parameters'],
-    ['spanning-tree', 'Spanning Tree Subsystem'],
-    ['tacacs-server', 'Modify TACACS query parameters'],
-    ['username', 'Establish User Name Authentication'],
-    ['vpdn', 'Virtual Private Dialup Network'],
-    ['vpdn-group', 'VPDN group configuration'],
-  ]},
-  ifc: {head: null, rows: [
-    ['arp', 'Set arp type (arpa, probe, snap) or timeout'],
-    ['bandwidth', 'Set bandwidth informational parameter'],
-    ['cdp', 'CDP interface subcommands'],
-    ['channel-group', 'Add this interface to an Etherchannel group'],
-    ['crypto', 'Encryption/Decryption commands'],
-    ['custom-queue-list', 'Assign a custom queue list to an interface'],
-    ['delay', 'Specify interface throughput delay'],
-    ['description', 'Interface specific description'],
-    ['duplex', 'Configure duplex operation.'],
-    ['exit', 'Exit from interface configuration mode'],
-    ['fair-queue', 'Enable Fair Queuing on an Interface'],
-    ['hold-queue', 'Set hold queue depth'],
-    ['ip', 'Interface Internet Protocol config commands'],
-    ['ipv6', 'IPv6 interface subcommands'],
-    ['lldp', 'LLDP interface subcommands'],
-    ['mac-address', 'Manually set interface MAC address'],
-    ['mtu', 'Set the interface Maximum Transmission Unit (MTU)'],
-    H.no,
-    ['pppoe', 'pppoe interface subcommands'],
-    ['pppoe-client', 'pppoe client'],
-    ['priority-group', 'Assign a priority group to an interface'],
-    ['service-policy', 'Configure QoS Service Policy'],
-    ['shutdown', 'Shutdown the selected interface'],
-    ['speed', 'Configure speed operation.'],
-  ]},
-  line: LINE,
-  // per routing protocol (state.proto)
-  router: {
-    ospf: OSPF_HELP,
-    ospf6: OSPF_HELP,
-    eigrp: {head: 'Router configuration commands:', rows: byName([
-      ['auto-summary', 'Enable automatic network number summarization'],
-      ['eigrp', 'EIGRP specific commands'],
-      ['metric', 'Modify EIGRP routing metrics and parameters'],
-      ['offset-list', 'Add or subtract offset from EIGRP metrics'],
-      ['traffic-share', 'How to compute traffic share over alternate paths'],
-      ['variance', 'Control load balancing variance'],
-      ...ROUTING_COMMON,
-    ])},
-    rip: {head: 'Router configuration commands:', rows: byName([
-      ['auto-summary', 'Enable automatic network number summarization'],
-      ['offset-list', 'Add or subtract offset from RIP metrics'],
-      ['validate-update-source', 'Perform sanity checks against source address of routing updates'],
-      ['version', 'Set routing protocol version'],
-      ...ROUTING_COMMON,
-    ])},
-  },
-  // per ACL type
-  nacl: {
-    std: {head: 'Standard Access List configuration commands:', rows: [['<1-2147483647>', 'Sequence Number'], ...ACL_ROWS]},
-    ext: {head: 'Extended Access List configuration commands:', rows: byName([
-      ['<1-2147483647>', 'Sequence Number'], ...ACL_ROWS, ['evaluate', 'Evaluate an access list'],
-    ])},
-  },
-  dhcp: {head: 'DHCP pool configuration commands:', rows: [
-    ['default-router', 'Default routers'],
-    ['dns-server', 'DNS servers'],
-    ['domain-name', 'Domain name'],
-    ['exit', 'Exit from DHCP pool configuration mode'],
-    ['lease', 'Address lease time'],
-    ['netbios-name-server', 'NetBIOS (WINS) name servers'],
-    ['network', 'Network number and mask'],
-    H.no,
-    ['option', 'Raw DHCP options'],
-  ]},
-};
-
-const SWITCH_HELP = {
-  user: {head: 'Exec commands:', rows: EXEC_USER},
-  priv: {head: 'Exec commands:', rows: [
-    H.session, H.clear, H.clock, H.configure, H.connect, H.copy, H.debug, H.del, H.dir, H.disable, H.disconnect, H.enable, H.erase, H.exit,
-    H.logout, H.more, ['no', 'Disable debugging informations'], H.ping, H.reload, H.resume, H.setup, H.show, H.ssh, H.telnet, H.terminal,
-    H.traceroute, H.undebug, H.vlan, H.write,
-  ]},
-  config: {head: 'Configure commands:', rows: [
-    ['access-list', 'Add an access list entry'],
-    ['banner', 'Define a login banner'],
-    ['boot', 'Modify system boot parameters'],
-    ['cdp', 'Global CDP configuration subcommands'],
-    ['clock', 'Configure time-of-day clock'],
-    ['do', 'To run exec commands in config mode'],
-    ['enable', 'Modify enable password parameters'],
-    ['end', 'Exit from configure mode'],
-    ['exit', 'Exit from configure mode'],
-    ['hostname', "Set system's network name"],
-    ['interface', 'Select an interface to configure'],
-    ['ip', 'Global IP configuration subcommands'],
-    ['line', 'Configure a terminal line'],
-    ['logging', 'Modify message logging facilities'],
-    ['mac-address-table', 'Configure the MAC address table'],
-    H.no,
-    ['port-channel', 'EtherChannel configuration'],
-    ['privilege', 'Command privilege parameters'],
-    ['service', 'Modify use of network based services'],
-    ['snmp-server', 'Modify SNMP engine parameters'],
-    ['spanning-tree', 'Spanning Tree Subsystem'],
-    ['username', 'Establish User Name Authentication'],
-    H.vlan,
-    ['vtp', 'Configure global VTP state'],
-  ]},
-  ifc: {head: null, rows: [
-    ['cdp', 'CDP interface subcommands'],
-    ['channel-group', 'Etherchannel/port bundling configuration'],
-    ['channel-protocol', 'Select the channel protocol (LACP, PAgP)'],
-    ['description', 'Interface specific description'],
-    ['duplex', 'Configure duplex operation.'],
-    ['exit', 'Exit from interface configuration mode'],
-    ['mac-address', 'Manually set interface MAC address'],
-    ['mdix', 'Set Media Dependent Interface with Crossover'],
-    ['mls', 'mls interface commands'],
-    H.no,
-    ['shutdown', 'Shutdown the selected interface'],
-    ['spanning-tree', 'Spanning Tree Subsystem'],
-    ['speed', 'Configure speed operation.'],
-    ['storm-control', 'Storm control command'],
-    ['switchport', 'Set switching mode characteristics'],
-    ['tx-ring-limit', 'Configure PA level transmit ring limit'],
-  ]},
-  vlan: {head: 'VLAN configuration commands:', rows: [
-    ['exit', 'Apply changes, bump revision number, and exit mode'],
-    ['name', 'Ascii name of the VLAN'],
-    H.no,
-  ]},
-  line: LINE,
-};
 
 // "<command> ?" lists what can follow, like IOS. Keys are the words typed so far ('*' stands for any value).
 // Rows are [next word, description, device ('r' = R1 only, 's' = S1 only), isValue]; isValue marks a value
@@ -333,6 +120,7 @@ const NEXT = {
     'interface *': [],
     'interface GigabitEthernet': [arg('<0-0>/<0-3>', 'GigabitEthernet interface number')],
     'interface FastEthernet': [arg('<0-0>/<0-24>', 'FastEthernet interface number')],
+    'interface Vlan': [arg('<1-4094>', 'Vlan interface number')],
     'hostname': [arg('WORD', "This system's network name")],
     'vlan': [arg('<1-4094>', 'ISL VLAN IDs 1-4094')],
     'vlan *': [],
@@ -343,6 +131,7 @@ const NEXT = {
       ['nat', 'Configure NAT', 'r'],
       ['name-server', 'Specify address of name server to use', 'r'],
       ['default-gateway', 'Specify default gateway (if not routing IP)', 's'],
+      ['routing', 'Enable IP routing', 's'],
     ],
     'ip route': [arg('A.B.C.D', 'Destination prefix')],
     'ip route *': [arg('A.B.C.D', 'Destination prefix mask')],
@@ -381,7 +170,7 @@ const NEXT = {
     'ip': [
       ['address', 'Set the IP address of an interface'],
       ['access-group', 'Specify access control for packets', 'r'],
-      ['helper-address', 'Specify a destination address for UDP broadcasts', 'r'],
+      ['helper-address', 'Specify a destination address for UDP broadcasts'],
       ['nat', 'NAT interface commands', 'r'],
       ['ospf', 'OSPF interface commands', 'r'],
     ],
@@ -403,6 +192,7 @@ const NEXT = {
       ['shutdown', 'Shutdown the selected interface'],
       ['ip', 'Interface Internet Protocol config commands'],
       ['cdp', 'CDP interface subcommands'],
+      ['switchport', 'Set switching mode characteristics', 's'],
     ],
     'cdp': [['enable', 'Enable CDP on interface']],
     'description': [arg('LINE', 'Up to 240 characters describing this interface')],
@@ -460,37 +250,21 @@ const NEXT = {
   },
 };
 
-// The "?" list for the current device and mode
-function helpEntry() {
-  const mode = devState().mode;
-  const entry = (dev === 'S1' ? SWITCH_HELP : ROUTER_HELP)[mode];
-  if (mode === 'router') return entry[state.proto];
-  if (mode === 'nacl') return entry[state.acls[state.aclName].type === 'extended' ? 'ext' : 'std'];
-  return entry;
-}
-
 // Cisco pads the command column to the longest entry
-function printRows(rows) {
+function printRows(rows, out) {
   const pad = Math.max(12, ...rows.map(r => r[0].length + 1));
-  for (const [cmd, desc] of rows) print('  ' + cmd.padEnd(pad) + desc);
+  for (const [cmd, desc] of rows) out('  ' + cmd.padEnd(pad) + desc);
 }
 
-// "?" on its own
-function help() {
-  const entry = helpEntry();
-  if (entry.head) print(entry.head);
-  printRows(entry.rows);
-}
-
-// The rows that may follow the words typed so far, or null when a word is not valid there
-function nextRows(words, mode) {
+// The rows that may follow the words typed so far, or null when a word is not valid there.
+// tag is the device's letter in the table ('r' = router, 's' = switch); untagged rows suit every device.
+function nextRows(words, mode, tag) {
   // "interface ..." also works from interface mode, so its help comes from the config table
   if (mode === 'ifc' && words[0]?.length >= 3 && 'interface'.startsWith(words[0])) mode = 'config';
   const table = NEXT[mode === 'user' || mode === 'priv' ? 'exec' : mode];
   if (!table) return null;
-  const device = dev === 'S1' ? 's' : 'r';
   const firstWords = [...new Set(Object.keys(table).map(k => k.split(' ')[0]))].map(k => [k, '']);
-  const rowsAt = path => (path ? table[path] || [] : firstWords).filter(r => !r[2] || r[2] === device);
+  const rowsAt = path => (path ? table[path] || [] : firstWords).filter(r => !r[2] || r[2] === tag);
   let path = '';
   for (const word of words) {
     const keywords = rowsAt(path).filter(r => !r[3] && r[0].toLowerCase().startsWith(word));
@@ -504,15 +278,20 @@ function nextRows(words, mode) {
   return rowsAt(path);
 }
 
-// "show ip ?" lists what can follow "show ip"; "sh?" (no space) lists the commands starting with "sh"
-function helpNext(line) {
+// The help for line (what was typed plus the "?"), given the device's list for its current mode, the mode and its tag:
+// "?" on its own lists the whole mode; "show ip ?" lists what can follow "show ip"; "sh?" (no space) lists the commands starting with "sh"
+function helpFor(line, entry, mode, tag, out) {
   const typed = line.slice(0, -1);
+  if (!typed.trim()) {
+    if (entry.head) out(entry.head);
+    return printRows(entry.rows, out);
+  }
   if (!/\s$/.test(typed)) {
     const start = typed.toLowerCase().trim();
-    const hits = helpEntry().rows.filter(([cmd]) => cmd.startsWith(start));
-    return hits.length ? print(hits.map(([cmd]) => cmd).join('  ')) : print('% Unrecognized command', 'ln-err');
+    const hits = entry.rows.filter(([cmd]) => cmd.startsWith(start));
+    return hits.length ? out(hits.map(([cmd]) => cmd).join('  ')) : out('% Unrecognized command', 'ln-err');
   }
-  const rows = nextRows(typed.toLowerCase().trim().split(/\s+/), devState().mode);
-  if (rows === null) return print('% Unrecognized command', 'ln-err');
-  printRows(rows.length ? rows : [['<cr>', '']]);
+  const rows = nextRows(typed.toLowerCase().trim().split(/\s+/), mode, tag);
+  if (rows === null) return out('% Unrecognized command', 'ln-err');
+  printRows(rows.length ? rows : [['<cr>', '']], out);
 }

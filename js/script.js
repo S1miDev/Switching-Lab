@@ -13,14 +13,10 @@ function el(tag, className, text) {
 const term = $('term'), input = $('cmd'), promptEl = $('prompt');
 
 // ---- state ----
+// the open lab's devices live in its session (session.js), shown by the lab page (lab.js)
 let level = 'intermediate';  // the chosen difficulty
-let topic = 'ipv4';          // the open lab (a key of TOPICS)
-let state, swState;          // R1's and S1's configuration, fresh for every lab
-let reqs = [];               // the open lab's requirements
-let solution = [];           // a known-good config for it, when the lab has one
-let reqHints = [];           // how many hints each requirement has shown
+let topic = 'ipv4';          // the open lab (an id of CATALOGUE, with its build in LABS)
 let lastNet = null;          // the previous lab's random network, so the next one differs
-let solved = false;          // all requirements met (the automatic check runs once per solve)
 let dev = 'R1';              // the device whose console is open
 let log = $('log');          // that device's console output
 const logs = {R1: log};      // console output per device
@@ -29,29 +25,39 @@ let historyPos = 0;
 
 // ---- console ----
 
-const configurable = () => dev === 'R1' || dev === 'S1';
-const devState = () => (dev === 'S1' ? swState : state); // the open device's configuration (R1's for the PCs)
+// the open device (devices/device.js): the console only talks to it through its interface
+const active = () => activeSession.devices[dev];
+
+// sink: while set, print and echo hand their lines to it instead of the page (the headless self-check uses this)
+let sink = null;
 
 function print(text, cls = '') {
+  if (sink) return sink(text, cls);
   log.append(el('div', cls, text));
   term.scrollTop = term.scrollHeight;
 }
 
 // a typed command, after the prompt it was typed at
 function echo(text) {
+  if (sink) return sink(active().prompt() + ' ' + text);
   const line = el('div');
-  line.append(el('span', 'ps', promptFor() + ' '), text);
+  line.append(el('span', 'ps', active().prompt() + ' '), text);
   log.append(line);
   term.scrollTop = term.scrollHeight;
 }
 
-const SUFFIX = {user: '>', priv: '#', config: '(config)#', ifc: '(config-if)#', vlan: '(config-vlan)#', nacl: '(config-nacl)#',
-  dhcp: '(config-dhcp)#', line: '(config-line)#', router: '(config-router)#'};
-function promptFor() {
-  return configurable() ? devState().host + SUFFIX[devState().mode] : dev + '>';
-}
 function renderPrompt() {
-  promptEl.textContent = promptFor();
+  if (!sink) promptEl.textContent = active().prompt();
+}
+
+// Runs one typed line on the open device. A line ending in "?" asks for help; the device does the rest, writing through print.
+function run(raw) {
+  const line = raw.trim();
+  echo(line);
+  if (!line) return;
+  if (line.length > 1 && line.endsWith('?')) active().help(line, print);
+  else active().run(line, print);
+  renderPrompt();
 }
 
 // open a device's console: its own output, its tab and its box in the diagram
@@ -66,15 +72,16 @@ function showDevice(name) {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.dev === name));
   document.querySelectorAll('#topo [data-dev]').forEach(g => g.classList.toggle('sel', g.dataset.dev === name));
   renderPrompt();
-  if (!log.textContent) {
-    if (configurable()) {
-      print(`Connected to ${name} — type ? or help for available commands.`);
-      print('Press Tab to complete, Up/Down for history.');
-    } else {
-      print(`Connected to ${name} — this device is not configurable in this lab.`);
-    }
-  }
+  if (!log.textContent) active().banner().forEach(line => print(line));
   input.focus();
+}
+
+// empty every device's console and the typed-command history, then open the first device
+function resetConsole(home) {
+  for (const out of Object.values(logs)) out.textContent = '';
+  cmdHistory.length = 0;
+  historyPos = 0;
+  showDevice(home);
 }
 
 function renderTabs(names) {
@@ -85,11 +92,8 @@ function renderTabs(names) {
   }));
 }
 
-// the full commands Tab can complete to right now
-const keysNow = () => (dev === 'S1' ? SW_KEYS : KEYS)[devState().mode];
-
-// Tab completes word by word, so abbreviations work ("conf t", "sh ip int"). After "interface" it completes
-// port names, and when several ports match, each further Tab moves on to the next one.
+// Tab asks the open device to complete the input (it knows its commands and ports). When several ports match, the device
+// says so (cycle) and each further Tab moves on to the next one.
 let tabCycle = null; // {value, hits, i} while stepping through matching ports
 function complete() {
   if (tabCycle && input.value === tabCycle.value) {
@@ -97,51 +101,18 @@ function complete() {
     input.value = tabCycle.value = tabCycle.hits[tabCycle.i];
     return;
   }
-  tabCycle = null;
-  const text = input.value.toLowerCase();
-  const typed = text.split(/\s+/);
-  const mode = devState().mode;
-  let hits;
-  if (typed.length === 2 && typed[0].length >= 3 && 'interface'.startsWith(typed[0]) && (mode === 'config' || mode === 'ifc')) {
-    const ports = Object.values(dev === 'S1' ? swState.ports : state.ifs).map(p => p.name);
-    hits = ports.filter(p => p.toLowerCase().startsWith(typed[1])).map(p => 'interface ' + p);
-    if (hits.length > 1) {
-      tabCycle = {value: hits[0], hits, i: 0};
-      input.value = hits[0];
-      return;
-    }
-  } else {
-    hits = keysNow().filter(key => {
-      const words = key.split(' ');
-      return typed.length <= words.length && typed.every((w, i) => words[i].startsWith(w));
-    });
-  }
-  if (!hits.length) return;
-  if (hits.length === 1) {
-    input.value = hits[0] + ' ';
-    return;
-  }
-  // several matches: extend each typed word as far as all matches agree
-  const split = hits.map(h => h.split(' '));
-  const words = typed.map((_, i) => {
-    let common = split[0][i];
-    for (const h of split) while (!h[i].startsWith(common)) common = common.slice(0, -1);
-    return common;
-  });
-  const last = typed.length - 1;
-  const wordDone = split.every(h => h[last] === split[0][last] && h.length > typed.length);
-  const completed = words.join(' ') + (wordDone ? ' ' : '');
-  if (completed === text) print(hits.join('   ')); // nothing more to fill in: list the options
-  input.value = completed;
+  const done = active().complete(input.value);
+  tabCycle = done.cycle ? {value: done.value, hits: done.cycle, i: 0} : null;
+  if (done.list) print(done.list);
+  input.value = done.value;
 }
 
 input.addEventListener('keydown', e => {
-  if (e.key === '?' && configurable()) { // like IOS: show the options at once and keep what was typed
+  if (e.key === '?' && active().configurable) { // like IOS: show the options at once and keep what was typed
     e.preventDefault();
     const typed = input.value;
     echo(typed + '?');
-    if (typed.trim()) helpNext(typed + '?');
-    else help();
+    active().help(typed + '?', print);
   } else if (e.key === 'Enter') {
     e.preventDefault();
     const line = input.value.trim();
@@ -149,10 +120,10 @@ input.addEventListener('keydown', e => {
     historyPos = cmdHistory.length;
     run(input.value);
     input.value = '';
-    liveCheck();
+    labPage.afterCommand();
   } else if (e.key === 'Tab') {
     e.preventDefault();
-    if (configurable()) complete();
+    if (active().configurable) complete();
   } else if (e.key === 'ArrowUp') {
     e.preventDefault();
     if (historyPos > 0) input.value = cmdHistory[--historyPos];
@@ -167,193 +138,15 @@ input.addEventListener('keydown', e => {
   }
 });
 
-// ---- requirements and hints ----
-
-// results has one true/false/null per requirement (null = not judged), or is null for "none judged"
-function renderReqs(results) {
-  const done = results ? results.filter(Boolean).length : 0;
-  $('req-count').textContent = `${done}/${reqs.length}`;
-  $('req-bar').style.width = reqs.length ? `${100 * done / reqs.length}%` : '0';
-  let current = false; // the first unfinished requirement gets the "current" highlight
-  $('reqs').replaceChildren(...reqs.map((r, i) => {
-    const res = results ? results[i] : null;
-    const li = el('li');
-    if (res !== null) li.className = res ? 'ok' : 'bad';
-    if (res !== true && !current) {
-      current = true;
-      li.classList.add('cur');
-    }
-    li.append(el('span', 'mark', res === null ? '○' : res ? '✓' : '✗'));
-    li.append(el('span', 'rtext', r.text + (res === false && !examRunning ? ` — expected: ${r.hint}` : '')));
-    const used = reqHints[i] || 0;
-    if (res !== true && used < 3 && !examRunning) {
-      const b = el('button', 'ghost rhint-btn', `Hint (${3 - used} left)`);
-      b.dataset.i = i;
-      li.append(b);
-    }
-    for (let k = 0; k < used; k++) li.append(el('div', 'rhint', `Hint ${k + 1}/3: ` + hintLines(r, k)));
-    return li;
-  }));
-}
-
-function check() {
-  const results = reqs.map(r => r.ok(state));
-  renderReqs(results);
-  const failed = results.filter(ok => !ok).length;
-  print(failed ? `[lab] ${failed} requirement(s) not met.` : '[lab] All requirements met.', failed ? 'ln-err' : 'ln-ok');
-}
-
-// After every command: tick what is already met (the rest stays neutral, without hints),
-// and run the full check once, automatically, when the last requirement is met.
-function liveCheck() {
-  const met = reqs.map(r => r.ok(state));
-  renderReqs(met.map(ok => ok || null));
-  const all = reqs.length > 0 && met.every(Boolean);
-  if (all && !solved) check();
-  solved = all;
-}
-
-// "vlan 10, name Sales" and "a, then b" hold several commands
-const HINT_SPLIT = /,\s*(?:then\s+)?(?=[a-z])/i;
-
-// Hint 1 names the command to think about, hint 2 shows its syntax, hint 3 gives the exact commands
-function hintLines(r, k) {
-  const raw = /^[\d.]+ /.test(r.hint) ? 'ip address ' + r.hint     // addressing labs keep just "ip mask"
-    : /^[0-9a-f:]+\/\d+$/i.test(r.hint) ? 'ipv6 address ' + r.hint // or just the IPv6 address
-    : r.hint;
-  const cmds = raw.split(HINT_SPLIT);
-  if (k === 0) return `Think about which mode you need, then the command "${cmdSyntax(cmds[0]).split(' ').slice(0, 2).join(' ')} ..."`;
-  if (k === 1) return 'Syntax: ' + cmds.map(cmdSyntax).join(' → ');
-  const port = r.text.match(/^(?:[RS]\d )?((?:Gi|Fa|Po|Port-channel)\S*)/i);
-  return 'Commands: ' + [port ? 'interface ' + port[1] : '', ...cmds].filter(Boolean).join(' → ');
-}
-
-// ---- Commands card ----
-
-// a command with its values replaced by placeholders, so the card does not give the answers away
-function cmdSyntax(c) {
-  return c
-    .replace(/\(.*?\)/g, '')                          // notes such as "(on Gi0/0)"
-    .replace(/\s+on\s+\S*\d\S*$/i, '')               // a trailing "on Gi0/0"
-    .trim()
-    .replace(/^conf t$/, 'configure terminal')
-    .replace(/^int \S+$/, 'interface <name>')
-    .replace(/\b\d{1,3}(\.\d{1,3}){3}\b/g, '<ip>')
-    .replace(/\S*:\S*:\S*/g, '<addr/len>')           // IPv6 addresses
-    .replace(/^(name|description) .+/, '$1 <text>')
-    .replace(/^hostname .+/, 'hostname <name>')
-    .replace(/^domain-name .+/, 'domain-name <name>')
-    .replace(/^(banner \w+) .+/, '$1 #text#')
-    .replace(/(?<=\s)\d+(,\d+)*(?=\s|$)/g, '<n>');   // numbers and lists such as 10,20
-}
-
-// only the commands the open lab uses
-function renderCmds() {
-  const used = solution.length ? solution : reqs.flatMap(r => r.hint.split(HINT_SPLIT));
-  const list = ['enable', 'configure terminal', ...used.map(cmdSyntax).filter(c => c && c !== 'enable'), 'show running-config', 'exit', 'end'];
-  $('cmds').replaceChildren(...[...new Set(list)].map(c => el('code', 'cmd', c)));
-}
-
-// ---- lab diagram ----
-
-// devices are 150x52 boxes; each link runs from the right edge of one box to the left edge of the other
-function drawTopo(nodes, links, height) {
-  const at = id => nodes.find(n => n.id === id);
-  let svg = `<svg viewBox="0 0 528 ${height}" role="img" aria-label="Lab topology. Click a device to open its console.">`;
-  for (const l of links) {
-    const a = at(l.a), b = at(l.b);
-    const x1 = a.x + 150, y1 = a.y + 26, x2 = b.x, y2 = b.y + 26;
-    svg += `<line class="link" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>` +
-      `<text class="port" x="${(x1 + x2) / 2}" y="${(y1 + y2) / 2 - 7}">${l.port}</text>`;
-  }
-  for (const n of nodes) {
-    svg += `<g data-dev="${n.id}">` +
-      `<rect class="box" x="${n.x}" y="${n.y}" width="150" height="52" rx="12"/>` +
-      `<circle class="ico-bg" cx="${n.x + 26}" cy="${n.y + 26}" r="20"/>` +
-      `<g class="icon" transform="translate(${n.x + 14} ${n.y + 14})">${TOPO_ICONS[n.type]}</g>` +
-      `<text class="name" x="${n.x + 54}" y="${n.y + 23}">${n.id}</text>` +
-      `<text class="sub" x="${n.x + 54}" y="${n.y + 39}">${n.sub}</text></g>`;
-  }
-  return svg + '</svg>';
-}
-
 // ---- labs ----
-
-// fresh R1 and S1, and an empty console
-function reset() {
-  reqHints = [];
-  swState = freshSw();
-  state = freshRouter();
-  state.sw = swState; // the labs grade both devices through one object
-  for (const out of Object.values(logs)) out.textContent = '';
-  cmdHistory.length = 0;
-  historyPos = 0;
-  $('solution').hidden = true;
-  $('cmds-card').open = false;
-  clearTimeout(solutionTimer);
-  solutionTimer = null;
-  $('show-solution').textContent = 'Show solution';
-  showDevice('R1');
-  renderReqs(null);
-}
 
 // open a lab (keeps the current difficulty and topic unless given) on a new random network 192.168.x.0
 function newLab(lvl = level, t = topic) {
   level = lvl;
   topic = t;
   markLevel();
-  const T = TOPICS[topic], cfg = T.levels[level];
-  let x;
-  do x = Math.floor(Math.random() * 256); while (x === lastNet);
-  lastNet = x;
-  const lab = T.kind === 'rt' ? {reqs: cfg.build(x), steps: cfg.steps, nodes: RT_NODES, links: RT_LINKS}
-    : T.kind === 'sw' ? {reqs: cfg.reqs, solution: cfg.cmds && ['enable', 'conf t', ...cfg.cmds, 'end'], steps: cfg.steps, nodes: SW_NODES, links: SW_LINKS}
-    : addressingLab(T, cfg, x);
-  reqs = lab.reqs;
-  solution = lab.solution || [];
-  const lead = cfg.lead || T.lead;
-  const domain = document.querySelector(`#dash [data-lab="${topic}"]`).closest('.domain');
-  $('crumb').textContent = `Labs / ${domain.querySelector('.dom-num').textContent} ${domain.querySelector('.dom-title').textContent} / ${T.name}`;
-  $('lab-title').textContent = T.name;
-  $('lab-level').textContent = level;
-  $('lab-sub').textContent = cfg.sub;
-  $('scenario-lead').textContent = typeof lead === 'function' ? lead(x) : lead;
-  $('steps').replaceChildren(...lab.steps.map(step => el('li', '', step)));
-  $('topo').innerHTML = drawTopo(lab.nodes, lab.links, lab.height || 180);
-  renderTabs(lab.nodes.map(n => n.id));
-  renderCmds();
-  reset();
-}
-
-// IPv4 and IPv6 addressing labs: requirements, solution, steps and diagram all follow from the level's interfaces
-function addressingLab(T, cfg, x) {
-  const v6 = T.kind === 'v6';
-  const ifs = cfg.ifs.map(r => ({...r, name: portName(r.k), ip: v6 ? `2001:db8:${x}:${r.sub}::1/64` : `192.168.${x}.${r.host}`}));
-  const reqs = [], solution = ['enable', 'conf t'], steps = [];
-  for (const r of ifs) {
-    reqs.push(v6
-      ? {text: `${r.name} gets an address ::1 in subnet ${r.sub} of 2001:db8:${x}::/48, with a /64 prefix`, ok: st => st.ifs[r.k].ip6 === r.ip, hint: r.ip}
-      : {text: `${r.name} gets the ${r.rule} usable address in ${r.lan}${T.showNet ? ` (192.168.${x}.${r.net})` : ''}, with ${T.maskRule}`,
-        ok: st => st.ifs[r.k].ip === r.ip && st.ifs[r.k].mask === r.mask, hint: `${r.ip} ${r.mask}`});
-    if (r.ll) reqs.push({text: `${r.name} has the link-local address fe80::1`, ok: st => st.ifs[r.k].ll === 'fe80::1', hint: 'ipv6 address fe80::1 link-local'});
-    solution.push(`int ${r.k}`, v6 ? `ipv6 address ${r.ip}` : `ip address ${r.ip} ${r.mask}`);
-    if (r.ll) solution.push('ipv6 address fe80::1 link-local');
-    solution.push('no shutdown', 'exit');
-    steps.push(v6 ? `${r.name} serves subnet ${r.sub}; use ::1 as its address`
-      : `${r.name} serves ${r.lan}${r.need ? ` (${r.need} hosts)` : ''}${T.showNet ? ` at 192.168.${x}.${r.net}` : ''}; use the ${r.rule} usable address as the gateway`);
-  }
-  for (const r of ifs) reqs.push({text: `${r.name} is up`, ok: st => !st.ifs[r.k].shut, hint: 'no shutdown'});
-  solution.push('end');
-  steps.push('Bring each interface up and check that it stays up.');
-  // R1 on the left, one PC per interface stacked on the right
-  const n = ifs.length, height = Math.max(180, (n - 1) * 64 + 92), mid = height / 2;
-  const nodes = [{id: 'R1', type: 'router', x: 8, y: mid - 26, sub: 'Router'}], links = [];
-  ifs.forEach((r, i) => {
-    const id = `PC${i + 1}`, cy = mid + (i - (n - 1) / 2) * 64;
-    nodes.push({id, type: 'pc', x: 370, y: cy - 26, sub: v6 ? `Subnet ${r.sub}` : r.need ? `${r.lan}, ${r.need} hosts` : r.lan});
-    links.push({a: 'R1', b: id, port: r.name});
-  });
-  return {reqs, solution, steps, nodes, links, height};
+  lastNet = randomNet(lastNet);
+  labPage.open(createSession({topic, level, net: lastNet}));
 }
 
 // highlight the chosen difficulty on the Labs page
@@ -369,6 +162,23 @@ function moveSeg(seg) {
   seg.style.setProperty('--x', active.offsetLeft + 'px');
   seg.style.setProperty('--w', active.offsetWidth + 'px');
   requestAnimationFrame(() => seg.classList.add('ready')); // animate from the second move on
+}
+
+// ---- dashboard ----
+
+// the Labs page: one section per domain, each topic with a lab, in catalogue order
+function renderDashboard() {
+  const ids = Object.keys(CATALOGUE).filter(id => CATALOGUE[id].labLevels.length);
+  $('dash-domains').innerHTML = Object.entries(DOMAINS).map(([n, title], d) => {
+    const rows = ids.filter(id => CATALOGUE[id].domain === Number(n));
+    return `<details class="domain"${d ? '' : ' open'}>` +
+      `<summary><span class="dom-num">${n}.0</span><span class="dom-title">${esc(title)}</span><span class="dom-meta">${topicCount(rows.length)}</span></summary>` +
+      '<div class="rows">' +
+      rows.map(id => `<div class="row" data-search="${esc(searchText(id))}">` +
+        `<div class="row-title">${esc(CATALOGUE[id].name)}</div><div class="row-desc">${esc(CATALOGUE[id].desc)}</div>` +
+        `<button class="start" data-start="${id}">Start lab →</button></div>`).join('') +
+      '</div></details>';
+  }).join('');
 }
 
 // ---- navigation ----
@@ -395,9 +205,9 @@ $('nav-ref').addEventListener('click', () => show('ref'));
 $('back').addEventListener('click', () => show('dash'));
 // every "Start lab" button, on the Labs page and in the Reference
 document.addEventListener('click', e => {
-  const b = e.target.closest('[data-lab]');
+  const b = e.target.closest('[data-start]');
   if (!b) return;
-  newLab(level, b.dataset.lab);
+  newLab(level, b.dataset.start);
   show('lab');
 });
 document.querySelectorAll('[data-set]').forEach(b => b.addEventListener('click', () => {
@@ -408,42 +218,16 @@ document.querySelectorAll('[data-set]').forEach(b => b.addEventListener('click',
 $('search').addEventListener('input', e => {
   const q = e.target.value.trim().toLowerCase();
   if (q) document.querySelectorAll('details.domain').forEach(d => { d.open = true; });
-  document.querySelectorAll('[data-name]').forEach(row => { row.hidden = !row.dataset.name.includes(q); });
+  document.querySelectorAll('[data-search]').forEach(row => { row.hidden = !row.dataset.search.includes(q); });
 });
 
-// lab page: open a device's console from the diagram or the console tabs; Check, Reset and the hint buttons
+// lab page: open a device's console from the diagram or the console tabs; New network starts another lab (Reset, hints and the solution are in lab.js)
 $('lab').addEventListener('click', e => {
   const device = e.target.closest('[data-dev]');
   if (device) showDevice(device.dataset.dev);
 });
 term.addEventListener('click', () => input.focus());
-$('check').addEventListener('click', check);
-$('reset').addEventListener('click', reset);
 $('new-net').addEventListener('click', () => newLab());
-// a lab with a known-good config shows that; the others show the exact commands of every requirement's last hint
-// showing it needs a second click within 3 seconds, so it is not revealed by accident
-let solutionTimer = null;
-$('show-solution').addEventListener('click', e => {
-  const box = $('solution');
-  if (box.hidden && !solutionTimer) {
-    e.target.textContent = 'Click again to confirm';
-    solutionTimer = setTimeout(() => { solutionTimer = null; e.target.textContent = 'Show solution'; }, 3000);
-    return;
-  }
-  clearTimeout(solutionTimer);
-  solutionTimer = null;
-  box.hidden = !box.hidden;
-  e.target.textContent = box.hidden ? 'Show solution' : 'Hide solution';
-  box.textContent = solution.length ? solution.join('\n')
-    : [...new Set(reqs.map(r => hintLines(r, 2).replace('Commands: ', '')))].join('\n');
-});
-$('reqs').addEventListener('click', e => {
-  const b = e.target.closest('.rhint-btn');
-  if (!b) return;
-  const i = Number(b.dataset.i);
-  reqHints[i] = (reqHints[i] || 0) + 1;
-  renderReqs(reqs.map(r => r.ok(state) || null));
-});
 
 // smooth open and close for the collapsible sections (a plain toggle when the user prefers reduced motion)
 document.addEventListener('click', e => {
@@ -474,10 +258,65 @@ window.addEventListener('resize', () => {
   moveSeg($('topo-seg'));
 });
 
+// ---- self-check ----
+
+// Types commands into a session's devices without the page: script is [device, lines] pairs run in order through the real run(),
+// with the output collected (and returned) instead of printed. The open session and console device are put back afterwards.
+function drive(session, script) {
+  const saved = [activeSession, dev, sink], out = [];
+  [activeSession, sink] = [session, text => out.push(text)];
+  try {
+    for (const [name, lines] of script) {
+      dev = name;
+      lines.forEach(run);
+    }
+  } finally {
+    [activeSession, dev, sink] = saved;
+  }
+  return out;
+}
+
+// A new session must not meet all its requirements; after the script it must.
+function solves(session, script, label) {
+  console.assert(!session.grade().every(Boolean), `self-check: ${label} starts out solved`);
+  drive(session, script);
+  const grade = session.grade();
+  console.assert(grade.every(Boolean), `self-check: ${label} failed`, session.reqs.filter((r, i) => !grade[i]).map(r => r.text));
+}
+
+// labs that span several devices: script(x) gives [device, commands] pairs for network x
+const MULTI_DEVICE = [
+  ['mlsvlan', 'expert', () => [
+    ['MLS1', ['en', 'conf t', 'ip routing', 'vlan 10', 'exit', 'vlan 20', 'exit', 'int vlan 10', 'ip add 192.168.10.1 255.255.255.0',
+      'ip helper-address 192.168.99.10', 'int vlan 20', 'ip add 192.168.20.1 255.255.255.0', 'ip helper-address 192.168.99.10',
+      'int gi0/1', 'no switchport', 'ip add 192.168.99.1 255.255.255.0', 'no sh', 'int fa0/1', 'sw mode access', 'sw access vlan 10', 'no sh',
+      'int fa0/2', 'sw mode access', 'sw access vlan 20', 'no sh', 'end']],
+    ['PC1', ['dhcp']], ['PC2', ['dhcp']], ['PC1', ['ping 192.168.20.11']],
+  ]],
+  ['dhcprelay', 'beginner', x => [
+    ['R1', ['en', 'conf t', 'int gi0/0', `ip add 192.168.${x}.1 255.255.255.0`, `ip helper-address 172.16.${x}.10`, 'no sh',
+      'int gi0/1', 'ip add 10.0.0.1 255.255.255.252', 'no sh', 'exit', `ip route 172.16.${x}.0 255.255.255.0 10.0.0.2`, 'end']],
+    ['PC1', ['dhcp']],
+  ]],
+];
+
+// Runs on the sessions alone: the catalogue and the lab builds agree, every known-good config meets its requirements, and so do the multi-device scripts.
+function selfCheck() {
+  // a topic has a build for exactly its labLevels, and every build has a topic
+  console.assert(Object.keys(CATALOGUE).every(id => {
+    const built = LABS[id] ? Object.keys(LABS[id].levels) : [];
+    return built.join() === CATALOGUE[id].labLevels.join();
+  }) && Object.keys(LABS).every(id => CATALOGUE[id]), 'self-check: the catalogue and the lab builds disagree');
+  const net = randomNet();
+  for (const [id, T] of Object.entries(LABS)) {
+    for (const lvl of Object.keys(T.levels)) {
+      const session = createSession({topic: id, level: lvl, net});
+      if (session.solution.length) solves(session, [[session.home, session.solution]], `${id} ${lvl}`);
+    }
+  }
+  for (const [id, lvl, script] of MULTI_DEVICE) solves(createSession({topic: id, level: lvl, net}), script(net), `${id} ${lvl}`);
+}
+
 // ---- start ----
-// self-check: the default lab's known-good config must pass; then that lab starts fresh and the Labs page opens
-newLab();
-solution.forEach(run);
-console.assert(reqs.every(r => r.ok(state)), 'self-check: known-good config failed');
-newLab();
-show('dash');
+renderDashboard();
+selfCheck();

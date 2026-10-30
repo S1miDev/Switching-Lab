@@ -1059,8 +1059,17 @@ details.card summary {
 }
 
 /* ---- Mock exam ---- */
+#exam-view {
+  text-align: center;
+}
+
+#exam-view .page-head {
+  justify-content: center;
+}
+
 .exam-wrap {
   max-width: 820px;
+  margin: 0 auto;
 }
 
 /* ---- Reference ---- */
