@@ -1,9 +1,6 @@
 // Reference page: what to know about each CCNA topic, its commands, and a link to its lab if it has one.
 // The rows and topic pages are built from CATALOGUE (js/topics.js), looked up by id.
 
-// Escapes text for use inside HTML (the mock exam uses it too)
-const esc = s => String(s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
-
 // One group per refGroup, in REF_GROUPS order; the first group starts open
 function renderReference() {
   document.getElementById('ref-groups').innerHTML = REF_GROUPS.map((group, g) => {

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Profile · SwitchingLab</title>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/output.css">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+  <nav class="side" aria-label="Main">
+    <a class="brand" href="index.html"><span class="brand-dot" aria-hidden="true"></span>SwitchingLab</a>
+    <a class="nav-item" href="index.html">Back to labs</a>
+    <button class="nav-item active" id="nav-auth">Log in</button>
+  </nav>
+
+  <!-- filled in by js/profile.js -->
+  <section class="page">
+    <header class="page-head">
+      <div>
+        <h1>Profile</h1>
+        <p>Your account and how SwitchingLab looks for you.</p>
+      </div>
+    </header>
+
+    <p class="note" id="pf-out">Log in to see your profile.</p>
+
+    <div class="pf-grid" id="pf-in" hidden>
+      <section class="card">
+        <h2>Account</h2>
+        <dl class="pf-info">
+          <dt>Email</dt><dd id="pf-email"></dd>
+          <dt>Member since</dt><dd id="pf-since"></dd>
+          <dt>Last login</dt><dd id="pf-last"></dd>
+          <dt>Day streak</dt><dd id="pf-streak"></dd>
+          <dt>Best streak</dt><dd id="pf-best"></dd>
+        </dl>
+        <button class="ghost" id="pf-logout">Log out</button>
+      </section>
+
+      <form class="card auth-form" id="pf-form">
+        <h2>Customize</h2>
+        <label>Nickname
+          <input id="pf-name" maxlength="40" autocomplete="nickname" placeholder="Shown on the site instead of your email">
+        </label>
+        <fieldset class="pf-accents" id="pf-accents"><legend>Accent colour</legend></fieldset>
+        <p class="note" id="pf-msg" role="status"></p>
+        <button>Save</button>
+      </form>
+
+      <form class="card auth-form" id="pf-pass-form">
+        <h2>Change password</h2>
+        <input type="password" id="pf-pass" minlength="8" required autocomplete="new-password" placeholder="New password (8+ characters)" aria-label="New password">
+        <p class="note" id="pf-pass-msg" role="status"></p>
+        <button>Update password</button>
+      </form>
+    </div>
+  </section>
+
+  <script src="js/dom.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" integrity="sha384-0w2KAL2YHP6wKOkUDzkCDGgVvfmHnj02DHeQ6XcHOgTfFsGyonKOpShMH1x6nk9o" crossorigin="anonymous"></script>
+  <script src="js/streak.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/profile.js"></script>
+</body>
+</html>

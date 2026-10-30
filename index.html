@@ -17,6 +17,7 @@
     <button class="nav-item" id="nav-topo">Topology</button>
     <button class="nav-item" id="nav-exam">Mock exam</button>
     <button class="nav-item" id="nav-ref">Reference</button>
+    <button class="nav-item" id="nav-auth">Log in</button>
   </nav>
 
   <!-- Labs: the topic rows are built from CATALOGUE in js/topics.js (renderDashboard in js/script.js) -->
@@ -91,7 +92,6 @@
             <div class="tabs"></div>
           </div>
           <div class="term" id="term">
-            <div id="log"></div>
             <div class="line"><span id="prompt"></span><input id="cmd" aria-label="CLI input" spellcheck="false" autocomplete="off"></div>
           </div>
         </section>
@@ -177,7 +177,8 @@
     <div class="domains" id="ref-groups"></div>
   </section>
 
-  <!-- order matters: topics.js holds the catalogue the others read; the devices need the registry (device.js), the IOS helpers (ios.js) and the help engine (help.js) first; session.js and lab.js come after the devices and labs they use, and script.js starts the app, so it loads last -->
+  <!-- order matters: dom.js has the page helpers the UI modules use; topics.js holds the catalogue the others read; the devices need the registry (device.js), the IOS helpers (ios.js) and the help engine (help.js) first; session.js, console.js and lab.js come after the devices and labs they use, and script.js starts the app, so it loads last -->
+  <script src="js/dom.js"></script>
   <script src="js/topics.js"></script>
   <script src="js/devices/device.js"></script>
   <script src="js/devices/ios.js"></script>
@@ -191,8 +192,13 @@
   <script src="js/reference.js"></script>
   <script src="js/topology.js"></script>
   <script src="js/session.js"></script>
+  <script src="js/console.js"></script>
   <script src="js/lab.js"></script>
   <script src="js/exam.js"></script>
   <script src="js/script.js"></script>
+  <!-- accounts: after script.js; supabase-js is pinned with an integrity hash -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" integrity="sha384-0w2KAL2YHP6wKOkUDzkCDGgVvfmHnj02DHeQ6XcHOgTfFsGyonKOpShMH1x6nk9o" crossorigin="anonymous"></script>
+  <script src="js/streak.js"></script>
+  <script src="js/auth.js"></script>
 </body>
 </html>

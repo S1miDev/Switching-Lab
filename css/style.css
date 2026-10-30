@@ -174,6 +174,119 @@ button:disabled {
   color: var(--accent);
 }
 
+/* ---- account ---- */
+#nav-auth {
+  margin-left: auto;
+}
+
+.auth-dlg {
+  width: min(360px, calc(100vw - 32px));
+  padding: 24px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.auth-dlg::backdrop {
+  background: rgba(0, 0, 0, .6);
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.auth-form input {
+  font: inherit;
+  padding: 10px 12px;
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.auth-form .note {
+  margin: 0;
+  min-height: 1.2em;
+}
+
+/* ---- profile page (profile.html) ---- */
+a.brand,
+a.nav-item {
+  text-decoration: none;
+}
+
+.pf-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.pf-info {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 16px;
+  margin: 0 0 16px;
+}
+
+.pf-info dt {
+  color: var(--muted);
+}
+
+.pf-info dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.auth-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--muted);
+}
+
+.pf-accents {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.pf-accents legend {
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.pf-swatch {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--swatch);
+  cursor: pointer;
+}
+
+.pf-swatch input {
+  appearance: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.pf-swatch input:checked {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
 /* ---- page shell ---- */
 .page {
   padding: 40px 48px;

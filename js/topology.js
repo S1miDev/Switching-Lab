@@ -1,6 +1,6 @@
 // Topology page: drag devices from the palette onto the canvas, move them, then cable them to match a task.
 
-// device icons (24x24), also used by the lab diagram in script.js and the palette buttons below
+// device icons (24x24), also used by the lab diagram in lab.js and the palette buttons below
 const TOPO_ICONS = {
   router: '<rect x="2" y="9" width="20" height="10" rx="2"/><path d="M6 14h.01M10 14h.01M14 14h.01M12 9V5"/>',
   switch: '<rect x="2" y="10" width="20" height="8" rx="2"/><path d="M6 14h.01M10 14h.01M14 14h.01M18 14h.01"/>',
@@ -49,6 +49,7 @@ let topoNodes = [];   // {name, type, x, y}: x, y is the box's top-left corner
 let topoCables = [];  // {a, b, pa, pb, type}: the two device names, their ports, and 'straight' or 'cross'
 let topoSel = null;   // the device clicked first when cabling
 let topoDrag = null;  // the device being moved
+let topoCounted = false; // this task already counted toward the day streak
 let cableType = 'straight';
 const topoCanvas = document.getElementById('topo-canvas');
 
@@ -194,6 +195,7 @@ function topoRender() {
   const reqs = topoReqs(), met = reqs.filter(r => r.ok).length;
   const current = reqs.findIndex(r => !r.ok); // the first unfinished step gets the "current" highlight
   if (met === reqs.length) topoMsg('Task complete.');
+  if (met === reqs.length && !topoCounted) { topoCounted = true; globalThis.recordStreakDay?.(); } // from auth.js
   document.getElementById('topo-count').textContent = `${met}/${reqs.length}`;
   document.getElementById('topo-bar').style.width = `${100 * met / reqs.length}%`;
   document.getElementById('topo-reqs').innerHTML = reqs.map((r, i) =>
@@ -212,6 +214,7 @@ function topoNewTask() {
   let next;
   do next = pool[Math.floor(Math.random() * pool.length)]; while (next === topoTask && pool.length > 1);
   topoTask = next;
+  topoCounted = false;
   clearCanvas();
   document.getElementById('topo-title').textContent = topoTask.title;
   topoMsg('');
