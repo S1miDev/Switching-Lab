@@ -111,7 +111,7 @@ function setupHtml() {
     `<input type="radio" name="level" value="${l}" class="accent-[color:var(--accent)]"${l === level ? ' checked' : ''}>${cap(l)}</span>` +
     `<span class="pl-6 text-xs text-[color:var(--muted)]">${EXAM_MIN_PER_LAB[l]} min per lab</span></label>`);
   const topics = Object.entries(CATALOGUE).filter(([, t]) => t.labLevels.length).map(([k, t]) =>
-    `<label class="${TILE} text-sm"><input type="checkbox" name="topic" value="${k}" class="accent-[color:var(--accent)]">${esc(t.name)}</label>`);
+    `<label class="${TILE} text-sm"><input type="checkbox" name="topic" value="${k}" class="shrink-0 accent-[color:var(--accent)]"><span>${esc(t.name)}</span></label>`);
   const timed = (v, text, on) =>
     `<label class="${TILE}"><input type="radio" name="timed" value="${v}" class="accent-[color:var(--accent)]"${on ? ' checked' : ''}>${text}</label>`;
   const allNone = '<span class="ml-auto flex gap-2"><button type="button" class="ghost !px-3 !py-1.5 !text-xs" data-all="1">All</button>' +

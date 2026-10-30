@@ -135,6 +135,12 @@ button:disabled {
   align-items: center;
   gap: 8px;
   margin: 0 20px 0 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-family: inherit;
+  cursor: pointer;
   font-size: 18px;
   font-weight: 600;
   white-space: nowrap;
@@ -1061,6 +1067,10 @@ details.card summary {
 /* ---- Mock exam ---- */
 #exam-view {
   text-align: center;
+}
+
+#exam-view label {
+  text-align: left;
 }
 
 #exam-view .page-head {

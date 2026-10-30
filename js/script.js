@@ -201,6 +201,7 @@ function show(view) {
 }
 
 $('nav-labs').addEventListener('click', () => show('dash'));
+$('nav-brand').addEventListener('click', () => show('dash'));
 $('nav-ref').addEventListener('click', () => show('ref'));
 $('back').addEventListener('click', () => show('dash'));
 // every "Start lab" button, on the Labs page and in the Reference
