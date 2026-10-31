@@ -35,11 +35,17 @@
           <dt>Email</dt><dd id="pf-email"></dd>
           <dt>Member since</dt><dd id="pf-since"></dd>
           <dt>Last login</dt><dd id="pf-last"></dd>
-          <dt>Day streak</dt><dd id="pf-streak"></dd>
-          <dt>Best streak</dt><dd id="pf-best"></dd>
         </dl>
         <button class="ghost" id="pf-logout">Log out</button>
       </section>
+
+      <form class="card auth-form" id="pf-pass-form">
+        <h2>Change password</h2>
+        <input type="password" id="pf-pass" minlength="8" required autocomplete="new-password" placeholder="New password (8+ characters)" aria-label="New password">
+        <input type="password" id="pf-pass2" minlength="8" required autocomplete="new-password" placeholder="Confirm new password" aria-label="Confirm new password">
+        <p class="note" id="pf-pass-msg" role="status"></p>
+        <button>Update password</button>
+      </form>
 
       <form class="card auth-form" id="pf-form">
         <h2>Customize</h2>
@@ -51,17 +57,32 @@
         <button>Save</button>
       </form>
 
-      <form class="card auth-form" id="pf-pass-form">
-        <h2>Change password</h2>
-        <input type="password" id="pf-pass" minlength="8" required autocomplete="new-password" placeholder="New password (8+ characters)" aria-label="New password">
-        <p class="note" id="pf-pass-msg" role="status"></p>
-        <button>Update password</button>
-      </form>
+      <section class="card">
+        <h2>Day streak</h2>
+        <div class="pf-streak-main"><strong id="pf-streak"></strong><span>day streak</span></div>
+        <div class="pf-dots" id="pf-today" role="img"></div>
+        <dl class="pf-info">
+          <dt>Best</dt><dd id="pf-best"></dd>
+          <dt>Resets in</dt><dd id="pf-reset"></dd>
+        </dl>
+      </section>
+
+      <details class="card pf-progress" open>
+        <summary class="pf-sum">
+          <div class="pf-ring" id="pf-ring" role="img"><span id="pf-pct"></span></div>
+          <div>
+            <h2>Progress</h2>
+            <p class="note" id="pf-sum-text"></p>
+          </div>
+        </summary>
+        <div class="dbody" id="pf-progress"></div>
+      </details>
     </div>
   </section>
 
   <script src="js/dom.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" integrity="sha384-0w2KAL2YHP6wKOkUDzkCDGgVvfmHnj02DHeQ6XcHOgTfFsGyonKOpShMH1x6nk9o" crossorigin="anonymous"></script>
+  <script src="js/topics.js"></script>
   <script src="js/streak.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/profile.js"></script>

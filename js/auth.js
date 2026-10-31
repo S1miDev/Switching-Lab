@@ -81,10 +81,12 @@ function applyAccent(color) {
 }
 
 // called by the lab and topology pages on a solve; nextStreak and dayKey come from streak.js
-async function recordStreakDay() {
+// topic and level (labs only) are also saved as done
+async function recordStreakDay(topic, level) {
   const { data } = await sb.auth.getSession();
   if (!data.session) return;
-  await sb.auth.updateUser({ data: nextStreak(data.session.user.user_metadata || {}, dayKey()) });
+  const meta = data.session.user.user_metadata || {};
+  await sb.auth.updateUser({ data: { ...nextStreak(meta, dayKey()), ...withDone(meta, topic, level) } });
 }
 
 sb.auth.onAuthStateChange((_event, session) => {

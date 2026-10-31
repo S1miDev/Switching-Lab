@@ -20,8 +20,14 @@ function nextStreak(meta, today) {
   const out = { solves, solves_day: today };
   if (solves < LABS_PER_DAY || meta.last_day === today) return out;
   const streak = meta.last_day === dayBefore(today) ? (meta.streak || 0) + 1 : 1;
-  return { ...out, streak, best: Math.max(streak, meta.best || 0), last_day: today };
+  return { ...out, streak, best: Math.max(streak, meta.best || 0), last_day: today, last_at: Date.now() };
 }
+
+// meta.done is {topic: [levels solved]}; the profile shows one progress bar per topic from it
+const withDone = (meta, topic, level) => {
+  const have = meta.done?.[topic] || [];
+  return topic && !have.includes(level) ? { done: { ...meta.done, [topic]: [...have, level] } } : {};
+};
 
 // the streak still running on `today`: solved today or yesterday, otherwise 0
 const liveStreak = (meta, today) =>

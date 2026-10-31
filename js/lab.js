@@ -57,7 +57,7 @@ const labPage = (() => {
     renderReqs(met.map(ok => ok || null));
     const all = shown.reqs.length > 0 && met.every(Boolean);
     const lines = all && !solved ? check() : [];
-    if (all && !counted.has(shown)) { counted.add(shown); globalThis.recordStreakDay?.(); } // from auth.js, if accounts loaded
+    if (all && !counted.has(shown)) { counted.add(shown); globalThis.recordStreakDay?.(shown.topic, shown.level); } // from auth.js, if accounts loaded
     solved = all;
     return lines;
   }

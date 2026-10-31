@@ -207,6 +207,10 @@ button:disabled {
   border-radius: 10px;
 }
 
+#pf-pass-form {
+  gap: 18px;
+}
+
 .auth-form .note {
   margin: 0;
   min-height: 1.2em;
@@ -222,7 +226,6 @@ a.nav-item {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
   gap: 16px;
-  align-items: start;
 }
 
 .pf-info {
@@ -239,6 +242,190 @@ a.nav-item {
 .pf-info dd {
   margin: 0;
   overflow-wrap: anywhere;
+}
+
+/* day streak card: big number, then one dot per lab needed today */
+.pf-streak-main {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.pf-streak-main strong {
+  font-size: 3rem;
+  line-height: 1;
+  color: var(--accent);
+}
+
+.pf-streak-main span,
+.pf-dots small {
+  color: var(--muted);
+}
+
+.pf-dots {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.pf-dots span {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+
+.pf-dots span.on {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.pf-dots small {
+  margin-left: 4px;
+}
+
+/* progress card: spans the whole grid; a ring for the total, then topics grouped by domain */
+.pf-progress {
+  grid-column: 1 / -1;
+}
+
+/* its summary and chevron share the .domain rules further down */
+.pf-progress .pf-sum {
+  margin-bottom: 0;
+  gap: 16px;
+}
+
+.pf-progress .pf-sum::after {
+  margin: 0 4px 0 auto;
+}
+
+#pf-progress {
+  padding-top: 20px;
+}
+
+/* the ring sweeps round to its value (@property lets the browser animate the number) */
+@property --pct {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
+@keyframes pf-sweep {
+  from { --pct: 0; }
+}
+
+@keyframes pf-fill {
+  from { transform: scaleX(0); }
+}
+
+.pf-ring {
+  animation: pf-sweep .9s cubic-bezier(.2,.7,.2,1);
+}
+
+.pf-segs span.on {
+  transform-origin: left;
+  animation: pf-fill .45s cubic-bezier(.2,.7,.2,1) backwards;
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pf-ring,
+  .pf-segs span.on {
+    animation: none;
+  }
+}
+
+.pf-sum .note,
+.pf-sum h2 {
+  margin: 0;
+}
+
+.pf-ring {
+  --pct: 0;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: conic-gradient(var(--accent) calc(var(--pct) * 1%), var(--border) 0);
+  font: 600 14px var(--mono);
+  position: relative;
+}
+
+.pf-ring::before {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  background: var(--surface);
+}
+
+.pf-ring span {
+  position: relative;
+}
+
+#pf-progress {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+  gap: 20px 28px;
+}
+
+.pf-domain h3 {
+  margin: 0 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.pf-topic {
+  margin-bottom: 12px;
+}
+
+.pf-topic-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 5px;
+}
+
+.pf-topic-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.pf-topic.full .count {
+  background: color-mix(in srgb, var(--success) 20%, transparent);
+  color: var(--success);
+}
+
+.pf-segs {
+  display: flex;
+  gap: 4px;
+}
+
+.pf-segs span {
+  flex: 1;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--border);
+  transition: background .3s;
+}
+
+.pf-segs span.on {
+  background: var(--accent);
+}
+
+.pf-topic.full .pf-segs span.on {
+  background: var(--success);
 }
 
 .auth-form label {
@@ -436,7 +623,8 @@ a.nav-item {
   gap: 32px;
 }
 
-.domain summary {
+.domain summary,
+.pf-sum {
   list-style: none;
   display: flex;
   align-items: center;
@@ -445,12 +633,14 @@ a.nav-item {
   cursor: pointer;
 }
 
-.domain summary::-webkit-details-marker {
+.domain summary::-webkit-details-marker,
+.pf-sum::-webkit-details-marker {
   display: none;
 }
 
 /* the open/closed chevron */
-.domain summary::after {
+.domain summary::after,
+.pf-sum::after {
   content: "";
   width: 7px;
   height: 7px;
@@ -462,7 +652,8 @@ a.nav-item {
   flex-shrink: 0;
 }
 
-.domain[open]:not(.closing) summary::after {
+.domain[open]:not(.closing) summary::after,
+.pf-progress[open]:not(.closing) .pf-sum::after {
   transform: rotate(45deg);
 }
 

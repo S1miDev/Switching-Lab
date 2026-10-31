@@ -382,6 +382,12 @@ function showCmd(st, name, session, args, out) {
 
 // Runs one typed line on the router named name
 function runRouter(st, name, session, line, out) {
+  if (st.askPw) { // answering the "enable" password prompt; askPw counts the tries left
+    if (line === st.sec.secret) { st.askPw = 0; st.mode = 'priv'; return; }
+    st.askPw--;
+    out(st.askPw ? '% Access denied' : '% Bad secrets', 'ln-err');
+    return;
+  }
   const w = line.toLowerCase().split(/\s+/);
   const mode = st.mode;
   // in interface mode "sh" means shutdown and "en" means end; elsewhere short forms resolve as usual
@@ -453,7 +459,7 @@ function configCommand(st, c, w, line) {
     st.line = pick(w[1], ['console', 'vty']);
     st.mode = 'line';
   }
-  else if (c === 'enable' && pick(w[1], ['secret']) && w.length === 3) st.sec.secret = true;
+  else if (c === 'enable' && pick(w[1], ['secret']) && w.length === 3) st.sec.secret = line.split(/\s+/)[2];
   else if (c === 'service' && pick(w[1], ['password-encryption']) && w.length === 2) st.sec.enc = true;
   else if (c === 'no' && pick(w[1], ['service']) && pick(w[2], ['password-encryption']) && w.length === 3) st.sec.enc = false;
   else if (c === 'no' && pick(w[1], ['ip']) && pick(w[2], ['domain-lookup']) && w.length === 3) st.sec.nolookup = true;
@@ -587,7 +593,7 @@ function createRouter(node, session) {
   const st = freshRouter(node.id);
   const self = defineDevice({
     name: node.id, type: node.type, configurable: true, discoverable: true, state: st,
-    prompt: () => st.host + SUFFIX[st.mode],
+    prompt: () => (st.askPw ? 'Password:' : st.host + SUFFIX[st.mode]),
     ports: () => Object.values(st.ifs),
     gateway: key => usable(st.ifs[key]),
     routes: () => true,

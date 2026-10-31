@@ -36,7 +36,8 @@ const usable = i => (i && i.ip && !i.shut ? i : null);
 
 // User and privileged EXEC, shared by the router and the switch (st is the device's state, save its save function)
 function execCommand(c, w, st, save) {
-  if (c === 'enable' && st.mode === 'user') st.mode = 'priv'; // in config mode "enable secret" is a configuration command
+  // in config mode "enable secret" is a configuration command; with a secret set the next line is the password (switches have no sec)
+  if (c === 'enable' && st.mode === 'user') { if (st.sec?.secret) st.askPw = 3; else st.mode = 'priv'; }
   else if (c === 'disable') st.mode = 'user';
   else if (c === 'configure' && pick(w[1], ['terminal'])) st.mode = 'config';
   else if (c === 'write' || (c === 'copy' && pick(w[1], ['running-config']) && pick(w[2], ['startup-config']))) save();

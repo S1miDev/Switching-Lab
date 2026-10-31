@@ -29,7 +29,11 @@ const labConsole = (() => {
     term.scrollTop = term.scrollHeight;
   }
 
-  const renderPrompt = () => { promptEl.textContent = active().prompt(); };
+  const asksPassword = () => active().prompt() === 'Password:';
+  const renderPrompt = () => {
+    promptEl.textContent = active().prompt();
+    input.type = asksPassword() ? 'password' : 'text';
+  };
 
   // open a device's console: its own output, its tab and its box in the diagram
   function showDevice(name) {
@@ -85,9 +89,10 @@ const labConsole = (() => {
     } else if (e.key === 'Enter') {
       e.preventDefault();
       const line = input.value.trim();
-      if (line) cmdHistory.push(line);
+      const hidden = asksPassword();
+      if (line && !hidden) cmdHistory.push(line);
       historyPos = cmdHistory.length;
-      echo(line);
+      echo(hidden ? '' : line);
       printAll(session.run(dev, line));
       renderPrompt();
       input.value = '';

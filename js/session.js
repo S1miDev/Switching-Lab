@@ -34,7 +34,7 @@ function createSession({topic, level, net}) {
       const d = session.devices[name], line = raw.trim(), out = [];
       const print = (text, cls = '') => out.push({text, cls});
       if (line.length > 1 && line.endsWith('?')) d.help(line, print);
-      else if (line) d.run(line, print);
+      else if (line || d.state?.askPw) d.run(line, print); // an empty line still answers a password prompt
       return out;
     },
     reset() {
