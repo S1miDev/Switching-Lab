@@ -192,6 +192,147 @@ button:disabled {
   background: rgba(0, 0, 0, .6);
 }
 
+.auth-dlg[open] {
+  animation: dlg-in .22s ease-out;
+}
+
+.auth-dlg[open]::backdrop {
+  animation: dlg-fade .22s ease-out;
+}
+
+.result-dlg {
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+}
+
+.result-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.res-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.res-badge {
+  padding: 3px 10px;
+  border-radius: 6px;
+  font: 700 12px var(--mono);
+  color: var(--accent-ink);
+  background: var(--warn);
+}
+
+.res-badge.ok {
+  background: var(--success);
+}
+
+.res-pct {
+  font: 700 28px var(--mono);
+}
+
+.res-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.res-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+
+.res-stat .note {
+  font-size: 11px;
+}
+
+.res-stat b {
+  font: 600 16px var(--mono);
+}
+
+.res-req {
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.res-req.ok {
+  border-color: var(--success);
+  background: rgba(79, 168, 138, .1);
+}
+
+.res-req.bad {
+  border-color: var(--bad-tint);
+  background: rgba(248, 113, 113, .08);
+}
+
+.res-icon {
+  display: flex;
+  padding-top: 3px;
+}
+
+.res-req.ok .res-icon {
+  color: var(--success);
+}
+
+.res-req.bad .res-icon {
+  color: var(--bad);
+}
+
+.res-txt {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.res-txt b {
+  font-weight: 500;
+}
+
+.res-sol {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.res-sol summary {
+  display: flex;
+  justify-content: space-between;
+  cursor: pointer;
+}
+
+.res-dev {
+  margin-top: 10px;
+  font: 12px var(--mono);
+  color: var(--muted);
+}
+
+.res-sol .solution {
+  max-height: 180px;
+  overflow: auto;
+}
+
+@keyframes dlg-in {
+  from { opacity: 0; transform: translateY(12px) scale(.96); }
+}
+
+@keyframes dlg-fade {
+  from { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-dlg[open], .auth-dlg[open]::backdrop { animation: none; }
+}
+
 .auth-form {
   display: flex;
   flex-direction: column;
@@ -549,6 +690,13 @@ a.nav-item {
   font-family: var(--mono);
 }
 
+#lab-timer {
+  padding: 3px 12px;
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 600;
+}
+
 /* ---- segmented control: moveSeg() in script.js slides the ::before highlight under the active button ---- */
 .seg {
   position: relative;
@@ -663,7 +811,7 @@ a.nav-item {
 }
 
 .dom-title {
-  font-size: 20px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text);
 }
@@ -937,9 +1085,44 @@ a.nav-item {
   color: var(--bad);
 }
 
+/* judged requirements look like the result popup's cards: tinted, with a bare tick or cross */
+.reqs li.ok {
+  border-color: var(--success);
+  background: rgba(79, 168, 138, .1);
+}
+
+.reqs li.bad {
+  border-color: var(--bad-tint);
+  background: rgba(248, 113, 113, .08);
+}
+
+.reqs li.ok .mark,
+.reqs li.bad .mark {
+  width: 16px;
+  height: 16px;
+  border: 0;
+  background: none;
+  font-size: 16px;
+}
+
+.reqs li.ok .mark {
+  color: var(--success);
+}
+
 .rtext {
   flex: 1 1 0;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rtext b {
+  font-weight: 500;
+}
+
+.rexp {
+  color: var(--muted);
 }
 
 .rhint {
@@ -977,6 +1160,10 @@ a.nav-item {
 
 .actions button {
   flex: 1;
+}
+
+#check-row {
+  margin-bottom: 8px;
 }
 
 button.wide {

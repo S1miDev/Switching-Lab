@@ -58,7 +58,7 @@
     <main class="lab-grid">
       <div class="lab-col">
         <section class="card">
-          <h2>Scenario</h2>
+          <div class="req-head"><h2>Scenario</h2><span class="pill" id="lab-timer"></span></div>
           <p id="scenario-lead"></p>
           <ol class="steps" id="steps"></ol>
         </section>
@@ -66,12 +66,13 @@
           <div class="req-head"><h2>Requirements</h2><span class="count" id="req-count">0/0</span></div>
           <div class="bar"><span id="req-bar"></span></div>
           <ul class="reqs" id="reqs"></ul>
+          <div class="actions" id="check-row">
+            <button id="check">Check</button>
+          </div>
           <div class="actions">
             <button class="ghost" id="reset">Reset</button>
             <button class="ghost" id="new-net">New network</button>
-            <button class="ghost" id="show-solution">Show solution</button>
           </div>
-          <pre class="solution" id="solution" hidden></pre>
         </section>
         <details class="card" id="cmds-card">
           <summary>Commands you'll need</summary>

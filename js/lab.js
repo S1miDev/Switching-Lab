@@ -9,7 +9,19 @@ const labPage = (() => {
   let exam = false;      // the page is in exam mode
   let reqHints = [];     // how many hints each requirement has shown
   let solved = false;    // all requirements met (the automatic check runs once per solve)
+  const HINT_COST = {beginner: 2, intermediate: 4, advanced: 6, expert: 8}; // percentage points off the result per hint used
+  let stoppedAt = 0;    // when Check was first clicked: the time stays at that until the lab is reset
+  let startedAt = 0;     // when the lab was opened or reset, for the time on the result popup
+  let commandCount = 0;  // commands entered since then
   const counted = new WeakSet(); // sessions already counted toward the day streak, so re-solving one doesn't count again
+
+  // the elapsed-time pill ticks every second and freezes once the lab is solved or checked
+  function tick() {
+    if (solved || stoppedAt) return;
+    const s = Math.floor((Date.now() - startedAt) / 1000);
+    $('lab-timer').textContent = `⏱ ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  }
+  setInterval(tick, 1000);
 
   // results has one true/false/null per requirement (null = not judged), or is null for "none judged"
   function renderReqs(results) {
@@ -27,7 +39,10 @@ const labPage = (() => {
         li.classList.add('cur');
       }
       li.append(el('span', 'mark', res === null ? '○' : res ? '✓' : '✗'));
-      li.append(el('span', 'rtext', r.text + (res === false && !exam ? ` — expected: ${hintCmds(r.hint)}` : '')));
+      const txt = el('span', 'rtext');
+      txt.append(el('b', '', r.text));
+      if (res === false && !exam) txt.append(el('span', 'rexp', hintCmds(r.hint)));
+      li.append(txt);
       const used = reqHints[i] || 0;
       if (res !== true && used < 3 && !exam) {
         const b = el('button', 'ghost rhint-btn', `Hint (${3 - used} left)`);
@@ -53,6 +68,7 @@ const labPage = (() => {
   // After every command: tick what is already met (the rest stays neutral, without hints),
   // and run the full check once, automatically, when the last requirement is met. Returns the lines for the console.
   function afterCommand() {
+    commandCount++;
     const met = shown.grade();
     renderReqs(met.map(ok => ok || null));
     const all = shown.reqs.length > 0 && met.every(Boolean);
@@ -119,9 +135,12 @@ const labPage = (() => {
   function clearPage() {
     reqHints = [];
     solved = false;
-    $('solution').hidden = true;
+    stoppedAt = 0;
+    startedAt = Date.now();
+    commandCount = 0;
+    $('cmd').disabled = false; // Check locks the console until the lab is reset
+    tick();
     $('cmds-card').open = false;
-    $('show-solution').textContent = 'Show solution';
     labConsole.show(shown, afterCommand);
     renderReqs(null);
   }
@@ -139,23 +158,64 @@ const labPage = (() => {
     $('topo').innerHTML = drawTopo(session.nodes, session.links, session.height);
     renderCmds();
     $('lab-bar').replaceChildren(...(exam && bar ? [bar] : []));
-    for (const id of ['back', 'cmds-card', 'show-solution', 'new-net']) $(id).hidden = exam;
+    for (const id of ['back', 'cmds-card', 'check-row', 'new-net', 'lab-timer']) $(id).hidden = exam;
     clearPage();
   }
 
+  // Check shows the result in a popup (styled like the login one) on top of marking the requirements
+  const resultDlg = el('dialog', 'auth-dlg result-dlg');
+  const resultBody = el('div', 'result-body');
+  const resultClose = el('button', 'ghost', 'Close');
+  resultDlg.append(resultBody);
+  document.body.append(resultDlg);
+  resultClose.addEventListener('click', () => resultDlg.close());
+
+  // the reference solution: one block per device, or the requirements' commands for a lab with no known-good config
+  function solutionBox(devices) {
+    const box = el('details', 'res-sol');
+    box.append(el('summary', '', `Show reference solution`));
+    box.firstChild.append(el('span', 'note', `${devices.length} device${devices.length === 1 ? '' : 's'}`));
+    for (const [dev, lines] of devices) {
+      if (dev) box.append(el('div', 'res-dev', dev));
+      box.append(el('pre', 'solution', lines.join('\n')));
+    }
+    return box;
+  }
+
+  document.getElementById('check').addEventListener('click', () => {
+    tick();
+    stoppedAt ||= Date.now();
+    $('cmd').disabled = true;
+    const results = shown.grade();
+    check();
+    const done = results.filter(Boolean).length, total = results.length;
+    const hints = reqHints.reduce((a, n) => a + (n || 0), 0);
+    const cost = hints * HINT_COST[shown.level]; // percentage points
+    const pct = total ? Math.max(0, Math.round(100 * done / total) - cost) : 0;
+    const secs = Math.round((stoppedAt - startedAt) / 1000);
+    const tile = (label, value) => { const d = el('div', 'res-stat'); d.append(el('span', 'note', label), el('b', '', value)); return d; };
+    const head = el('div', 'res-head');
+    head.append(el('span', 'res-badge ' + (done === total ? 'ok' : 'bad'), done === total ? 'COMPLETE' : 'INCOMPLETE'), el('b', 'res-pct', pct + '%'));
+    const tiles = el('div', 'res-tiles');
+    tiles.append(tile('REQUIREMENTS', `${done}/${total}`), tile('TIME', `${Math.floor(secs / 60)}m ${secs % 60}s`), tile('HINTS', cost ? `${hints} (−${cost}%)` : String(hints)));
+    const cards = shown.reqs.map((r, i) => {
+      const c = el('div', 'res-req ' + (results[i] ? 'ok' : 'bad'));
+      const icon = el('span', 'res-icon');
+      icon.innerHTML = '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        (results[i] ? '<path d="M3 8.5l3.2 3.2L13 4.5"/>' : '<path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/>') + '</svg>';
+      c.append(icon, el('div', 'res-txt'));
+      c.lastChild.append(el('b', '', r.text));
+      if (!results[i]) c.lastChild.append(el('span', 'note', hintCmds(r.hint)));
+      return c;
+    });
+    const sol = shown.solution.length ? shown.solution : [['', [...new Set(shown.reqs.map(r => hintCmds(r.hint)))]]];
+    resultBody.replaceChildren(head, tiles, el('p', 'note', `${commandCount} command${commandCount === 1 ? '' : 's'} entered`),
+      ...cards, solutionBox(sol), resultClose);
+    resultDlg.showModal();
+  });
   document.getElementById('reset').addEventListener('click', () => {
     shown.reset();
     clearPage();
-  });
-  // a lab with a known-good config shows that; the others show the exact commands of every requirement's last hint
-  document.getElementById('show-solution').addEventListener('click', e => {
-    const box = $('solution');
-    box.hidden = !box.hidden;
-    e.target.textContent = box.hidden ? 'Show solution' : 'Hide solution';
-    // with more than one device, each device's lines start with a "! on <device>" note
-    const several = shown.solution.length > 1;
-    box.textContent = shown.solution.length ? shown.solution.flatMap(([dev, lines]) => several ? [`! on ${dev}`, ...lines] : lines).join('\n')
-      : [...new Set(shown.reqs.map(r => hintCmds(r.hint)))].join('\n');
   });
   document.getElementById('reqs').addEventListener('click', e => {
     const b = e.target.closest('.rhint-btn');
