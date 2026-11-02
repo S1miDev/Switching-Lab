@@ -137,14 +137,20 @@
           <button class="topo-chip" data-type="mls">Multilayer switch</button>
           <button class="topo-chip" data-type="dhcp">DHCP server</button>
           <button class="topo-chip" data-type="pc">PC</button>
+          <button class="topo-chip" data-type="notebook">Notebook</button>
+          <button class="topo-chip" data-type="printer">Printer</button>
         </div>
         <div class="topo-palette">
           <span class="tool-label">Cable:</span>
           <div class="seg seg-static">
             <button class="cable-btn on" data-cable="straight">Straight-through</button>
             <button class="cable-btn" data-cable="cross">Crossover</button>
+            <button class="cable-btn" data-cable="fiber">Fiber</button>
+            <button class="cable-btn" data-cable="serial">Serial</button>
+            <button class="cable-btn" data-cable="console">Console</button>
+            <button class="cable-btn" data-cable="coax">Coaxial</button>
           </div>
-          <span class="note">Straight-through for unlike devices · Crossover for like devices</span>
+          <span class="note">Straight-through for unlike devices · Crossover for like devices · Fiber for long links · Serial for WAN · Console for management · Coaxial for cable broadband</span>
         </div>
         <p class="note">Drag a device to move it. Click one device, then another, to cable them.</p>
         <div id="topo-canvas"></div>
@@ -170,12 +176,27 @@
   <section id="ref" class="page" hidden>
     <header class="ref-head">
       <h1>CCNA command reference</h1>
-      <p>Each topic covered by the labs, grouped by CCNA area.</p>
-      <input type="search" id="ref-search" placeholder="Search topics and commands" aria-label="Search the reference" autocomplete="off">
+      <p>Each topic covered by the labs, grouped by CCNA area, plus every console command in one searchable list.</p>
+      <div class="tabs" id="ref-tabs" role="tablist">
+        <button class="tab active" role="tab" aria-selected="true" data-reftab="topics">Topics</button>
+        <button class="tab" role="tab" aria-selected="false" data-reftab="commands">Commands</button>
+      </div>
     </header>
-    <p id="ref-empty" class="note" hidden>No topics match.</p>
-    <div id="ref-detail" hidden></div>
-    <div class="domains" id="ref-groups"></div>
+    <div id="ref-topics">
+      <input type="search" id="ref-search" placeholder="Search topics and commands" aria-label="Search the topics" autocomplete="off">
+      <p id="ref-empty" class="note" hidden>No topics match.</p>
+      <div id="ref-detail" hidden></div>
+      <div class="domains" id="ref-groups"></div>
+    </div>
+    <div id="ref-commands" hidden>
+      <input type="search" id="cmd-search" placeholder="Search commands, e.g. vlan, ospf, show ip" aria-label="Search console commands" autocomplete="off">
+      <p id="cmd-count" class="note"></p>
+      <p id="cmd-empty" class="note" hidden>No commands match.</p>
+      <table class="ref-table" id="cmd-table">
+        <thead><tr><th>Command</th><th>Mode</th><th>Purpose</th><th>Topic</th></tr></thead>
+        <tbody id="cmd-rows"></tbody>
+      </table>
+    </div>
   </section>
 
   <!-- order matters: dom.js has the page helpers the UI modules use; topics.js holds the catalogue the others read; the devices need the registry (device.js), the IOS helpers (ios.js) and the help engine (help.js) first; session.js, console.js and lab.js come after the devices and labs they use, and script.js starts the app, so it loads last -->

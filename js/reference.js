@@ -76,6 +76,59 @@ document.getElementById('ref-search').addEventListener('input', e => {
   document.getElementById('ref-empty').hidden = !!shown;
 });
 
+// Sub-tabs: Topics (the grouped list above) and Commands (every command from the catalogue, searchable)
+document.getElementById('ref-tabs').addEventListener('click', e => {
+  const tab = e.target.closest('[data-reftab]');
+  if (!tab) return;
+  document.querySelectorAll('#ref-tabs .tab').forEach(t => {
+    t.classList.toggle('active', t === tab);
+    t.setAttribute('aria-selected', t === tab);
+  });
+  $('ref-topics').hidden = tab.dataset.reftab !== 'topics';
+  $('ref-commands').hidden = tab.dataset.reftab !== 'commands';
+});
+
+// Mode depth: the mode you must be in to type the command. exec < global config < sub-config < nested sub-config; non-CLI entries (gui, wireless) last
+function modeRank(mode) {
+  if (/exec/.test(mode)) return 0;
+  if (mode === 'config') return 1;
+  if (mode === 'config-pmap-c') return 3;
+  if (/^config-/.test(mode)) return 2;
+  return 4;
+}
+
+// One row per command: configuration commands and verify (show) commands, with the topic each comes from.
+// Ordered by mode, lowest to highest; commands in the same mode level keep catalogue order.
+function commandIndex() {
+  const rows = [];
+  Object.keys(CATALOGUE).forEach(id => {
+    const topic = CATALOGUE[id];
+    topic.ref.commands.forEach(([cmd, mode, purpose]) => rows.push({id, cmd, mode, purpose, topic: topic.name}));
+    topic.ref.verify.forEach(cmd => rows.push({id, cmd, mode: 'privileged exec', purpose: 'Verify the configuration.', topic: topic.name}));
+  });
+  return rows.sort((a, b) => modeRank(a.mode) - modeRank(b.mode));
+}
+
+const COMMANDS = commandIndex();
+$('cmd-rows').innerHTML = COMMANDS.map((c, i) =>
+  `<tr data-i="${i}"><td><code>${esc(c.cmd)}</code></td><td>${esc(c.mode)}</td><td>${esc(c.purpose)}</td><td>${esc(c.topic)}</td></tr>`).join('');
+
+// Filter by every word typed, against the command, mode, purpose and topic
+$('cmd-search').addEventListener('input', e => {
+  const words = e.target.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  let shown = 0;
+  [...$('cmd-rows').rows].forEach(row => {
+    const c = COMMANDS[row.dataset.i];
+    const text = (c.cmd + ' ' + c.mode + ' ' + c.purpose + ' ' + c.topic).toLowerCase();
+    row.hidden = !words.every(w => text.includes(w));
+    shown += !row.hidden;
+  });
+  $('cmd-empty').hidden = !!shown;
+  $('cmd-table').hidden = !shown;
+  $('cmd-count').textContent = `${shown} of ${COMMANDS.length} commands`;
+});
+$('cmd-count').textContent = `${COMMANDS.length} commands`;
+
 // Open a topic by click, Enter or Space. (The lab button inside a topic is handled in script.js.)
 const refPage = document.getElementById('ref');
 refPage.addEventListener('click', e => {

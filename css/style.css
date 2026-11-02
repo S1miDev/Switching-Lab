@@ -1285,6 +1285,27 @@ details.card summary {
   stroke-dasharray: 7 5;
 }
 
+#topo-canvas .link.fiber {
+  stroke-width: 2;
+  stroke-dasharray: 2 4;
+  stroke-linecap: round;
+}
+
+#topo-canvas .link.serial {
+  stroke-dasharray: 12 4 2 4;
+}
+
+#topo-canvas .link.coax {
+  stroke-width: 5;
+  stroke-dasharray: 1 3;
+  stroke-linecap: round;
+}
+
+#topo-canvas .link.console {
+  stroke: var(--muted);
+  stroke-width: 2;
+}
+
 /* the wide invisible line over each cable that makes it easy to click */
 #topo-canvas .hit {
   stroke: transparent;
@@ -1575,20 +1596,22 @@ details.card summary {
 
 /* ---- Reference ---- */
 .ref-head {
-  margin-bottom: 32px;
+  margin-bottom: 16px;
 }
 
-.ref-head p:last-child {
+.ref-head p {
   max-width: 640px;
   margin: 8px 0 0;
   color: var(--muted);
 }
 
 #ref .eyebrow,
-#ref-search {
+#ref-search,
+#cmd-search {
+  display: block;
   width: 100%;
   max-width: 420px;
-  margin-top: 16px;
+  margin: 16px 0 24px;
   padding: 10px 14px;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -1607,6 +1630,49 @@ details.card summary {
 
 #ref .ref-item {
   cursor: pointer;
+}
+
+#ref-tabs {
+  margin-top: 16px;
+}
+
+/* the Commands sub-tab reuses the topic table look */
+#ref-commands .ref-table {
+  width: 100%;
+  margin-top: 16px;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+#ref-commands .ref-table th,
+#ref-commands .ref-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+#ref-commands .ref-table th {
+  font: 11px var(--mono);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+#ref-commands .ref-table code {
+  font-family: var(--mono);
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+#ref-commands .ref-table [hidden] {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  #ref-commands .ref-table code {
+    white-space: normal;
+  }
 }
 
 #ref .row-title {

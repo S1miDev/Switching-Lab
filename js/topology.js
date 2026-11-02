@@ -7,6 +7,8 @@ const TOPO_ICONS = {
   mls: '<rect x="2" y="10" width="20" height="8" rx="2"/><path d="M6 14h.01M10 14h.01M14 14h.01M18 14h.01M12 6v3M9 7l3-3 3 3"/>',
   dhcp: '<rect x="4" y="3" width="16" height="6" rx="1"/><rect x="4" y="11" width="16" height="6" rx="1"/><path d="M8 6h.01M8 14h.01M12 20v-3"/>',
   pc: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M9 20h6M12 16v4"/>',
+  notebook: '<rect x="5" y="5" width="14" height="10" rx="1"/><path d="M2 19h20"/>',
+  printer: '<path d="M7 9V4h10v5"/><rect x="3" y="9" width="18" height="8" rx="2"/><rect x="7" y="14" width="10" height="6"/>',
 };
 const TOPO_TYPES = {
   router: {prefix: 'R', label: 'router', sub: 'router', ports: ['Gi0/0', 'Gi0/1', 'Gi0/2']},
@@ -14,6 +16,8 @@ const TOPO_TYPES = {
   pc: {prefix: 'PC', label: 'PC', sub: 'PC', ports: ['NIC']},
   mls: {prefix: 'MLS', label: 'multilayer switch', sub: 'L3 switch', ports: ['Gi1/0/1', 'Gi1/0/2', 'Gi1/0/3', 'Gi1/0/4', 'Gi1/0/5', 'Gi1/0/6']},
   dhcp: {prefix: 'DHCP', label: 'DHCP server', sub: 'server', ports: ['NIC']},
+  notebook: {prefix: 'NB', label: 'notebook', sub: 'notebook', ports: ['NIC']},
+  printer: {prefix: 'PRN', label: 'printer', sub: 'printer', ports: ['NIC']},
 };
 // device names are a type prefix plus a number (R1, MLS2), so the name tells the type
 const typeOf = name => Object.keys(TOPO_TYPES).find(type => TOPO_TYPES[type].prefix === name.replace(/\d+$/, ''));
@@ -21,24 +25,42 @@ const typeOf = name => Object.keys(TOPO_TYPES).find(type => TOPO_TYPES[type].pre
 const TOPO_TASKS = [
   {level: 'beginner', title: 'Connect the router to the switch', devices: ['R1', 'S1'], links: [['R1', 'S1']]},
   {level: 'beginner', title: 'Connect the switch to a PC', devices: ['S1', 'PC1'], links: [['S1', 'PC1']]},
+  {level: 'beginner', title: 'Connect a notebook to the switch', devices: ['S1', 'NB1'], links: [['S1', 'NB1']]},
+  {level: 'beginner', title: 'Manage the router from a PC with a console cable', devices: ['R1', 'PC1'], links: [['R1', 'PC1', 'console']]},
   {level: 'intermediate', title: 'Connect R1, S1 and PC1 in a line', devices: ['R1', 'S1', 'PC1'], links: [['R1', 'S1'], ['S1', 'PC1']]},
-  {level: 'intermediate', title: 'Connect the switch to both PCs', devices: ['S1', 'PC1', 'PC2'], links: [['S1', 'PC1'], ['S1', 'PC2']]},
+  {level: 'intermediate', title: 'Connect the switch to a PC and a printer', devices: ['S1', 'PC1', 'PRN1'], links: [['S1', 'PC1'], ['S1', 'PRN1']]},
+  {level: 'intermediate', title: 'Join two switches directly with copper', devices: ['S1', 'S2'], links: [['S1', 'S2']]},
+  {level: 'intermediate', title: 'Link two routers over a serial WAN cable', devices: ['R1', 'R2'], links: [['R1', 'R2', 'serial']]},
   {level: 'intermediate', title: 'Give a PC an address from a DHCP server', devices: ['S1', 'PC1', 'DHCP1'], links: [['S1', 'PC1'], ['S1', 'DHCP1']]},
   {level: 'advanced', title: 'Put a multilayer switch between the router and an access switch', devices: ['R1', 'MLS1', 'S1', 'PC1'],
     links: [['R1', 'MLS1'], ['MLS1', 'S1'], ['S1', 'PC1']]},
   {level: 'advanced', title: 'Chain two switches behind the router', devices: ['R1', 'S1', 'S2'], links: [['R1', 'S1'], ['S1', 'S2']]},
   {level: 'advanced', title: 'Put a multilayer switch between the router and the switch', devices: ['R1', 'MLS1', 'S1'],
     links: [['R1', 'MLS1'], ['MLS1', 'S1']]},
+  {level: 'advanced', title: 'Link two switches with a fiber uplink and attach a PC and a notebook', devices: ['S1', 'S2', 'PC1', 'NB1'],
+    links: [['S1', 'S2', 'fiber'], ['S1', 'PC1'], ['S2', 'NB1']]},
+  {level: 'advanced', title: 'Connect a branch LAN to R1 over a serial WAN link', devices: ['R1', 'R2', 'S1', 'PC1'],
+    links: [['R1', 'R2', 'serial'], ['R2', 'S1'], ['S1', 'PC1']]},
+  {level: 'advanced', title: 'Cable a PC to the switch and manage the switch from a notebook console', devices: ['S1', 'PC1', 'NB1'],
+    links: [['S1', 'PC1'], ['S1', 'NB1', 'console']]},
   {level: 'expert', title: 'Build the full topology with two switches', devices: ['R1', 'S1', 'S2', 'PC1', 'PC2'],
     links: [['R1', 'S1'], ['S1', 'S2'], ['S1', 'PC1'], ['S2', 'PC2']]},
   {level: 'expert', title: 'Core switching with a DHCP server and two PCs', devices: ['MLS1', 'S1', 'PC1', 'PC2', 'DHCP1'],
     links: [['MLS1', 'S1'], ['MLS1', 'DHCP1'], ['S1', 'PC1'], ['S1', 'PC2']]},
+  {level: 'expert', title: 'Office LAN: fiber from the router to the core and on to the access switch, with a PC, a notebook and a printer, and an admin PC on the console',
+    devices: ['R1', 'MLS1', 'S1', 'PC1', 'NB1', 'PRN1', 'PC2'],
+    links: [['R1', 'MLS1', 'fiber'], ['MLS1', 'S1', 'fiber'], ['S1', 'PC1'], ['S1', 'NB1'], ['S1', 'PRN1'], ['MLS1', 'PC2', 'console']]},
+  {level: 'expert', title: 'Two sites joined by a serial WAN, each with a switch, and a PC at one and a printer at the other',
+    devices: ['R1', 'R2', 'S1', 'S2', 'PC1', 'PRN1'],
+    links: [['R1', 'R2', 'serial'], ['R1', 'S1'], ['R2', 'S2'], ['S1', 'PC1'], ['S2', 'PRN1']]},
 ];
 
 // copper rule from the CCNA course: unlike devices (a host or router to a switch) use straight-through, like devices crossover
 const SWITCHY = new Set(['switch', 'mls']);
 const rightCable = (x, y) => (SWITCHY.has(typeOf(x)) === SWITCHY.has(typeOf(y)) ? 'cross' : 'straight');
-const CABLE_NAMES = {straight: 'straight-through', cross: 'crossover'};
+// a task link is [a, b] (copper, by the rule above) or [a, b, type] when the task needs a specific cable such as fiber, serial or console
+// coax has no task yet, so it counts as the wrong cable type everywhere
+const CABLE_NAMES = {straight: 'straight-through', cross: 'crossover', fiber: 'fiber', serial: 'serial', console: 'console', coax: 'coaxial'};
 
 // canvas size (the SVG viewBox), device box size, and the margin devices keep from the edge
 const TOPO_W = 600, TOPO_H = 340, NODE_W = 120, NODE_H = 44, EDGE = 8;
@@ -46,7 +68,7 @@ const TOPO_W = 600, TOPO_H = 340, NODE_W = 120, NODE_H = 44, EDGE = 8;
 let topoLevel = 'beginner';
 let topoTask = null;
 let topoNodes = [];   // {name, type, x, y}: x, y is the box's top-left corner
-let topoCables = [];  // {a, b, pa, pb, type}: the two device names, their ports, and 'straight' or 'cross'
+let topoCables = [];  // {a, b, pa, pb, type}: the two device names, their ports, and 'straight', 'cross', 'fiber', 'serial', 'console' or 'coax'
 let topoSel = null;   // the device clicked first when cabling
 let topoDrag = null;  // the device being moved
 let topoCounted = false; // this task already counted toward the day streak
@@ -138,8 +160,8 @@ function clearCanvas() {
 
 function topoReqs() {
   const devices = topoTask.devices.map(name => ({text: `Add a ${TOPO_TYPES[typeOf(name)].label} (${name})`, ok: !!nodeOf(name)}));
-  const cables = topoTask.links.map(([x, y]) => {
-    const c = cableOf(x, y), ok = !!c && c.type === rightCable(x, y);
+  const cables = topoTask.links.map(([x, y, want = rightCable(x, y)]) => {
+    const c = cableOf(x, y), ok = !!c && c.type === want;
     return {text: `Cable ${x} to ${y} with the right cable${c && !ok ? ' (wrong cable type)' : ''}`, ok};
   });
   return [...devices, ...cables, {text: 'No extra cables', ok: topoCables.length === topoTask.links.length}];
@@ -172,7 +194,7 @@ function topoSvg() {
     const a = mid(nodeOf(c.a)), b = mid(nodeOf(c.b));
     const ends = `x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"`;
     // the visible line, then a wide invisible one on top that is easier to click
-    svg += `<line class="link${c.type === 'cross' ? ' cross' : ''}" ${ends}/>` +
+    svg += `<line class="link ${c.type}" ${ends}/>` +
       `<line class="hit" data-cable="${c.a}|${c.b}" ${ends}><title>Click to remove this cable</title></line>`;
     const len = Math.hypot(b.x - a.x, b.y - a.y);
     if (len < 1) continue;
