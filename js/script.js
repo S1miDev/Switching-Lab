@@ -5,6 +5,7 @@
 let level = localStorage.getItem('level') || 'intermediate';  // the chosen difficulty, remembered across visits
 let topic = 'ipv4';          // the open lab (an id of CATALOGUE, with its build in LABS)
 let lastNet = null;          // the previous lab's random network, so the next one differs
+let labFrom = 'dash';        // the page a lab was started from, where Back returns
 
 // ---- labs ----
 
@@ -21,6 +22,7 @@ function newLab(lvl = level, t = topic) {
 function markLevel() {
   document.querySelectorAll('[data-set]').forEach(b => b.classList.toggle('active', b.dataset.set === level));
   moveSeg($('dash-seg'));
+  moveSeg($('trouble-seg'));
 }
 
 // slide a segmented control's highlight under its active button (it can only measure while visible)
@@ -34,12 +36,15 @@ function moveSeg(seg) {
 
 // ---- dashboard ----
 
-// the Labs page: one section per domain, each topic with a lab, in catalogue order
-function renderDashboard() {
-  const ids = Object.keys(CATALOGUE).filter(id => CATALOGUE[id].labLevels.length);
-  $('dash-domains').innerHTML = Object.entries(DOMAINS).map(([n, title], d) => {
+// the Labs page (or, with fix, the Troubleshooting page): one section per domain, each topic with a lab, in catalogue order
+const isFix = id => CATALOGUE[id].refGroup === 'Troubleshooting';
+function renderDashboard(box, fix) {
+  const ids = Object.keys(CATALOGUE).filter(id => CATALOGUE[id].labLevels.length && isFix(id) === fix);
+  // the Troubleshooting page only lists domains that have a lab, all open
+  const domains = Object.entries(DOMAINS).filter(([n]) => !fix || ids.some(id => CATALOGUE[id].domain === Number(n)));
+  $(box).innerHTML = domains.map(([n, title], d) => {
     const rows = ids.filter(id => CATALOGUE[id].domain === Number(n));
-    return `<details class="domain"${d ? '' : ' open'}>` +
+    return `<details class="domain"${d && !fix ? '' : ' open'}>` +
       `<summary><span class="dom-num">${n}.0</span><span class="dom-title">${esc(title)}</span><span class="dom-meta">${topicCount(rows.length)}</span></summary>` +
       '<div class="rows">' +
       rows.map(id => `<div class="row" data-search="${esc(searchText(id))}">` +
@@ -57,11 +62,14 @@ function show(view) {
   $('topo-view').hidden = view !== 'topo';
   $('exam-view').hidden = view !== 'exam';
   $('ref').hidden = view !== 'ref';
-  $('nav-labs').classList.toggle('active', view === 'dash' || view === 'lab');
+  $('trouble').hidden = view !== 'trouble';
+  $('nav-trouble').classList.toggle('active', view === 'trouble' || (view === 'lab' && labFrom === 'trouble'));
+  $('nav-labs').classList.toggle('active', view === 'dash' || (view === 'lab' && labFrom !== 'trouble'));
   $('nav-topo').classList.toggle('active', view === 'topo');
   $('nav-exam').classList.toggle('active', view === 'exam');
   $('nav-ref').classList.toggle('active', view === 'ref');
   if (view === 'dash') moveSeg($('dash-seg'));
+  if (view === 'trouble') moveSeg($('trouble-seg'));
   if (view === 'topo') moveSeg($('topo-seg'));
   if (view === 'ref') refHome();
   window.scrollTo(0, 0);
@@ -71,11 +79,13 @@ function show(view) {
 $('nav-labs').addEventListener('click', () => show('dash'));
 $('nav-brand').addEventListener('click', () => show('dash'));
 $('nav-ref').addEventListener('click', () => show('ref'));
-$('back').addEventListener('click', () => show('dash'));
+$('nav-trouble').addEventListener('click', () => show('trouble'));
+$('back').addEventListener('click', () => show(labFrom));
 // every "Start lab" button, on the Labs page and in the Reference
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-start]');
   if (!b) return;
+  labFrom = b.closest('#trouble') ? 'trouble' : 'dash';
   newLab(level, b.dataset.start);
   show('lab');
 });
@@ -87,8 +97,8 @@ document.querySelectorAll('[data-set]').forEach(b => b.addEventListener('click',
 // search: open every section, and hide the labs whose name does not contain the text
 $('search').addEventListener('input', e => {
   const q = e.target.value.trim().toLowerCase();
-  if (q) document.querySelectorAll('details.domain').forEach(d => { d.open = true; });
-  document.querySelectorAll('[data-search]').forEach(row => { row.hidden = !row.dataset.search.includes(q); });
+  if (q) $('dash').querySelectorAll('details.domain').forEach(d => { d.open = true; });
+  $('dash').querySelectorAll('[data-search]').forEach(row => { row.hidden = !row.dataset.search.includes(q); });
 });
 
 // lab page: New network starts another lab (Reset, hints and the solution are in lab.js, device tabs in console.js)
@@ -96,9 +106,11 @@ $('new-net').addEventListener('click', () => newLab());
 
 window.addEventListener('resize', () => {
   moveSeg($('dash-seg'));
+  moveSeg($('trouble-seg'));
   moveSeg($('topo-seg'));
 });
 
 // ---- start ----
-renderDashboard();
+renderDashboard('dash-domains', false);
+renderDashboard('trouble-domains', true);
 markLevel();

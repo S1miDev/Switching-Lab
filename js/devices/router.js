@@ -566,6 +566,13 @@ function configCommand(st, c, w, line, out) {
   else if (c === 'ip' && pick(w[1], ['dhcp']) && pick(w[2], ['excluded-address']) && DOTTED.test(w[3])) {
     st.dhcpEx.push([w[3], DOTTED.test(w[4]) ? w[4] : w[3]]);
   }
+  else if (c === 'no' && pick(w[1], ['ip']) && pick(w[2], ['dhcp']) && pick(w[3], ['excluded-address']) && DOTTED.test(w[4])) {
+    const last = DOTTED.test(w[5]) ? w[5] : w[4];
+    st.dhcpEx = st.dhcpEx.filter(([a, b]) => !(a === w[4] && b === last));
+  }
+  // no access-list <n> / no ip access-list standard|extended <name>: delete the whole ACL
+  else if (c === 'no' && pick(w[1], ['access-list']) && w.length === 3) delete st.acls[w[2]];
+  else if (c === 'no' && pick(w[1], ['ip']) && pick(w[2], ['access-list']) && pick(w[3], ['standard', 'extended']) && w.length === 5) delete st.acls[w[4]];
   // ip nat inside source list <acl> interface <if> overload
   else if (c === 'ip' && pick(w[1], ['nat']) && pick(w[2], ['inside']) && pick(w[3], ['source']) && pick(w[4], ['list'])
     && w.length === 9 && pick(w[6], ['interface']) && ifKey(st, w[7]) && pick(w[8], ['overload'])) {
@@ -682,6 +689,9 @@ function interfaceCommand(st, c, w, line) {
   else if (c === 'ip' && pick(w[1], ['access-group']) && w[2] && pick(w[3], ['in', 'out'])) {
     i[pick(w[3], ['in', 'out']) === 'in' ? 'aclIn' : 'aclOut'] = w[2];
   }
+  else if (c === 'no' && pick(w[1], ['ip']) && pick(w[2], ['access-group']) && w[3] && pick(w[4], ['in', 'out'])) {
+    i[pick(w[4], ['in', 'out']) === 'in' ? 'aclIn' : 'aclOut'] = null;
+  }
   // ip ospf <pid> area <area> / ipv6 ospf <pid> area <area>
   else if ((c === 'ip' || c === 'ipv6') && pick(w[1], ['ospf']) && w.length === 5 && isPid(w[2]) && pick(w[3], ['area']) && areaNum(w[4]) !== null) {
     i[c === 'ip' ? 'ospf' : 'ospf6'] = {pid: Number(w[2]), area: areaNum(w[4])};
@@ -711,6 +721,9 @@ function routerCommand(st, c, w) {
   // network <net> <wildcard> area <area> (OSPFv3 has no network command)
   if (c === 'network' && p === 'ospf' && w.length === 5 && DOTTED.test(w[1]) && DOTTED.test(w[2]) && pick(w[3], ['area']) && areaNum(w[4]) !== null) {
     o.nets.push({net: w[1], wc: w[2], area: areaNum(w[4])});
+  }
+  else if (c === 'no' && pick(w[1], ['network']) && p === 'ospf' && w.length === 6 && pick(w[4], ['area'])) {
+    o.nets = o.nets.filter(n => !(n.net === w[2] && n.wc === w[3] && n.area === areaNum(w[5])));
   }
   // network <net> [wildcard] for EIGRP, network <net> for RIP; without a wildcard it is the whole classful network
   else if (c === 'network' && (p === 'eigrp' || p === 'rip') && DOTTED.test(w[1]) && (w.length === 2 || (p === 'eigrp' && w.length === 3 && DOTTED.test(w[2])))) {

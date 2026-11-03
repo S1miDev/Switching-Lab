@@ -54,7 +54,7 @@ function renderProgress(done) {
   }));
 }
 
-// counts down 24h from the solve that extended the streak (fallback: end of today, or of tomorrow once solved today)
+// counts down to the start of the day the streak breaks: tomorrow if not solved yet today, else the day after
 let resetTimer;
 function showReset(meta) {
   clearInterval(resetTimer);
@@ -63,7 +63,6 @@ function showReset(meta) {
   let d = new Date();
   d.setHours(0, 0, 0, 0);
   d.setDate(d.getDate() + (meta.last_day === dayKey() ? 2 : 1));
-  if (meta.last_at) d = meta.last_at + 864e5; // 24h after the streak was extended; older accounts have no last_at
   const tick = () => {
     const s = Math.max(0, Math.floor((d - Date.now()) / 1000));
     const p = n => String(n).padStart(2, '0');
