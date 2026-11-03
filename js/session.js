@@ -12,6 +12,7 @@ function randomNet(avoid) {
 //   reqs, solution   the requirements ({text, ok, hint}) and a known-good config [[device, lines], ...] (empty when the lab has none)
 //   sub, lead, steps, nodes, links, height   the texts and the diagram
 //   home             the device whose console opens first
+//   setup            a preset (often broken) config [[device, lines], ...], typed in global configuration on every reset
 //   server           the preconfigured DHCP server {name, ip, pools, reach(session)}, or null
 //   devices          the device of each node by name, built by the factory registered for the node's type (devices/device.js)
 //   config(name)     that device's configuration (null on a display-only device), which the requirements read
@@ -40,6 +41,7 @@ function createSession({topic, level, net}) {
     reset() {
       // a node marked readonly is display-only whatever its type
       session.devices = Object.fromEntries(session.nodes.map(n => [n.id, DEVICE_TYPES[n.readonly ? 'readonly' : n.type](n, session)]));
+      for (const [name, lines] of session.setup || []) for (const l of ['enable', 'conf t', ...lines, 'end', 'disable']) session.run(name, l);
     },
   };
   session.reset();

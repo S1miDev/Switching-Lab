@@ -31,6 +31,46 @@ const inNet = (ip, mask, target) => ((ipInt(ip) & ipInt(mask)) >>> 0) === ((ipIn
 const netText = (ip, mask) => ipText((ipInt(ip) & ipInt(mask)) >>> 0);
 const prefixLen = mask => ipInt(mask).toString(2).split('').filter(bit => bit === '1').length;
 
+// IPv6 helpers: an address with or without a prefix length, and its canonical form for comparing (lower case, no leading zeros,
+// all 8 groups written out), so 2001:DB8:0:1::/64 and 2001:db8::1:0:0:0:0/64 are the same
+const V6 = /^[0-9a-f:]+(\/\d{1,3})?$/i;
+const isV6 = text => !!text && text.includes(':') && V6.test(text);
+function v6Canon(text) {
+  const [addr, len] = text.toLowerCase().split('/');
+  const [head, tail] = addr.includes('::') ? addr.split('::') : [addr, null];
+  const left = head ? head.split(':') : [], right = tail ? tail.split(':') : [];
+  const groups = tail === null ? left : [...left, ...Array(8 - left.length - right.length).fill('0'), ...right];
+  return groups.map(g => parseInt(g || '0', 16).toString(16)).join(':') + (len ? '/' + len : '');
+}
+
+// The 64-bit interface ID EUI-64 builds from a MAC (aabb.ccdd.eeff): flip bit 7 of the first byte and put FFFE in the middle.
+// Returns the four groups, e.g. 'c801:1aff:fe2b:0'
+function eui64(mac) {
+  const hex = mac.replace(/\./g, '');
+  const b = hex.match(/../g).map(h => parseInt(h, 16));
+  b[0] ^= 2;
+  const bytes = [...b.slice(0, 3), 0xff, 0xfe, ...b.slice(3)];
+  return [0, 2, 4, 6].map(i => ((bytes[i] << 8) | bytes[i + 1]).toString(16)).join(':');
+}
+
+// a VLAN list such as 10,20,30-32 -> [10, 20, 30, 31, 32], or null when it is not one
+// the other way round: [1, 2, 3, 5] -> '1-3,5', as IOS prints allowed VLANs
+const vlanRanges = ids => ids.reduce((runs, id) => {
+  const last = runs[runs.length - 1];
+  if (last && id === last[1] + 1) last[1] = id;
+  else runs.push([id, id]);
+  return runs;
+}, []).map(([a, b]) => (a === b ? `${a}` : b === a + 1 ? `${a},${b}` : `${a}-${b}`)).join(',');
+
+function vlanList(text) {
+  if (!/^\d+(-\d+)?(,\d+(-\d+)?)*$/.test(text || '')) return null;
+  const ids = text.split(',').flatMap(part => {
+    const [a, b = a] = part.split('-').map(Number);
+    return Array.from({length: Math.max(0, b - a + 1)}, (_, i) => a + i);
+  });
+  return [...new Set(ids)].sort((a, b) => a - b);
+}
+
 // an interface that has an address and is not shut down, or null
 const usable = i => (i && i.ip && !i.shut ? i : null);
 

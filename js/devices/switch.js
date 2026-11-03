@@ -12,18 +12,21 @@ const SW_CMDS = {
 };
 
 // The full commands Tab completes to, per mode, in the order Tab lists them
-const SW_SHOWS = ['show vlan brief', 'show interfaces status', 'show ip interface brief', 'show running-config', 'show startup-config',
-  'show etherchannel summary', 'show spanning-tree'];
+const SW_SHOWS = ['show vlan brief', 'show interfaces status', 'show interfaces trunk', 'show ip interface brief', 'show running-config',
+  'show startup-config', 'show etherchannel summary', 'show spanning-tree', 'show ip dhcp snooping', 'show ip arp inspection'];
 const SW_KEYS = {
   user: ['enable', 'exit', 'show vlan brief', 'show interfaces status', 'show running-config'],
   priv: ['configure terminal', 'copy running-config startup-config', 'disable', 'exit', 'write memory', ...SW_SHOWS],
   config: ['hostname', 'interface', 'line console 0', 'line vty 0 15', 'vlan', 'spanning-tree mode rapid-pvst', 'spanning-tree vlan 10 root primary',
-    'port-channel load-balance src-dst-ip', 'exit', 'end', ...SW_SHOWS],
+    'port-channel load-balance src-dst-ip', 'ip dhcp snooping', 'ip dhcp snooping vlan', 'no ip dhcp snooping information option',
+    'ip arp inspection vlan', 'ip arp inspection validate src-mac dst-mac ip', 'exit', 'end', ...SW_SHOWS],
   vlan: ['name', 'exit', 'end'],
   line: ['exit', 'end'],
   ifc: ['interface', 'description', 'switchport mode access', 'switchport mode trunk', 'switchport access vlan', 'switchport trunk allowed vlan',
     'switchport trunk native vlan', 'shutdown', 'no shutdown', 'channel-group 1 mode active', 'spanning-tree portfast',
-    'spanning-tree bpduguard enable', 'exit', 'end', ...SW_SHOWS],
+    'spanning-tree bpduguard enable', 'switchport voice vlan', 'switchport nonegotiate', 'switchport trunk allowed vlan add',
+    'switchport mode dynamic desirable', 'ip dhcp snooping trust', 'ip dhcp snooping limit rate', 'ip arp inspection trust',
+    'exit', 'end', ...SW_SHOWS],
 };
 
 const SWITCH_HELP = {
@@ -88,10 +91,14 @@ const SWITCH_HELP = {
 
 const CHANNEL_MODES = ['active', 'passive', 'on', 'desirable', 'auto'];
 const VIOLATION_MODES = ['shutdown', 'restrict', 'protect'];
+const DAI_CHECKS = ['src-mac', 'dst-mac', 'ip'];
+const NONEG_CONFLICT = "Command rejected: Conflict between 'nonegotiate' and 'dynamic' status.";
+const ALL_VLANS = Array.from({length: 4094}, (_, i) => i + 1); // what a trunk allows by default (stored as allowed: null)
 // a switch port; also used for SVIs (svi) and, on a multilayer switch, routed ports (routed)
 const swPort = (name, shut = true) => ({
   name, mode: 'dynamic', vlan: 1, native: 1, allowed: null, shut, desc: null, group: null, chanMode: null,
   portfast: false, bpdu: false, psec: false, psMax: null, psViolation: null, psSticky: false,
+  voice: null, noneg: false, dtp: 'auto', trust: false, rate: null, daiTrust: false, // dtp: desirable or auto while mode is dynamic
   svi: false, routed: false, ip: null, mask: null, helpers: [],
 });
 // a plain access switch; l3 makes it a multilayer switch (a Catalyst 3560 has the same ports)
@@ -100,6 +107,8 @@ function freshSw(host, l3) {
     mode: 'user', iface: null, host, l3, routing: false, saved: null, vlanId: null, lb: null,
     vlans: {1: {name: 'default'}},
     stp: {mode: 'pvst', prio: {}},
+    snoop: {on: false, vlans: [], opt82: true}, // DHCP snooping
+    dai: {vlans: [], validate: []}, // dynamic ARP inspection; validate lists src-mac, dst-mac, ip
     // Fa0/3 starts up: it is the unused port some labs ask you to shut down
     ports: {'fa0/1': swPort('Fa0/1'), 'fa0/2': swPort('Fa0/2'), 'fa0/3': swPort('Fa0/3', false), 'gi0/1': swPort('Gi0/1')},
   };
@@ -124,6 +133,11 @@ function swConfigLines(s) {
   if (s.routing) lines.push('ip routing');
   if (s.stp.mode === 'rapid-pvst') lines.push('spanning-tree mode rapid-pvst');
   for (const [id, prio] of Object.entries(s.stp.prio)) lines.push(`spanning-tree vlan ${id} priority ${prio}`);
+  if (s.snoop.on) lines.push('ip dhcp snooping');
+  if (s.snoop.vlans.length) lines.push(`ip dhcp snooping vlan ${s.snoop.vlans.join(',')}`);
+  if (!s.snoop.opt82) lines.push('no ip dhcp snooping information option');
+  if (s.dai.vlans.length) lines.push(`ip arp inspection vlan ${s.dai.vlans.join(',')}`);
+  if (s.dai.validate.length) lines.push(`ip arp inspection validate ${s.dai.validate.join(' ')}`);
   for (const [id, vlan] of Object.entries(s.vlans)) if (id !== '1') lines.push(`vlan ${id}`, ` name ${vlan.name}`, '!');
   for (const p of Object.values(s.ports)) {
     lines.push(`interface ${p.name}`);
@@ -136,8 +150,14 @@ function swConfigLines(s) {
     if (p.psViolation) lines.push(` switchport port-security violation ${p.psViolation}`);
     if (p.psSticky) lines.push(' switchport port-security mac-address sticky');
     if (p.mode === 'access') lines.push(' switchport mode access', ` switchport access vlan ${p.vlan}`);
+    if (p.voice) lines.push(` switchport voice vlan ${p.voice}`);
     if (p.mode === 'trunk') lines.push(' switchport mode trunk');
-    if (p.allowed) lines.push(` switchport trunk allowed vlan ${p.allowed.join(',')}`);
+    if (p.mode === 'dynamic' && p.dtp === 'desirable' && !p.svi) lines.push(' switchport mode dynamic desirable');
+    if (p.noneg) lines.push(' switchport nonegotiate');
+    if (p.trust) lines.push(' ip dhcp snooping trust');
+    if (p.rate) lines.push(` ip dhcp snooping limit rate ${p.rate}`);
+    if (p.daiTrust) lines.push(' ip arp inspection trust');
+    if (p.allowed) lines.push(` switchport trunk allowed vlan ${vlanRanges(p.allowed)}`);
     if (p.native !== 1) lines.push(` switchport trunk native vlan ${p.native}`);
     if (p.routed) lines.push(' no switchport');
     if (p.ip) lines.push(` ip address ${p.ip} ${p.mask}`);
@@ -186,6 +206,47 @@ function swStp(s, out) {
   }
 }
 
+// the ports that trunk or try to: mode on (trunk, with nonegotiate when DTP is off) or dynamic desirable
+function swTrunks(s, out) {
+  out('Port        Mode             Native vlan  Vlans allowed');
+  for (const p of Object.values(s.ports)) {
+    if (p.mode !== 'trunk' && !(p.mode === 'dynamic' && p.dtp === 'desirable')) continue;
+    const mode = p.mode === 'trunk' ? (p.noneg ? 'on (nonegotiate)' : 'on') : 'desirable';
+    out(p.name.padEnd(12) + mode.padEnd(17) + String(p.native).padEnd(13) + (p.allowed ? vlanRanges(p.allowed) : '1-4094'));
+  }
+}
+
+// show interfaces <port> switchport: what the port is set to, including the DTP mode that show interfaces trunk leaves out
+function swSwitchport(p, out) {
+  const admin = p.mode === 'dynamic' ? `dynamic ${p.dtp}` : p.mode === 'access' ? 'static access' : 'trunk';
+  out(`Name: ${p.name}`);
+  out(`Switchport: ${p.routed || p.svi ? 'Disabled' : 'Enabled'}`);
+  out(`Administrative Mode: ${admin}`);
+  out('Administrative Trunking Encapsulation: dot1q');
+  out(`Negotiation of Trunking: ${p.noneg ? 'Off' : 'On'}`);
+  out(`Access Mode VLAN: ${p.vlan}`);
+  out(`Trunking Native Mode VLAN: ${p.native}`);
+  out(`Voice VLAN: ${p.voice ?? 'none'}`);
+  out(`Trunking VLANs Enabled: ${p.allowed ? vlanRanges(p.allowed) : 'ALL'}`);
+}
+
+function swSnooping(s, out) {
+  out(`Switch DHCP snooping is ${s.snoop.on ? 'enabled' : 'disabled'}`);
+  out(`DHCP snooping is configured on following VLANs: ${s.snoop.vlans.join(',') || 'none'}`);
+  out(`Insertion of option 82 is ${s.snoop.opt82 ? 'enabled' : 'disabled'}`);
+  out('Interface        Trusted    Rate limit (pps)');
+  for (const p of Object.values(s.ports)) if (p.trust || p.rate) out(p.name.padEnd(17) + (p.trust ? 'yes' : 'no').padEnd(11) + (p.rate || 'unlimited'));
+}
+
+function swArpInspection(s, out) {
+  out(`Source Mac Validation      : ${s.dai.validate.includes('src-mac') ? 'Enabled' : 'Disabled'}`);
+  out(`Destination Mac Validation : ${s.dai.validate.includes('dst-mac') ? 'Enabled' : 'Disabled'}`);
+  out(`IP Address Validation      : ${s.dai.validate.includes('ip') ? 'Enabled' : 'Disabled'}`);
+  out(`Vlans with inspection      : ${s.dai.vlans.join(',') || 'none'}`);
+  out('Interface        Trust State');
+  for (const p of Object.values(s.ports)) if (!p.svi) out(p.name.padEnd(17) + (p.daiTrust ? 'Trusted' : 'Untrusted'));
+}
+
 function swBriefV4(s, out) {
   out('Interface    IP-Address       Status');
   for (const p of Object.values(s.ports)) out(p.name.padEnd(13) + (p.ip || 'unassigned').padEnd(17) + (p.shut ? 'administratively down' : 'up'));
@@ -196,6 +257,12 @@ function swShow(s, args, out) {
   if (pick(args[0], ['ip']) && pick(args[1], ['interface']) && pick(args[2], ['brief'])) return swBriefV4(s, out);
   if (pick(args[0], ['vlan']) && pick(args[1], ['brief'])) return swVlanBrief(s, out);
   if (pick(args[0], ['interfaces']) && pick(args[1], ['status'])) return swStatus(s, out);
+  if (pick(args[0], ['interfaces']) && pick(args[1], ['trunk'])) return swTrunks(s, out);
+  if (pick(args[0], ['interfaces']) && args.length >= 3 && pick(args[args.length - 1], ['switchport']) && swKey(s, args.slice(1, -1).join(''))) {
+    return swSwitchport(s.ports[swKey(s, args.slice(1, -1).join(''))], out);
+  }
+  if (pick(args[0], ['ip']) && pick(args[1], ['dhcp']) && pick(args[2], ['snooping']) && args.length === 3) return swSnooping(s, out);
+  if (pick(args[0], ['ip']) && pick(args[1], ['arp']) && pick(args[2], ['inspection']) && args.length === 3) return swArpInspection(s, out);
   if (pick(args[0], ['running-config']) && args.length === 1) return swConfigLines(s).forEach(l => out(l));
   if (pick(args[0], ['etherchannel']) && pick(args[1], ['summary'])) return swEtherSummary(s, out);
   if (pick(args[0], ['spanning-tree'])) return swStp(s, out);
@@ -236,6 +303,23 @@ function swConfigCommand(s, c, w, line) {
   else if (c === 'spanning-tree' && pick(w[1], ['vlan']) && isNum(w[2]) && pick(w[3], ['priority']) && isNum(w[4])) s.stp.prio[w[2]] = Number(w[4]);
   else if (c === 'spanning-tree' && pick(w[1], ['vlan']) && isNum(w[2]) && pick(w[3], ['root']) && pick(w[4], ['primary'])) s.stp.prio[w[2]] = 24576;
   else if (c === 'port-channel' && pick(w[1], ['load-balance']) && w[2]) s.lb = w[2];
+  else if (c === 'ip' && pick(w[1], ['dhcp']) && pick(w[2], ['snooping']) && w.length === 3) s.snoop.on = true;
+  else if (c === 'ip' && pick(w[1], ['dhcp']) && pick(w[2], ['snooping']) && pick(w[3], ['vlan']) && vlanList(w[4]) && w.length === 5) {
+    s.snoop.vlans = [...new Set([...s.snoop.vlans, ...vlanList(w[4])])].sort((a, b) => a - b);
+  }
+  else if (c === 'no' && pick(w[1], ['ip']) && pick(w[2], ['dhcp']) && pick(w[3], ['snooping']) && w.length === 4) s.snoop.on = false;
+  else if (c === 'no' && pick(w[1], ['ip']) && pick(w[2], ['dhcp']) && pick(w[3], ['snooping']) && pick(w[4], ['information'])
+    && pick(w[5], ['option']) && w.length === 6) s.snoop.opt82 = false;
+  else if (c === 'ip' && pick(w[1], ['dhcp']) && pick(w[2], ['snooping']) && pick(w[3], ['information']) && pick(w[4], ['option'])
+    && w.length === 5) s.snoop.opt82 = true;
+  else if (c === 'ip' && pick(w[1], ['arp']) && pick(w[2], ['inspection']) && pick(w[3], ['vlan']) && vlanList(w[4]) && w.length === 5) {
+    s.dai.vlans = [...new Set([...s.dai.vlans, ...vlanList(w[4])])].sort((a, b) => a - b);
+  }
+  // each "validate" line replaces the checks before it, as on IOS
+  else if (c === 'ip' && pick(w[1], ['arp']) && pick(w[2], ['inspection']) && pick(w[3], ['validate']) && w.length >= 5
+    && w.slice(4).every(x => pick(x, DAI_CHECKS))) {
+    s.dai.validate = DAI_CHECKS.filter(v => w.slice(4).some(x => pick(x, DAI_CHECKS) === v));
+  }
   else if (c === 'ip' && s.l3 && pick(w[1], ['routing']) && w.length === 2) s.routing = true;
   else if (c === 'no' && s.l3 && pick(w[1], ['ip']) && pick(w[2], ['routing']) && w.length === 3) s.routing = false;
   else return false;
@@ -256,6 +340,13 @@ function swInterfaceCommand(s, c, w, line, out) {
   if (c === 'switchport' && w.length === 1 && s.l3 && !p.svi) Object.assign(p, {routed: false, ip: null, mask: null, helpers: []});
   else if (c === 'switchport' && !p.svi) switchport(p, w, out);
   else if (c === 'no' && pick(w[1], ['switchport']) && w.length === 2 && s.l3 && !p.svi) p.routed = true;
+  else if (c === 'ip' && pick(w[1], ['dhcp']) && pick(w[2], ['snooping']) && pick(w[3], ['trust']) && w.length === 4) p.trust = true;
+  else if (c === 'no' && pick(w[1], ['ip']) && pick(w[2], ['dhcp']) && pick(w[3], ['snooping']) && pick(w[4], ['trust']) && w.length === 5) p.trust = false;
+  else if (c === 'ip' && pick(w[1], ['dhcp']) && pick(w[2], ['snooping']) && pick(w[3], ['limit']) && pick(w[4], ['rate']) && isNum(w[5])
+    && w.length === 6 && Number(w[5]) >= 1 && Number(w[5]) <= 2048) p.rate = Number(w[5]);
+  else if (c === 'ip' && pick(w[1], ['arp']) && pick(w[2], ['inspection']) && pick(w[3], ['trust']) && w.length === 4) p.daiTrust = true;
+  else if (c === 'no' && pick(w[1], ['ip']) && pick(w[2], ['arp']) && pick(w[3], ['inspection']) && pick(w[4], ['trust']) && w.length === 5) p.daiTrust = false;
+  else if (c === 'no' && pick(w[1], ['switchport']) && pick(w[2], ['nonegotiate']) && w.length === 3) p.noneg = false;
   else if (c === 'ip' && pick(w[1], ['address', 'helper-address']) && !l3Port) out('% IP addresses may not be configured on L2 links.', 'ln-err');
   else if (c === 'ip' && pick(w[1], ['address']) && w.length === 4 && DOTTED.test(w[2]) && DOTTED.test(w[3])) Object.assign(p, {ip: w[2], mask: w[3]});
   else if (c === 'ip' && pick(w[1], ['helper-address']) && w.length === 3 && DOTTED.test(w[2])) p.helpers.push(w[2]);
@@ -279,8 +370,16 @@ function swInterfaceCommand(s, c, w, line, out) {
 function switchport(p, w, out) {
   if (pick(w[1], ['mode'])) {
     const mode = pick(w[2], ['access', 'trunk', 'dynamic']);
-    if (!mode) return out('% Invalid input detected', 'ln-err');
+    const dtp = mode === 'dynamic' ? pick(w[3], ['desirable', 'auto']) : null;
+    if (!mode || (mode === 'dynamic' && !dtp)) return out('% Invalid input detected', 'ln-err');
+    if (mode === 'dynamic' && p.noneg) return out(NONEG_CONFLICT, 'ln-err');
     p.mode = mode;
+    if (dtp) p.dtp = dtp;
+  } else if (pick(w[1], ['nonegotiate']) && w.length === 2) {
+    if (p.mode === 'dynamic') return out(NONEG_CONFLICT, 'ln-err');
+    p.noneg = true;
+  } else if (pick(w[1], ['voice']) && pick(w[2], ['vlan']) && isNum(w[3]) && w.length === 4) {
+    p.voice = Number(w[3]);
   } else if (pick(w[1], ['port-security'])) {
     if (!w[2]) p.psec = true;
     else if (pick(w[2], ['maximum']) && isNum(w[3])) Object.assign(p, {psec: true, psMax: Number(w[3])});
@@ -289,9 +388,15 @@ function switchport(p, w, out) {
     else out('% Invalid input detected', 'ln-err');
   }
   else if (pick(w[1], ['access']) && pick(w[2], ['vlan']) && isNum(w[3])) p.vlan = Number(w[3]);
-  else if (pick(w[1], ['trunk']) && pick(w[2], ['allowed']) && pick(w[3], ['vlan']) && /^[\d,]+$/.test(w[4])) {
-    p.allowed = w[4].split(',').map(Number).sort((a, b) => a - b);
+  else if (pick(w[1], ['trunk']) && pick(w[2], ['allowed']) && pick(w[3], ['vlan']) && vlanList(w[4]) && w.length === 5) p.allowed = vlanList(w[4]);
+  // allowed vlan add|remove <list> edit the list; all goes back to every VLAN (stored as no list)
+  else if (pick(w[1], ['trunk']) && pick(w[2], ['allowed']) && pick(w[3], ['vlan']) && pick(w[4], ['add', 'remove']) && vlanList(w[5]) && w.length === 6) {
+    const list = vlanList(w[5]);
+    const now = p.allowed || ALL_VLANS;
+    const next = pick(w[4], ['add', 'remove']) === 'add' ? [...new Set([...now, ...list])].sort((a, b) => a - b) : now.filter(v => !list.includes(v));
+    p.allowed = next.length === ALL_VLANS.length ? null : next; // every VLAN again is the default
   }
+  else if (pick(w[1], ['trunk']) && pick(w[2], ['allowed']) && pick(w[3], ['vlan']) && pick(w[4], ['all']) && w.length === 5) p.allowed = null;
   else if (pick(w[1], ['trunk']) && pick(w[2], ['native']) && pick(w[3], ['vlan']) && isNum(w[4])) p.native = Number(w[4]);
   else out('% Invalid input detected', 'ln-err');
 }

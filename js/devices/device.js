@@ -5,13 +5,16 @@
 //   name, type, configurable   the node id, its diagram type, and whether commands can change anything
 //   state                      the configuration the lab requirements read through session.config(name) (null on a
 //                              display-only device); labs.js relies on these fields, so renaming one fails `npm test`:
-//     router  host, cdp, lldp, v6routing, routes [{net, mask, nh, dist}], acls {name: {type, entries}},
-//             ifs {key: {name, ip, mask, ip6, ll, encap, aclIn, aclOut, helpers, nat, ospf, ospf6, cdp, shut}},
-//             dhcp {name: {net, mask, gw, dns, domain}}, dhcpEx, nat {pat, stat}, svc {ntp, log, dns},
-//             sec {secret, enc, banner, nolookup}, lines {console, vty: {pw, login, sync, timeout}},
-//             ospf, ospf6, eigrp, rip: {pid, rid, nets, passive, originate, ver, nosum}
-//     switch  routing, lb, vlans {id: {name}}, stp {mode, prio}, ports {key: {mode, vlan, shut, desc, allowed, native,
-//             portfast, bpdu, group, chanMode, psec, psMax, psViolation, psSticky, routed, ip, mask, helpers}}
+//     router  host, cdp, lldp, v6routing, routes [{net, mask, nh, dist}], routes6 [{prefix, iface, nh, dist}], acls {name: {type, entries}},
+//             ifs {key: {name, mac, ip, mask, ip6, ll, eui, auto, encap, aclIn, aclOut, helpers, nat, ospf, ospf6, ospfPrio, ospfCost,
+//             ospfP2p, hsrp {grp, vip, prio, preempt}, hsrpVer, cdp, shut}},
+//             dhcp {name: {net, mask, gw, dns, domain}}, dhcpEx, nat {pat, stat}, svc {ntp, log, dns}, users {name: true},
+//             aaa {on, lists {name: methods}}, sec {secret, enc, banner, nolookup, domain, rsa, sshVer},
+//             lines {console, vty: {pw, login, local, authList, transport, acIn, sync, timeout}},
+//             ospf, ospf6, eigrp, rip: {pid, rid, nets, passive, originate, ver, nosum, refBw}
+//     switch  routing, lb, vlans {id: {name}}, stp {mode, prio}, snoop {on, vlans, opt82}, dai {vlans, validate},
+//             ports {key: {mode, dtp, noneg, vlan, voice, shut, desc, allowed, native, portfast, bpdu, group, chanMode, psec, psMax,
+//             psViolation, psSticky, trust, rate, daiTrust, routed, ip, mask, helpers}}
 //     pc      ip, mask, gw, dhcp
 //   prompt()                   the console prompt right now
 //   run(line, out)             execute one typed line; out(text, cls) takes each line of output

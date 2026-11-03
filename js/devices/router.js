@@ -7,26 +7,33 @@ const isPid = text => isNum(text) && Number(text) >= 1 && Number(text) <= 65535;
 const ROUTER_CMDS = {
   user: ['enable', 'exit', 'ping', 'show', 'terminal'],
   priv: ['configure', 'copy', 'disable', 'exit', 'ping', 'show', 'terminal', 'write'],
-  config: ['hostname', 'interface', 'ip', 'ipv6', 'cdp', 'lldp', 'no', 'ntp', 'logging', 'access-list', 'line', 'router', 'enable', 'service', 'banner', 'exit', 'end', 'show'],
-  ifc: ['interface', 'description', 'ip', 'ipv6', 'shutdown', 'no', 'cdp', 'exit', 'end', 'show', 'encapsulation'],
-  line: ['password', 'login', 'logging', 'exec-timeout', 'no', 'exit', 'end', 'show'],
-  router: ['network', 'router-id', 'passive-interface', 'default-information', 'version', 'eigrp', 'no', 'exit', 'end', 'show'],
+  config: ['hostname', 'interface', 'ip', 'ipv6', 'cdp', 'lldp', 'no', 'ntp', 'logging', 'access-list', 'line', 'router', 'enable', 'service', 'banner',
+    'crypto', 'username', 'aaa', 'exit', 'end', 'show'],
+  ifc: ['interface', 'description', 'ip', 'ipv6', 'shutdown', 'no', 'cdp', 'standby', 'exit', 'end', 'show', 'encapsulation'],
+  line: ['password', 'login', 'logging', 'exec-timeout', 'transport', 'access-class', 'no', 'exit', 'end', 'show'],
+  router: ['network', 'router-id', 'passive-interface', 'default-information', 'auto-cost', 'version', 'eigrp', 'no', 'exit', 'end', 'show'],
   nacl: ['permit', 'deny', 'exit', 'end', 'show'],
   dhcp: ['network', 'default-router', 'dns-server', 'domain-name', 'exit', 'end'],
 };
 
 // The full commands Tab completes to, per mode, in the order Tab lists them
 const SHOWS = ['show ip interface brief', 'show ipv6 interface brief', 'show cdp neighbors', 'show lldp neighbors', 'show ip route',
+  'show ipv6 route', 'show ip ospf interface brief', 'show standby brief', 'show ip ssh', 'show interfaces',
   'show running-config', 'show startup-config', 'show version'];
 const ROUTER_KEYS = {
   user: ['enable', 'exit', 'ping', 'terminal length 0', ...SHOWS],
   priv: ['configure terminal', 'copy running-config startup-config', 'disable', 'exit', 'ping', 'terminal length 0', 'write memory', ...SHOWS],
   config: ['hostname', 'interface', 'line console 0', 'line vty 0 4', 'router ospf 1', 'ipv6 router ospf 1', 'ipv6 unicast-routing',
-    'enable secret', 'service password-encryption', 'banner motd', 'no ip domain-lookup', 'router eigrp 100', 'router rip', 'ip route', 'no ip route', 'cdp run', 'no cdp run', 'lldp run', 'no lldp run', 'exit', 'end', ...SHOWS],
+    'enable secret', 'service password-encryption', 'banner motd', 'no ip domain-lookup', 'router eigrp 100', 'router rip', 'ip route', 'no ip route', 'cdp run', 'no cdp run', 'lldp run', 'no lldp run',
+    'ip domain-name', 'crypto key generate rsa modulus 2048', 'username', 'ip ssh version 2', 'aaa new-model', 'aaa authentication login',
+    'ipv6 route', 'no ipv6 route', 'exit', 'end', ...SHOWS],
   ifc: ['interface', 'description', 'ip address', 'ipv6 address', 'ip ospf 1 area 0', 'ipv6 ospf 1 area 0', 'no ip address', 'no ipv6 address',
-    'cdp enable', 'no cdp enable', 'no shutdown', 'shutdown', 'exit', 'end', ...SHOWS],
-  line: ['password', 'login', 'logging synchronous', 'exec-timeout 5 0', 'exit', 'end'],
-  router: ['network', 'router-id', 'passive-interface', 'no passive-interface', 'default-information originate', 'version 2', 'eigrp router-id','no auto-summary', 'exit', 'end'],
+    'cdp enable', 'no cdp enable', 'no shutdown', 'shutdown', 'ipv6 address autoconfig', 'ip ospf priority', 'ip ospf cost',
+    'ip ospf network point-to-point', 'standby', 'standby version 2', 'exit', 'end', ...SHOWS],
+  line: ['password', 'login', 'login local', 'login authentication', 'logging synchronous', 'exec-timeout 5 0', 'transport input ssh',
+    'access-class', 'exit', 'end'],
+  router: ['network', 'router-id', 'passive-interface', 'no passive-interface', 'default-information originate', 'version 2', 'eigrp router-id','no auto-summary',
+    'auto-cost reference-bandwidth', 'exit', 'end'],
   nacl: ['permit', 'deny', 'exit', 'end'],
   dhcp: ['network', 'default-router', 'dns-server', 'domain-name', 'exit', 'end'],
 };
@@ -145,6 +152,7 @@ const ROUTER_HELP = {
     ['service-policy', 'Configure QoS Service Policy'],
     ['shutdown', 'Shutdown the selected interface'],
     ['speed', 'Configure speed operation.'],
+    ['standby', 'HSRP interface configuration commands'],
   ]},
   line: LINE,
   // per routing protocol (the router state's proto)
@@ -191,33 +199,42 @@ const ROUTER_HELP = {
 function freshRouter(host) {
   return {
     mode: 'user', iface: null, host, cdp: true, lldp: false, saved: null, proto: null,
-    ifs: {'gi0/0': iface('Gi0/0'), 'gi0/1': iface('Gi0/1'), 'gi0/2': iface('Gi0/2'), 'gi0/3': iface('Gi0/3')},
-    routes: [],
+    ifs: Object.fromEntries([0, 1, 2, 3].map(n => ['gi0/' + n, iface('Gi0/' + n, routerMac(host, n))])),
+    routes: [], routes6: [], // routes6: {prefix, iface, nh, dist}; iface or nh may be null
+    users: {}, aaa: {on: false, lists: {}}, // users: name -> true; aaa.lists: list name -> its methods, e.g. 'local'
     acls: {}, aclName: null,
     dhcp: {}, dhcpEx: [], dhcpName: null,
     nat: {pat: [], stat: []},
     svc: {ntp: [], log: [], dns: []},
     v6routing: false,
-    sec: {secret: false, enc: false, banner: null, nolookup: false}, line: null, // line = console or vty while in line mode
+    sec: {secret: false, enc: false, banner: null, nolookup: false, domain: null, rsa: null, sshVer: null}, line: null, // line = console or vty while in line mode
     lines: {console: freshLine(), vty: freshLine()},
     ospf: freshProc(), ospf6: freshProc(), eigrp: freshProc(), rip: freshProc(), // router ospf / ipv6 router ospf / router eigrp / router rip
   };
 }
 
 function freshLine() {
-  return {pw: null, login: false, sync: false, timeout: null};
+  // login = "login" (line password), local = "login local", authList = "login authentication <list>" (AAA)
+  return {pw: null, login: false, local: false, authList: null, transport: null, acIn: null, sync: false, timeout: null};
 }
 
 // pid is null until the process is started (0 for RIP, which has no process ID); ver and nosum are for RIP and EIGRP
 function freshProc() {
-  return {pid: null, rid: null, nets: [], passive: [], originate: false, ver: null, nosum: false};
+  return {pid: null, rid: null, nets: [], passive: [], originate: false, ver: null, nosum: false, refBw: null};
 }
 
-// ospf and ospf6 are {pid, area} once "ip ospf" / "ipv6 ospf" is set on the interface
-function iface(name) {
-  return {name, ip: null, mask: null, ip6: null, ll: null, desc: null, encap: null, aclIn: null, aclOut: null, helpers: [], nat: null,
-    ospf: null, ospf6: null, cdp: true, shut: true};
+// ospf and ospf6 are {pid, area} once "ip ospf" / "ipv6 ospf" is set on the interface; ospfPrio, ospfCost and ospfP2p tune OSPF there.
+// eui: ip6 is a /64 prefix that EUI-64 completes from mac; auto: SLAAC gives the address; hsrp: {grp, vip, prio, preempt} or null
+function iface(name, mac = null) {
+  return {name, mac, ip: null, mask: null, ip6: null, ll: null, eui: false, auto: false, desc: null, encap: null, aclIn: null, aclOut: null,
+    helpers: [], nat: null, ospf: null, ospf6: null, ospfPrio: null, ospfCost: null, ospfP2p: false, hsrp: null, hsrpVer: 1, cdp: true, shut: true};
 }
+
+// a fixed, Cisco-looking MAC per router and port: R1 Gi0/2 is ca01.1a2b.0002
+const routerMac = (host, n) => `ca${(host.replace(/\D/g, '') || '0').padStart(2, '0').slice(-2)}.1a2b.${String(n).padStart(4, '0')}`;
+
+// the address an EUI-64 interface ends up with: its /64 prefix plus the interface ID from its MAC
+const euiAddress = i => `${v6Canon(i.ip6).split(':').slice(0, 4).join(':')}:${eui64(i.mac)}/64`;
 
 // OSPF areas may be typed as 0 or 0.0.0.0; both are stored as a number
 const areaNum = text => isNum(text) ? Number(text) : DOTTED.test(text) ? ipInt(text) : null;
@@ -255,6 +272,11 @@ function configLines(st) {
   if (st.sec.enc) lines.push('service password-encryption');
   if (st.sec.nolookup) lines.push('no ip domain-lookup');
   if (st.sec.banner) lines.push(`banner motd ^C${st.sec.banner}^C`);
+  if (st.sec.domain) lines.push(`ip domain-name ${st.sec.domain}`);
+  if (st.sec.sshVer) lines.push(`ip ssh version ${st.sec.sshVer}`);
+  for (const name of Object.keys(st.users)) lines.push(`username ${name} secret 5 $1$mERr$hashed`);
+  if (st.aaa.on) lines.push('aaa new-model');
+  for (const [name, methods] of Object.entries(st.aaa.lists)) lines.push(`aaa authentication login ${name} ${methods}`);
   if (st.lldp) lines.push('lldp run');
   for (const i of Object.values(st.ifs)) {
     lines.push(`interface ${i.name}`);
@@ -263,8 +285,18 @@ function configLines(st) {
     for (const h of i.helpers) lines.push(` ip helper-address ${h}`);
     if (i.nat) lines.push(` ip nat ${i.nat}`);
     if (i.ip) lines.push(` ip address ${i.ip} ${i.mask}`);
-    if (i.ip6) lines.push(` ipv6 address ${i.ip6}`);
+    if (i.ip6) lines.push(` ipv6 address ${i.ip6}${i.eui ? ' eui-64' : ''}`);
+    if (i.auto) lines.push(' ipv6 address autoconfig');
     if (i.ll) lines.push(` ipv6 address ${i.ll} link-local`);
+    if (i.hsrp) {
+      if (i.hsrpVer !== 1) lines.push(` standby version ${i.hsrpVer}`);
+      if (i.hsrp.vip) lines.push(` standby ${i.hsrp.grp} ip ${i.hsrp.vip}`);
+      if (i.hsrp.prio !== 100) lines.push(` standby ${i.hsrp.grp} priority ${i.hsrp.prio}`);
+      if (i.hsrp.preempt) lines.push(` standby ${i.hsrp.grp} preempt`);
+    }
+    if (i.ospfP2p) lines.push(' ip ospf network point-to-point');
+    if (i.ospfPrio !== null) lines.push(` ip ospf priority ${i.ospfPrio}`);
+    if (i.ospfCost !== null) lines.push(` ip ospf cost ${i.ospfCost}`);
     if (i.ospf) lines.push(` ip ospf ${i.ospf.pid} area ${i.ospf.area}`);
     if (i.ospf6) lines.push(` ipv6 ospf ${i.ospf6.pid} area ${i.ospf6.area}`);
     if (!i.cdp) lines.push(' no cdp enable');
@@ -286,13 +318,18 @@ function configLines(st) {
   for (const ip of st.svc.dns) lines.push(`ip name-server ${ip}`);
   for (const r of st.routes) lines.push(`ip route ${r.net} ${r.mask} ${r.nh}${r.dist !== 1 ? ' ' + r.dist : ''}`);
   if (st.v6routing) lines.push('ipv6 unicast-routing');
+  for (const r of st.routes6) lines.push(route6Text(r));
   for (const [name, head] of [['console', 'line console 0'], ['vty', 'line vty 0 4']]) {
     const l = st.lines[name];
     lines.push(head);
+    if (l.acIn) lines.push(` access-class ${l.acIn} in`);
     if (l.timeout) lines.push(` exec-timeout ${l.timeout}`);
     if (l.pw) lines.push(st.sec.enc ? ' password 7 0822455D0A16' : ` password ${l.pw}`);
     if (l.sync) lines.push(' logging synchronous');
+    if (l.authList) lines.push(` login authentication ${l.authList}`);
     if (l.login) lines.push(' login');
+    if (l.local) lines.push(' login local');
+    if (l.transport) lines.push(` transport input ${l.transport}`);
     lines.push('!');
   }
   for (const [head, o] of [['router ospf', st.ospf], ['ipv6 router ospf', st.ospf6], ['router eigrp', st.eigrp], ['router rip', st.rip]]) {
@@ -300,6 +337,7 @@ function configLines(st) {
     lines.push(head === 'router rip' ? head : `${head} ${o.pid}`);
     if (o.ver) lines.push(` version ${o.ver}`);
     if (o.rid) lines.push(head === 'router eigrp' ? ` eigrp router-id ${o.rid}` : ` router-id ${o.rid}`);
+    if (o.refBw) lines.push(` auto-cost reference-bandwidth ${o.refBw}`);
     for (const p of o.passive) lines.push(` passive-interface ${p}`);
     for (const n of o.nets) {
       lines.push(head === 'router ospf' ? ` network ${n.net} ${n.wc} area ${n.area}` : ` network ${n.net}${head === 'router eigrp' && !n.cf ? ' ' + n.wc : ''}`);
@@ -310,6 +348,9 @@ function configLines(st) {
   }
   return lines;
 }
+
+// an IPv6 static route as typed: ipv6 route <prefix> [interface] [next hop] [distance]
+const route6Text = r => `ipv6 route ${r.prefix}${r.iface ? ' ' + r.iface : ''}${r.nh ? ' ' + r.nh : ''}${r.dist !== 1 ? ' ' + r.dist : ''}`;
 
 function save(st, out) {
   st.saved = configLines(st);
@@ -325,8 +366,55 @@ function briefV4(st, out) {
 }
 
 function briefV6(st, out) {
-  out('Interface    IPv6-Address                     Link-local');
-  for (const i of Object.values(st.ifs)) out(i.name.padEnd(13) + (i.ip6 || 'unassigned').padEnd(32) + (i.ll || 'none'));
+  out('Interface    ' + 'IPv6-Address'.padEnd(46) + 'Link-local');
+  for (const i of Object.values(st.ifs)) {
+    const addr = i.ip6 && i.eui && i.mac ? euiAddress(i) : i.ip6 || (i.auto ? 'autoconfig (SLAAC)' : 'unassigned');
+    // with IPv6 on, an interface builds its own link-local address by EUI-64 unless one is set
+    const ll = i.ll || ((i.ip6 || i.auto) && i.mac ? 'fe80::' + eui64(i.mac) : 'none');
+    out(i.name.padEnd(13) + addr.padEnd(46) + ll);
+  }
+}
+
+function route6Table(st, out) {
+  out('Codes: C - Connected, S - Static');
+  for (const i of Object.values(st.ifs)) {
+    if (i.ip6 && !i.shut) out(`C   ${v6Canon(i.eui && i.mac ? euiAddress(i) : i.ip6).split(':').slice(0, 4).join(':')}::/64 [0/0] via ${i.name}, directly connected`);
+  }
+  for (const r of st.routes6) out(`S   ${r.prefix} [${r.dist}/0] via ${[r.nh, r.iface].filter(Boolean).join(', ')}`);
+}
+
+// show interfaces <name>: the line that matters here is the MAC address (EUI-64 is built from it)
+function showIf(i, out) {
+  out(`${i.name} is ${i.shut ? 'administratively down' : 'up'}, line protocol is ${i.shut ? 'down' : 'up'}`);
+  if (i.mac) out(`  Hardware is CN Gigabit Ethernet, address is ${i.mac} (bia ${i.mac})`);
+  if (i.ip) out(`  Internet address is ${i.ip}/${prefixLen(i.mask)}`);
+  out('  MTU 1500 bytes, BW 1000000 Kbit/sec, DLY 10 usec');
+  out('  Full-duplex, 1Gbps, media type is RJ45');
+}
+
+function standbyBrief(st, out) {
+  out('Interface   Grp  Pri P Virtual IP');
+  for (const i of Object.values(st.ifs)) {
+    if (i.hsrp) out(i.name.padEnd(12) + String(i.hsrp.grp).padEnd(5) + String(i.hsrp.prio).padEnd(4) + (i.hsrp.preempt ? 'P ' : '  ') + (i.hsrp.vip || 'unknown'));
+  }
+}
+
+function sshStatus(st, out) {
+  out(st.sec.rsa ? `SSH Enabled - version ${st.sec.sshVer === 2 ? '2.0' : '1.99'}` : 'SSH Disabled - version 1.99');
+  if (!st.sec.rsa) out('%Please create RSA keys to enable SSH (and of atleast 768 bits for SSH v2).');
+  out('Authentication timeout: 120 secs; Authentication retries: 3');
+}
+
+// cost is the reference bandwidth (default 100 Mbit/s) over the 1 Gbit/s link, at least 1, unless set on the interface
+function ospfBrief(st, out) {
+  out('Interface    PID   Area            Cost  Pri  Type');
+  for (const [k, i] of Object.entries(st.ifs)) {
+    const area = ospfArea(st, k);
+    if (area === null) continue;
+    const cost = i.ospfCost ?? Math.max(1, Math.floor((st.ospf.refBw || 100) / 1000));
+    out(i.name.padEnd(13) + String(st.ospf.pid ?? i.ospf?.pid).padEnd(6) + String(area).padEnd(16) + String(cost).padEnd(6)
+      + String(i.ospfPrio ?? 1).padEnd(5) + (i.ospfP2p ? 'P2P' : 'BCAST'));
+  }
 }
 
 // The discoverable devices cabled to the router (by the lab's links) are seen on their link's port while it is up (and, for CDP, CDP is on there)
@@ -361,8 +449,13 @@ function ping(st, target, out) {
 }
 
 function showCmd(st, name, session, args, out) {
-  const what = pick(args[0], ['ip', 'ipv6', 'cdp', 'lldp', 'running-config', 'startup-config', 'version']);
+  const what = pick(args[0], ['ip', 'ipv6', 'cdp', 'lldp', 'running-config', 'startup-config', 'version', 'interfaces', 'standby']);
   const alone = args.length === 1;
+  if (what === 'ipv6' && args.length === 2 && pick(args[1], ['route'])) return route6Table(st, out);
+  if (what === 'interfaces' && args.length >= 2 && ifKey(st, args.slice(1).join(''))) return showIf(st.ifs[ifKey(st, args.slice(1).join(''))], out);
+  if (what === 'standby' && (alone || (args.length === 2 && pick(args[1], ['brief'])))) return standbyBrief(st, out);
+  if (what === 'ip' && args.length === 2 && pick(args[1], ['ssh'])) return sshStatus(st, out);
+  if (what === 'ip' && args.length === 4 && pick(args[1], ['ospf']) && pick(args[2], ['interface']) && pick(args[3], ['brief'])) return ospfBrief(st, out);
   if (what === 'version' && alone) {
     out('SwitchLab simulated IOS');
     return out(`${st.host} uptime: this lab session`);
@@ -398,7 +491,7 @@ function runRouter(st, name, session, line, out) {
   const done = execCommand(c, w, st, () => save(st, out))
     || (c === 'ping' && ping(st, w[1], out))
     || (c === 'interface' && enterInterface(st, ifKey(st, w[1])))
-    || (mode === 'config' && configCommand(st, c, w, line))
+    || (mode === 'config' && configCommand(st, c, w, line, out))
     || (mode === 'ifc' && interfaceCommand(st, c, w, line))
     || (mode === 'router' && routerCommand(st, c, w))
     || (mode === 'line' && lineCommand(st, c, w, line))
@@ -411,9 +504,60 @@ function runRouter(st, name, session, line, out) {
 // The handlers below return false when they do not know the command.
 // Where two branches could both match an abbreviation, the earlier one wins, so keep their order.
 
+// ipv6 route <prefix> [interface] [next hop] [distance], from the words after "route"; returns the route, an error text or null
+function parseRoute6(st, words) {
+  const [prefix, ...rest] = words;
+  if (!isV6(prefix) || !prefix.includes('/')) return null;
+  const k = rest.length ? ifKey(st, rest[0]) : null;
+  if (k) rest.shift();
+  const nh = isV6(rest[0]) && !rest[0].includes('/') ? rest.shift() : null;
+  const dist = isNum(rest[0]) ? Number(rest.shift()) : 1;
+  if (rest.length || (!k && !nh) || dist < 1 || dist > 254) return null;
+  if (nh && !k && nh.startsWith('fe80')) return '% Interface has to be specified for a link-local nexthop';
+  return {prefix, iface: k ? st.ifs[k].name : null, nh, dist};
+}
+const sameRoute6 = (a, b) => v6Canon(a.prefix) === v6Canon(b.prefix) && a.iface === b.iface && (a.nh && v6Canon(a.nh)) === (b.nh && v6Canon(b.nh));
+
 // global configuration
-function configCommand(st, c, w, line) {
-  if (c === 'hostname' && w[1]) st.host = line.split(/\s+/)[1];
+function configCommand(st, c, w, line, out) {
+  const words = line.split(/\s+/); // as typed, for names and passwords
+  if (c === 'hostname' && w[1]) st.host = words[1];
+  // ip domain-name <name> (older form) or ip domain name <name>
+  else if (c === 'ip' && w.length === 3 && pick(w[1], ['domain-name'])) st.sec.domain = w[2];
+  else if (c === 'ip' && w.length === 4 && pick(w[1], ['domain']) && pick(w[2], ['name'])) st.sec.domain = w[3];
+  // crypto key generate rsa [general-keys] [modulus <360-4096>]; IOS asks for the size when it is left out, here it is 1024
+  else if (c === 'crypto' && pick(w[1], ['key']) && pick(w[2], ['generate']) && pick(w[3], ['rsa'])) {
+    const rest = w.slice(4).filter(x => !pick(x, ['general-keys']));
+    const bits = rest.length === 0 ? 1024 : rest.length === 2 && pick(rest[0], ['modulus']) && isNum(rest[1]) ? Number(rest[1]) : null;
+    if (bits === null || bits < 360 || bits > 4096) return false;
+    if (st.host === 'Router') return out('% Please define a hostname other than Router.', 'ln-err') || true;
+    if (!st.sec.domain) return out('% Please define a domain-name first.', 'ln-err') || true;
+    out(`The name for the keys will be: ${st.host}.${st.sec.domain}`);
+    out(`% The key modulus size is ${bits} bits`);
+    out(`% Generating ${bits} bit RSA keys, keys will be non-exportable...[OK]`, 'ln-ok');
+    st.sec.rsa = bits;
+  }
+  // username <name> [privilege <n>] secret|password <word>
+  else if (c === 'username' && w.length >= 4 && pick(w[w.length - 2], ['secret', 'password'])
+    && (w.length === 4 || (w.length === 6 && pick(w[2], ['privilege']) && isNum(w[3])))) st.users[words[1]] = true;
+  else if (c === 'ip' && pick(w[1], ['ssh']) && pick(w[2], ['version']) && (w[3] === '1' || w[3] === '2') && w.length === 4) st.sec.sshVer = Number(w[3]);
+  else if (c === 'aaa' && pick(w[1], ['new-model']) && w.length === 2) st.aaa.on = true;
+  else if (c === 'no' && pick(w[1], ['aaa']) && pick(w[2], ['new-model']) && w.length === 3) st.aaa.on = false;
+  // aaa authentication login default|<list> <methods>; the aaa commands exist only after aaa new-model, as on IOS
+  else if (c === 'aaa' && st.aaa.on && pick(w[1], ['authentication']) && pick(w[2], ['login']) && w.length >= 5) {
+    st.aaa.lists[words[3]] = w.slice(4).join(' ');
+  }
+  else if (c === 'ipv6' && pick(w[1], ['route']) && w.length >= 4) {
+    const r = parseRoute6(st, w.slice(2));
+    if (typeof r === 'string') return out(r, 'ln-err') || true;
+    if (!r) return false;
+    st.routes6 = [...st.routes6.filter(x => !sameRoute6(x, r)), r];
+  }
+  else if (c === 'no' && pick(w[1], ['ipv6']) && pick(w[2], ['route']) && w.length >= 5) {
+    const r = parseRoute6(st, w.slice(3));
+    if (!r || typeof r === 'string') return false;
+    st.routes6 = st.routes6.filter(x => !sameRoute6(x, r));
+  }
   else if (c === 'ip' && pick(w[1], ['dhcp']) && pick(w[2], ['pool']) && w[3]) {
     st.dhcp[w[3]] ||= {net: null, mask: null, gw: null, dns: [], domain: null};
     st.dhcpName = w[3];
@@ -489,9 +633,49 @@ function configCommand(st, c, w, line) {
   return true;
 }
 
+// standby [group] ip <vip> | priority <n> | preempt, and standby version 1|2 (one HSRP group per interface)
+function standbyCommand(i, w) {
+  const grp = isNum(w[1]) ? Number(w[1]) : 0;
+  const rest = isNum(w[1]) ? w.slice(2) : w.slice(1);
+  const what = pick(rest[0], ['ip', 'priority', 'preempt', 'version']);
+  if (what === 'version' && !isNum(w[1]) && (rest[1] === '1' || rest[1] === '2') && rest.length === 2) {
+    i.hsrpVer = Number(rest[1]);
+    return true;
+  }
+  if (grp > (i.hsrpVer === 2 ? 4095 : 255)) return false;
+  const group = () => (i.hsrp?.grp === grp ? i.hsrp : (i.hsrp = {grp, vip: null, prio: 100, preempt: false}));
+  if (what === 'ip' && rest.length === 2 && DOTTED.test(rest[1])) group().vip = rest[1];
+  else if (what === 'priority' && rest.length === 2 && isNum(rest[1]) && Number(rest[1]) <= 255) group().prio = Number(rest[1]);
+  else if (what === 'preempt' && rest.length === 1) group().preempt = true;
+  else return false;
+  return true;
+}
+
 // interface configuration
 function interfaceCommand(st, c, w, line) {
   const i = st.ifs[st.iface];
+  if (c === 'standby') return standbyCommand(i, w);
+  if (c === 'no' && pick(w[1], ['standby']) && w.length === 2) { i.hsrp = null; return true; }
+  // ip ospf priority <0-255> | cost <1-65535> | network point-to-point|broadcast, and "no" of each
+  const OSPF_OPTS = ['priority', 'cost', 'network'];
+  if (c === 'ip' && pick(w[1], ['ospf']) && pick(w[2], OSPF_OPTS) && w.length === 4) {
+    const what = pick(w[2], OSPF_OPTS), n = isNum(w[3]) ? Number(w[3]) : -1;
+    if (what === 'priority' && n >= 0 && n <= 255) i.ospfPrio = n;
+    else if (what === 'cost' && n >= 1 && n <= 65535) i.ospfCost = n;
+    else if (what === 'network' && pick(w[3], ['point-to-point', 'broadcast'])) i.ospfP2p = pick(w[3], ['point-to-point', 'broadcast']) === 'point-to-point';
+    else return false;
+    return true;
+  }
+  if (c === 'no' && pick(w[1], ['ip']) && pick(w[2], ['ospf']) && pick(w[3], OSPF_OPTS)) {
+    Object.assign(i, {priority: {ospfPrio: null}, cost: {ospfCost: null}, network: {ospfP2p: false}}[pick(w[3], OSPF_OPTS)]);
+    return true;
+  }
+  if (c === 'ipv6' && pick(w[1], ['address']) && w.length === 3 && pick(w[2], ['autoconfig'])) { i.auto = true; return true; }
+  if (c === 'ipv6' && pick(w[1], ['address']) && w.length === 4 && pick(w[3], ['eui-64'])) {
+    if (!/\/64$/.test(w[2]) || !isV6(w[2])) return false;
+    Object.assign(i, {ip6: w[2], eui: true});
+    return true;
+  }
   if (c === 'ip' && pick(w[1], ['address']) && w.length === 4 && DOTTED.test(w[2]) && DOTTED.test(w[3])) Object.assign(i, {ip: w[2], mask: w[3]});
   else if (c === 'ip' && pick(w[1], ['helper-address']) && DOTTED.test(w[2])) i.helpers.push(w[2]);
   else if (c === 'ip' && pick(w[1], ['nat']) && pick(w[2], ['inside', 'outside']) && w.length === 3) i.nat = pick(w[2], ['inside', 'outside']);
@@ -503,7 +687,7 @@ function interfaceCommand(st, c, w, line) {
     i[c === 'ip' ? 'ospf' : 'ospf6'] = {pid: Number(w[2]), area: areaNum(w[4])};
   }
   else if (c === 'no' && pick(w[1], ['ip', 'ipv6']) && pick(w[2], ['ospf'])) i[pick(w[1], ['ip', 'ipv6']) === 'ip' ? 'ospf' : 'ospf6'] = null;
-  else if (c === 'ipv6' && pick(w[1], ['address']) && w.length === 3) i.ip6 = w[2];
+  else if (c === 'ipv6' && pick(w[1], ['address']) && w.length === 3 && isV6(w[2])) Object.assign(i, {ip6: w[2], eui: false});
   else if (c === 'ipv6' && pick(w[1], ['address']) && w.length === 4 && pick(w[3], ['link-local'])) i.ll = w[2];
   else if (c === 'description' && w.length > 1) i.desc = line.slice(line.indexOf(' ') + 1);
   else if (c === 'encapsulation' && pick(w[1], ['dot1q']) && isNum(w[2])) i.encap = Number(w[2]);
@@ -512,7 +696,7 @@ function interfaceCommand(st, c, w, line) {
   else if (c === 'no' && pick(w[1], ['ip']) && pick(w[2], ['helper-address'])) i.helpers = [];
   else if (c === 'no' && pick(w[1], ['shutdown'])) i.shut = false;
   else if (c === 'no' && pick(w[1], ['ip']) && pick(w[2], ['address'])) Object.assign(i, {ip: null, mask: null});
-  else if (c === 'no' && pick(w[1], ['ipv6']) && pick(w[2], ['address'])) Object.assign(i, {ip6: null, ll: null});
+  else if (c === 'no' && pick(w[1], ['ipv6']) && pick(w[2], ['address'])) Object.assign(i, {ip6: null, ll: null, eui: false, auto: false});
   else if (c === 'no' && pick(w[1], ['cdp']) && pick(w[2], ['enable'])) i.cdp = false;
   else return false;
   return true;
@@ -545,6 +729,7 @@ function routerCommand(st, c, w) {
   else if (c === 'no' && pick(w[1], ['passive-interface']) && passiveKey(2)) {
     o.passive = o.passive.filter(p => p !== st.ifs[passiveKey(2)].name);
   }
+  else if (c === 'auto-cost' && p === 'ospf' && pick(w[1], ['reference-bandwidth']) && w.length === 3 && isNum(w[2]) && Number(w[2]) >= 1) o.refBw = Number(w[2]);
   else if (c === 'default-information' && p !== 'eigrp' && pick(w[1], ['originate']) && w.length === 2) o.originate = true;
   else return false;
   return true;
@@ -554,10 +739,18 @@ function routerCommand(st, c, w) {
 function lineCommand(st, c, w, line) {
   const l = st.lines[st.line];
   if (c === 'password' && w.length === 2) l.pw = line.split(/\s+/)[1];
-  else if (c === 'login' && w.length === 1) l.login = true;
+  else if (c === 'login' && w.length === 1) Object.assign(l, {login: true, local: false});
+  else if (c === 'login' && w.length === 2 && pick(w[1], ['local'])) Object.assign(l, {login: false, local: true});
+  else if (c === 'login' && w.length === 3 && pick(w[1], ['authentication'])) l.authList = line.split(/\s+/)[2];
+  // transport input ssh | telnet | telnet ssh | all | none
+  else if (c === 'transport' && pick(w[1], ['input']) && w.length >= 3 && w.slice(2).every(x => pick(x, ['ssh', 'telnet', 'all', 'none']))) {
+    l.transport = w.slice(2).map(x => pick(x, ['ssh', 'telnet', 'all', 'none'])).join(' ');
+  }
+  else if (c === 'access-class' && w.length === 3 && pick(w[2], ['in'])) l.acIn = w[1];
+  else if (c === 'no' && pick(w[1], ['access-class'])) l.acIn = null;
   else if (c === 'logging' && pick(w[1], ['synchronous']) && w.length === 2) l.sync = true;
   else if (c === 'exec-timeout' && (w.length === 2 || w.length === 3) && w.slice(1).every(isNum)) l.timeout = w.slice(1).join(' ') + (w.length === 2 ? ' 0' : '');
-  else if (c === 'no' && pick(w[1], ['login']) && w.length === 2) l.login = false;
+  else if (c === 'no' && pick(w[1], ['login']) && w.length === 2) Object.assign(l, {login: false, local: false});
   else return false;
   return true;
 }

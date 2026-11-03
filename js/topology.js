@@ -9,6 +9,8 @@ const TOPO_ICONS = {
   pc: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M9 20h6M12 16v4"/>',
   notebook: '<rect x="5" y="5" width="14" height="10" rx="1"/><path d="M2 19h20"/>',
   printer: '<path d="M7 9V4h10v5"/><rect x="3" y="9" width="18" height="8" rx="2"/><rect x="7" y="14" width="10" height="6"/>',
+  ap: '<rect x="4" y="15" width="16" height="5" rx="2"/><path d="M8.5 11a5 5 0 0 1 7 0M5.5 8a9 9 0 0 1 13 0M12 17.5h.01"/>',
+  wlc: '<rect x="2" y="11" width="20" height="8" rx="2"/><path d="M6 15h.01M10 15h.01M9 7.5a4.2 4.2 0 0 1 6 0M12 9.5v1"/>',
 };
 const TOPO_TYPES = {
   router: {prefix: 'R', label: 'router', sub: 'router', ports: ['Gi0/0', 'Gi0/1', 'Gi0/2']},
@@ -18,6 +20,8 @@ const TOPO_TYPES = {
   dhcp: {prefix: 'DHCP', label: 'DHCP server', sub: 'server', ports: ['NIC']},
   notebook: {prefix: 'NB', label: 'notebook', sub: 'notebook', ports: ['NIC']},
   printer: {prefix: 'PRN', label: 'printer', sub: 'printer', ports: ['NIC']},
+  ap: {prefix: 'AP', label: 'access point', sub: 'access point', ports: ['Gi0']},
+  wlc: {prefix: 'WLC', label: 'wireless LAN controller', sub: 'WLC', ports: ['Gi0/0', 'Gi0/1', 'Gi0/2', 'Gi0/3']},
 };
 // device names are a type prefix plus a number (R1, MLS2), so the name tells the type
 const typeOf = name => Object.keys(TOPO_TYPES).find(type => TOPO_TYPES[type].prefix === name.replace(/\d+$/, ''));
@@ -27,14 +31,19 @@ const TOPO_TASKS = [
   {level: 'beginner', title: 'Connect the switch to a PC', devices: ['S1', 'PC1'], links: [['S1', 'PC1']]},
   {level: 'beginner', title: 'Connect a notebook to the switch', devices: ['S1', 'NB1'], links: [['S1', 'NB1']]},
   {level: 'beginner', title: 'Manage the router from a PC with a console cable', devices: ['R1', 'PC1'], links: [['R1', 'PC1', 'console']]},
+  {level: 'beginner', title: 'Connect an access point to the switch', devices: ['S1', 'AP1'], links: [['S1', 'AP1']]},
   {level: 'intermediate', title: 'Connect R1, S1 and PC1 in a line', devices: ['R1', 'S1', 'PC1'], links: [['R1', 'S1'], ['S1', 'PC1']]},
   {level: 'intermediate', title: 'Connect the switch to a PC and a printer', devices: ['S1', 'PC1', 'PRN1'], links: [['S1', 'PC1'], ['S1', 'PRN1']]},
   {level: 'intermediate', title: 'Join two switches directly with copper', devices: ['S1', 'S2'], links: [['S1', 'S2']]},
   {level: 'intermediate', title: 'Link two routers over a serial WAN cable', devices: ['R1', 'R2'], links: [['R1', 'R2', 'serial']]},
   {level: 'intermediate', title: 'Give a PC an address from a DHCP server', devices: ['S1', 'PC1', 'DHCP1'], links: [['S1', 'PC1'], ['S1', 'DHCP1']]},
+  {level: 'intermediate', title: 'Connect a wireless LAN controller and an access point to the switch', devices: ['S1', 'WLC1', 'AP1'],
+    links: [['S1', 'WLC1'], ['S1', 'AP1']]},
   {level: 'advanced', title: 'Put a multilayer switch between the router and an access switch', devices: ['R1', 'MLS1', 'S1', 'PC1'],
     links: [['R1', 'MLS1'], ['MLS1', 'S1'], ['S1', 'PC1']]},
   {level: 'advanced', title: 'Chain two switches behind the router', devices: ['R1', 'S1', 'S2'], links: [['R1', 'S1'], ['S1', 'S2']]},
+  {level: 'advanced', title: 'Put a WLC and two access points on the switch behind the router', devices: ['R1', 'S1', 'WLC1', 'AP1', 'AP2'],
+    links: [['R1', 'S1'], ['S1', 'WLC1'], ['S1', 'AP1'], ['S1', 'AP2']]},
   {level: 'advanced', title: 'Put a multilayer switch between the router and the switch', devices: ['R1', 'MLS1', 'S1'],
     links: [['R1', 'MLS1'], ['MLS1', 'S1']]},
   {level: 'advanced', title: 'Link two switches with a fiber uplink and attach a PC and a notebook', devices: ['S1', 'S2', 'PC1', 'NB1'],
@@ -43,6 +52,8 @@ const TOPO_TASKS = [
     links: [['R1', 'R2', 'serial'], ['R2', 'S1'], ['S1', 'PC1']]},
   {level: 'advanced', title: 'Cable a PC to the switch and manage the switch from a notebook console', devices: ['S1', 'PC1', 'NB1'],
     links: [['S1', 'PC1'], ['S1', 'NB1', 'console']]},
+  {level: 'expert', title: 'Campus wireless: fiber from the core to the WLC and to the access switch, with two access points on the access switch',
+    devices: ['MLS1', 'S1', 'WLC1', 'AP1', 'AP2'], links: [['MLS1', 'WLC1', 'fiber'], ['MLS1', 'S1', 'fiber'], ['S1', 'AP1'], ['S1', 'AP2']]},
   {level: 'expert', title: 'Build the full topology with two switches', devices: ['R1', 'S1', 'S2', 'PC1', 'PC2'],
     links: [['R1', 'S1'], ['S1', 'S2'], ['S1', 'PC1'], ['S2', 'PC2']]},
   {level: 'expert', title: 'Core switching with a DHCP server and two PCs', devices: ['MLS1', 'S1', 'PC1', 'PC2', 'DHCP1'],

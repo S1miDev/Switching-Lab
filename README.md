@@ -7,7 +7,7 @@ Webové virtuální prostředí na switching a routing ve stylu Cisco labů. Vyb
 <img width="1877" height="956" alt="image" src="https://github.com/user-attachments/assets/fa5c891e-bb48-4c7c-b9eb-128f97ca8fe3" />
 
 ## 🧪 Labs
-Procvičování switchingu a routingu: **27 úloh** ve **4 obtížnostech** (Beginner, Intermediate, Advanced, Expert).
+Procvičování switchingu a routingu: **38 úloh** ve **4 obtížnostech** (Beginner, Intermediate, Advanced, Expert).
  
 Každý lab obsahuje:
 - **Requirements** – seznam zadání s počítadlem splněných bodů (např. 0/5), podle kterého ověříš, že máš hotovo
@@ -18,7 +18,7 @@ Každý lab obsahuje:
 - **Show solution** – zobrazí řešení, když si nevíš rady
 ## 🔌 Topology
 Nauč se sestavit síť a správně zvolit kabeláž mezi prvky.
-- **Prvky:** router, switch, multilayer switch, DHCP server, PC
+- **Prvky:** router, switch, multilayer switch, DHCP server, PC, notebook, tiskárna, access point, WLC
 - **Kabely:** straight-through (pro rozdílná zařízení), crossover (pro stejná zařízení)
 - **Ovládání:** prvky přetáhneš na plochu, přesouvat je můžeš tažením, kabel vytvoříš kliknutím na jedno zařízení a poté na druhé
 ## 📝 Mock exam *(beta)*
