@@ -31,8 +31,9 @@ const cap = s => s[0].toUpperCase() + s.slice(1);
 // keep the open lab's result before moving on
 function examSave() {
   const lab = examLabs[examPos];
-  lab.met = examSession.grade().filter(Boolean).length;
-  lab.total = examSession.reqs.length;
+  const {done, total} = examSession.score(); // requirements still met since the start are not scored
+  lab.met = done;
+  lab.total = total;
 }
 
 // an exam is plain: the lab page leaves out the command list, hints and solution, and the way back to the Labs page
@@ -130,7 +131,7 @@ function setupHtml() {
 
 function resultHtml() {
   const met = examLabs.reduce((sum, l) => sum + l.met, 0), total = examLabs.reduce((sum, l) => sum + l.total, 0);
-  const pass = met * 100 >= EXAM_PASS * total; // compared exactly, so 79.6% never rounds up to a pass
+  const pass = total > 0 && met * 100 >= EXAM_PASS * total; // compared exactly, so 79.6% never rounds up to a pass
   const rows = examLabs.map(l =>
     `<li class="flex items-center justify-between gap-4 rounded-[10px] border border-[color:var(--border)] bg-[color:var(--surface-2)] px-4 py-3">` +
     `<span class="font-medium">${esc(CATALOGUE[l.topic].name)}</span>` +
@@ -138,7 +139,7 @@ function resultHtml() {
   return '<div class="grid gap-5">' +
     `<div class="${BOX} flex flex-wrap items-center justify-between gap-4">` +
     `<div><p class="m-0 text-[13px] text-[color:var(--muted)]">${cap(examLevel)} · pass mark ${EXAM_PASS}%</p>` +
-    `<p class="m-0 text-4xl font-semibold">${Math.floor(100 * met / total)}% <span class="font-mono text-base font-normal text-[color:var(--muted)]">${met}/${total} requirements</span></p></div>` +
+    `<p class="m-0 text-4xl font-semibold">${total ? Math.floor(100 * met / total) : 0}% <span class="font-mono text-base font-normal text-[color:var(--muted)]">${met}/${total} requirements</span></p></div>` +
     `<span class="rounded-full px-4 py-1.5 text-sm font-semibold ${pass ? 'bg-[color:var(--success)] text-[color:var(--accent-ink)]' : 'bg-[color:var(--bad)] text-[color:var(--accent-ink)]'}">${pass ? 'PASSED' : 'FAILED'}</span></div>` +
     `<ul class="m-0 grid list-none gap-2 p-0">${rows.join('')}</ul>` +
     '<div><button id="exam-again">New exam</button></div></div>';

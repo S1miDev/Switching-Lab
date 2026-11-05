@@ -586,9 +586,12 @@ function configCommand(st, c, w, line, out) {
   else if (c === 'ip' && pick(w[1], ['name-server']) && DOTTED.test(w[2])) st.svc.dns.push(w[2]);
   else if (c === 'ntp' && pick(w[1], ['server']) && DOTTED.test(w[2])) st.svc.ntp.push(w[2]);
   else if (c === 'logging' && pick(w[1], ['host']) && DOTTED.test(w[2])) st.svc.log.push(w[2]);
-  // numbered ACL: access-list <n> permit|deny ...
-  else if (c === 'access-list' && w[1] && pick(w[2], ['permit', 'deny'])) {
-    st.acls[w[1]] ||= {type: 'standard', entries: []};
+  // numbered ACL: access-list <n> permit|deny ...; 100-199 and 2000-2699 are extended, the rest standard
+  else if (c === 'access-list' && /^\d+$/.test(w[1] || '') && pick(w[2], ['permit', 'deny'])) {
+    const n = Number(w[1]);
+    const type = (n >= 100 && n <= 199) || (n >= 2000 && n <= 2699) ? 'extended' : 'standard';
+    if (st.acls[w[1]] && st.acls[w[1]].type !== type) return out(`% Access list ${w[1]} is not ${type}`, 'ln-err') || true;
+    st.acls[w[1]] ||= {type, entries: []};
     st.acls[w[1]].entries.push(w.slice(2).join(' '));
   }
   // named ACL: ip access-list standard|extended <name>

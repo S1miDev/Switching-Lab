@@ -23,18 +23,21 @@ const labPage = (() => {
   }
   setInterval(tick, 1000);
 
-  // results has one true/false/null per requirement (null = not judged), or is null for "none judged"
-  function renderReqs(results) {
+  // judged is shown.judge(): true/false per requirement, null for one met since the start (neutral, not counted, no hints).
+  // live (while typing) shows only the ticks: the failures stay neutral until Check.
+  function renderReqs(judged, live) {
     const reqs = shown.reqs;
-    const done = results ? results.filter(Boolean).length : 0;
-    $('req-count').textContent = `${done}/${reqs.length}`;
-    $('req-bar').style.width = reqs.length ? `${100 * done / reqs.length}%` : '0';
+    const given = judged.map(r => r === null);
+    const results = live ? judged.map(r => r || null) : judged;
+    const done = results.filter(Boolean).length, {total} = shown.score();
+    $('req-count').textContent = `${done}/${total}`;
+    $('req-bar').style.width = total ? `${100 * done / total}%` : '0';
     let current = false; // the first unfinished requirement gets the "current" highlight
     $('reqs').replaceChildren(...reqs.map((r, i) => {
-      const res = results ? results[i] : null;
+      const res = results[i];
       const li = el('li');
       if (res !== null) li.className = res ? 'ok' : 'bad';
-      if (res !== true && !current) {
+      if (res !== true && !given[i] && !current) {
         current = true;
         li.classList.add('cur');
       }
@@ -44,7 +47,7 @@ const labPage = (() => {
       if (res === false && !exam) txt.append(el('span', 'rexp', hintCmds(r.hint)));
       li.append(txt);
       const used = reqHints[i] || 0;
-      if (res !== true && used < 3 && !exam) {
+      if (res !== true && !given[i] && used < 3 && !exam) {
         const b = el('button', 'ghost rhint-btn', `Hint (${3 - used} left)`);
         b.dataset.i = i;
         li.append(b);
@@ -54,14 +57,10 @@ const labPage = (() => {
     }));
   }
 
-  // the requirements that are met show as ticks, the others stay neutral
-  const renderMet = () => renderReqs(shown.grade().map(ok => ok || null));
-
-  // the full check: every requirement judged, and the console line that sums it up
-  function check() {
-    const results = shown.grade();
-    renderReqs(results);
-    const failed = results.filter(ok => !ok).length;
+  // the full check: every requirement judged (a broken one that was met at the start shows as failed), and the console line that sums it up
+  function check(judged = shown.judge()) {
+    renderReqs(judged, false);
+    const failed = judged.filter(r => r === false).length;
     return [failed ? {text: `[lab] ${failed} requirement(s) not met.`, cls: 'ln-err'} : {text: '[lab] All requirements met.', cls: 'ln-ok'}];
   }
 
@@ -69,10 +68,10 @@ const labPage = (() => {
   // and run the full check once, automatically, when the last requirement is met. Returns the lines for the console.
   function afterCommand() {
     commandCount++;
-    const met = shown.grade();
-    renderReqs(met.map(ok => ok || null));
-    const all = shown.reqs.length > 0 && met.every(Boolean);
-    const lines = all && !solved ? check() : [];
+    const judged = shown.judge();
+    renderReqs(judged, true);
+    const all = judged.includes(true) && !judged.includes(false); // at least one scored requirement met, so a lab is never solved for free
+    const lines = all && !solved ? check(judged) : [];
     if (all && !counted.has(shown)) { counted.add(shown); globalThis.recordStreakDay?.(shown.topic, shown.level); } // from auth.js, if accounts loaded
     solved = all;
     return lines;
@@ -142,7 +141,7 @@ const labPage = (() => {
     tick();
     $('cmds-card').open = false;
     labConsole.show(shown, afterCommand);
-    renderReqs(null);
+    renderReqs(shown.judge(), true);
   }
 
   function open(session, {mode = 'lab', crumb, bar} = {}) {
@@ -186,26 +185,29 @@ const labPage = (() => {
     tick();
     stoppedAt ||= Date.now();
     $('cmd').disabled = true;
-    const results = shown.grade();
-    check();
-    const done = results.filter(Boolean).length, total = results.length;
+    const results = shown.judge();
+    check(results);
+    const {done, total} = shown.score();
     const hints = reqHints.reduce((a, n) => a + (n || 0), 0);
     const cost = hints * HINT_COST[shown.level]; // percentage points
     const pct = total ? Math.max(0, Math.round(100 * done / total) - cost) : 0;
     const secs = Math.round((stoppedAt - startedAt) / 1000);
     const tile = (label, value) => { const d = el('div', 'res-stat'); d.append(el('span', 'note', label), el('b', '', value)); return d; };
     const head = el('div', 'res-head');
-    head.append(el('span', 'res-badge ' + (done === total ? 'ok' : 'bad'), done === total ? 'COMPLETE' : 'INCOMPLETE'), el('b', 'res-pct', pct + '%'));
+    const complete = total > 0 && done === total;
+    head.append(el('span', 'res-badge ' + (complete ? 'ok' : 'bad'), complete ? 'COMPLETE' : 'INCOMPLETE'), el('b', 'res-pct', pct + '%'));
     const tiles = el('div', 'res-tiles');
     tiles.append(tile('REQUIREMENTS', `${done}/${total}`), tile('TIME', `${Math.floor(secs / 60)}m ${secs % 60}s`), tile('HINTS', cost ? `${hints} (−${cost}%)` : String(hints)));
     const cards = shown.reqs.map((r, i) => {
-      const c = el('div', 'res-req ' + (results[i] ? 'ok' : 'bad'));
+      const pre = results[i] === null; // met since the start: shown, but neutral and not scored
+      const c = el('div', 'res-req ' + (pre ? 'pre' : results[i] ? 'ok' : 'bad'));
       const icon = el('span', 'res-icon');
       icon.innerHTML = '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-        (results[i] ? '<path d="M3 8.5l3.2 3.2L13 4.5"/>' : '<path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/>') + '</svg>';
+        (pre ? '<path d="M3.5 8h9"/>' : results[i] ? '<path d="M3 8.5l3.2 3.2L13 4.5"/>' : '<path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/>') + '</svg>';
       c.append(icon, el('div', 'res-txt'));
       c.lastChild.append(el('b', '', r.text));
-      if (!results[i]) c.lastChild.append(el('span', 'note', hintCmds(r.hint)));
+      if (pre) c.lastChild.append(el('span', 'note', 'Already in place at the start, not scored'));
+      else if (!results[i]) c.lastChild.append(el('span', 'note', hintCmds(r.hint)));
       return c;
     });
     const sol = shown.solution.length ? shown.solution : [['', [...new Set(shown.reqs.map(r => hintCmds(r.hint)))]]];
@@ -222,7 +224,7 @@ const labPage = (() => {
     if (!b) return;
     const i = Number(b.dataset.i);
     reqHints[i] = (reqHints[i] || 0) + 1;
-    renderMet();
+    renderReqs(shown.judge(), true);
   });
 
   return {open, shows: session => shown === session};

@@ -15,7 +15,7 @@ function newLab(lvl = level, t = topic) {
   topic = t;
   markLevel();
   lastNet = randomNet(lastNet);
-  labPage.open(createSession({topic, level, net: lastNet}));
+  labPage.open(createSession({topic, level, net: lastNet}), {crumb: isFix(topic) ? `Troubleshooting / ${CATALOGUE[topic].name}` : undefined});
 }
 
 // highlight the chosen difficulty on the Labs page

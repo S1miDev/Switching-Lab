@@ -18,6 +18,9 @@ function randomNet(avoid) {
 //   config(name)     that device's configuration (null on a display-only device), which the requirements read
 //   run(name, line)  type one line on that device; returns its output as [{text, cls}]
 //   grade()          true/false for each requirement
+//   score()          {done, total}: scored requirements met, and how many are scored
+//   judge()          like grade, but null for a requirement met since the (re)start in a lab with a preset config: not the
+//                    student's work, so it is neither ticked nor scored; once broken it counts as false again
 //   reset()          fresh devices
 function createSession({topic, level, net}) {
   const T = LABS[topic], cfg = T.levels[level];
@@ -26,10 +29,16 @@ function createSession({topic, level, net}) {
     topic, level, net, sub: cfg.sub,
     lead: typeof lead === 'function' ? lead(net) : lead,
     height: 180,
-    ...cfg.build(net),
+    ...buildLab(T, cfg, net),
     server: T.server ? T.server(net) : null,
     config: name => session.devices[name]?.state,
     grade: () => session.reqs.map(r => !!r.ok(session)),
+    judge: () => session.grade().map((ok, i) => (session.startMet[i] && ok ? null : ok)),
+    // met and scored requirements; the total is fixed at the (re)start, so breaking a requirement met since then does not grow it
+    score() {
+      const judged = session.judge();
+      return {done: judged.filter(r => r === true).length, total: session.startMet.filter(m => !m).length};
+    },
     // a line ending in "?" asks for help; the device does the rest
     run(name, raw) {
       const d = session.devices[name], line = raw.trim(), out = [];
@@ -42,6 +51,8 @@ function createSession({topic, level, net}) {
       // a node marked readonly is display-only whatever its type
       session.devices = Object.fromEntries(session.nodes.map(n => [n.id, DEVICE_TYPES[n.readonly ? 'readonly' : n.type](n, session)]));
       for (const [name, lines] of session.setup || []) for (const l of ['enable', 'conf t', ...lines, 'end', 'disable']) session.run(name, l);
+      // only a preset config (troubleshooting) makes requirements "given"; in other labs every requirement is the student's work
+      session.startMet = session.setup?.length ? session.grade() : session.reqs.map(() => false);
     },
   };
   session.reset();

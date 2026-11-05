@@ -275,6 +275,14 @@ button:disabled {
   background: rgba(248, 113, 113, .08);
 }
 
+.res-req.pre {
+  border-style: dashed;
+}
+
+.res-req.pre .res-icon {
+  color: var(--muted);
+}
+
 .res-icon {
   display: flex;
   padding-top: 3px;
