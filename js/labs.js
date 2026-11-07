@@ -3,12 +3,13 @@
 //
 // A requirement is {text, ok, hint}: ok(s) is true when it is met (s is the lab session), reading the devices' configuration
 // by name through s.config(name) (the fields are listed in devices/device.js). hint is {cmds, port, dev}: the commands
-// that meet it, typed on interface port (if any) of device dev (if not the lab's first device).
+// that meet it, typed on interface port (if any) of device dev (if not the lab's home device).
 // A solution is [[device, lines], ...], typed in order.
 //
 // LABS[topic].kind says how its levels are set up:
 //   'v4', 'v6'  addressing on R1; requirements, solution and diagram come from each level's interface list (ifs)
-//   'sw', 'mls' the R1-S1 or the MLS1 diagram; each level lists its requirements (reqs), and cmds is a known-good config
+//   'sw', 'mls' the R1-S1 diagram (home S1) or the MLS1 diagram; each level lists its requirements (reqs), and cmds is a known-good config
+//   'cdp'       the R1-S1 diagram with home R1
 //   'rt'        the R1-R2-R3 diagram; reqs(x) and cmds(x) are the requirements and a known-good config for network x
 //   'sw2'       the S1-S2 diagram (trunk troubleshooting); 'hsrp' the R1 and R2 on S1 diagram. Like 'rt', reqs and cmds may take x.
 // A level may also have setup [[device, lines], ...]: a preset (often broken) config typed in global configuration on every reset.
@@ -18,6 +19,11 @@
 
 const portName = key => key.replace('fa', 'Fa').replace('gi', 'Gi'); // 'fa0/1' -> 'Fa0/1'
 const MASK24 = '255.255.255.0';
+// the lead of the router labs: R1's LAN, then what else is cabled to it
+const serves = rest => x => `R1 Gi0/0 serves 192.168.${x}.0/24. ${rest}`;
+// solution helpers: lines on an interface (ending back in global configuration), and global configuration lines on another device
+const onIf = (k, ...lines) => [`int ${k}`, ...lines, 'exit'];
+const onDev = (dev, ...lines) => [dev, ['enable', 'conf t', ...lines, 'end']];
 const R1 = s => s.config('R1');
 const SW = s => s.config('S1') || s.config('MLS1'); // the lab's switch
 
@@ -86,28 +92,32 @@ const SUBNET = {
   ]},
 };
 
+// VLSM host needs change with the network number x. Ranges are per LAN, largest first; their blocks never sum past
+// 128+64+32+16, so the LANs always fit one after another in the /24 with every block aligned.
+const VLSM_RANGES = [[33, 120], [17, 60], [9, 28], [3, 12]];
+const vlsmIfs = (x, count, rule) => {
+  let seed = (x + 1) * 7919; // same x, same lab
+  const roll = (lo, hi) => lo + Math.floor((seed = seed * 16807 % 2147483647) / 2147483647 * (hi - lo + 1));
+  let off = 0;
+  return VLSM_RANGES.slice(0, count).map(([lo, hi], i) => {
+    const need = roll(lo, hi);
+    let size = 4;
+    while (size - 2 < need) size *= 2;
+    const mask = `255.255.255.${256 - size}`, net = `${off}/${32 - Math.log2(size)}`, host = rule === 'first' ? off + 1 : off + size - 2;
+    off += size;
+    return {k: `gi0/${i}`, host, mask, net, lan: `LAN ${'ABCD'[i]}`, need, rule};
+  });
+};
+const vlsmLevel = (count, rule, sub) => ({
+  sub: x => sub(vlsmIfs(x, count, rule).map(r => r.need)),
+  ifs: x => vlsmIfs(x, count, rule),
+});
+const needsText = n => `${n.slice(0, -1).join(', ')} and ${n.at(-1)}`;
 const VLSM = {
-  beginner: {sub: 'Address two LANs that need 50 and 20 hosts, using first usable addresses', ifs: [
-    {k: 'gi0/0', host: 1, mask: '255.255.255.192', net: '0/26', lan: 'LAN A', need: 50, rule: 'first'},
-    {k: 'gi0/1', host: 65, mask: '255.255.255.224', net: '64/27', lan: 'LAN B', need: 20, rule: 'first'},
-  ]},
-  intermediate: {sub: 'Address three LANs that need 50, 20 and 10 hosts, using first usable addresses', ifs: [
-    {k: 'gi0/0', host: 1, mask: '255.255.255.192', net: '0/26', lan: 'LAN A', need: 50, rule: 'first'},
-    {k: 'gi0/1', host: 65, mask: '255.255.255.224', net: '64/27', lan: 'LAN B', need: 20, rule: 'first'},
-    {k: 'gi0/2', host: 97, mask: '255.255.255.240', net: '96/28', lan: 'LAN C', need: 10, rule: 'first'},
-  ]},
-  advanced: {sub: 'Address four LANs that need 50, 20, 10 and 5 hosts, using first usable addresses', ifs: [
-    {k: 'gi0/0', host: 1, mask: '255.255.255.192', net: '0/26', lan: 'LAN A', need: 50, rule: 'first'},
-    {k: 'gi0/1', host: 65, mask: '255.255.255.224', net: '64/27', lan: 'LAN B', need: 20, rule: 'first'},
-    {k: 'gi0/2', host: 97, mask: '255.255.255.240', net: '96/28', lan: 'LAN C', need: 10, rule: 'first'},
-    {k: 'gi0/3', host: 113, mask: '255.255.255.248', net: '112/29', lan: 'LAN D', need: 5, rule: 'first'},
-  ]},
-  expert: {sub: 'The same four LANs (50, 20, 10 and 5 hosts), using last usable addresses', ifs: [
-    {k: 'gi0/0', host: 62, mask: '255.255.255.192', net: '0/26', lan: 'LAN A', need: 50, rule: 'last'},
-    {k: 'gi0/1', host: 94, mask: '255.255.255.224', net: '64/27', lan: 'LAN B', need: 20, rule: 'last'},
-    {k: 'gi0/2', host: 110, mask: '255.255.255.240', net: '96/28', lan: 'LAN C', need: 10, rule: 'last'},
-    {k: 'gi0/3', host: 118, mask: '255.255.255.248', net: '112/29', lan: 'LAN D', need: 5, rule: 'last'},
-  ]},
+  beginner: vlsmLevel(2, 'first', n => `Address two LANs that need ${needsText(n)} hosts, using first usable addresses`),
+  intermediate: vlsmLevel(3, 'first', n => `Address three LANs that need ${needsText(n)} hosts, using first usable addresses`),
+  advanced: vlsmLevel(4, 'first', n => `Address four LANs that need ${needsText(n)} hosts, using first usable addresses`),
+  expert: vlsmLevel(4, 'last', n => `The same four LANs (${needsText(n)} hosts), using last usable addresses`),
 };
 
 // sub = the subnet number inside the /48, ll = also needs the link-local address fe80::1
@@ -166,7 +176,7 @@ const CDP = {
 
 // ---- 2.0 network access: switch labs ----
 
-// the R1-S1 diagram used by the switch and CDP labs; home is the device whose console opens first
+// the R1-S1 diagram used by the switch and CDP labs; home is the device whose console opens first (R1 in the CDP labs)
 const SW_TOPO = {
   nodes: [
     {id: 'R1', type: 'router', x: 8, y: 64, sub: 'Router'},
@@ -175,7 +185,7 @@ const SW_TOPO = {
     {id: 'PC2', type: 'pc', x: 370, y: 104, sub: 'Host', at: 'S1 fa0/2'},
   ],
   links: [{a: 'R1', b: 'S1', port: 'Gi0/0'}, {a: 'S1', b: 'PC1', port: 'Fa0/1'}, {a: 'S1', b: 'PC2', port: 'Fa0/2'}],
-  home: 'R1',
+  home: 'S1',
 };
 const SW_LEAD = 'R1 Gi0/0 is cabled to S1 Gi0/1. PC1 is on Fa0/1 and PC2 on Fa0/2.';
 
@@ -202,26 +212,40 @@ const TRUNK_UP = [swTrunk('gi0/1'), swUp('gi0/1'), r1Up];
 const PCS_IN_10_20 = [swAccess('fa0/1', 10), swAccess('fa0/2', 20), swUp('fa0/1'), swUp('fa0/2')];
 const NATIVE_99 = [swVlan(99), swNative('gi0/1', 99), swAllowed('gi0/1', [10, 20, 99])];
 
+// known-good commands for the switch labs: typed on S1, the home device; R1's and the PCs' parts go in then
+const accessCmds = (p, id) => onIf(p, 'switchport mode access', `switchport access vlan ${id}`, 'no shutdown');
+const PCS_10_20_CMDS = [...accessCmds('fa0/1', 10), ...accessCmds('fa0/2', 20)];
+const TRUNK_CMDS = onIf('gi0/1', 'switchport mode trunk', 'no shutdown');
+const NATIVE_99_CMDS = ['vlan 99', 'exit', ...onIf('gi0/1', 'switchport trunk native vlan 99', 'switchport trunk allowed vlan 10,20,99')];
+const R1_UP = onDev('R1', ...onIf('gi0/0', 'no shutdown'));
+const VLANS_A_CMDS = ['vlan 10', 'name Sales', 'exit', 'vlan 20', 'name Staff', 'exit', ...PCS_10_20_CMDS];
+const accessUp = p => onIf(p, 'switchport mode access', 'no shutdown');
+const ACCESS_A_CMDS = [...accessUp('fa0/1'), ...accessUp('fa0/2'), ...onIf('fa0/3', 'shutdown')];
+
 const VLANS = {
   beginner: {
     sub: 'Create VLAN 10 and put Fa0/1 in it',
     steps: ['Create VLAN 10 on S1.', 'Make Fa0/1 an access port in VLAN 10.', 'Bring Fa0/1 up.'],
     reqs: [swVlan(10), swAccess('fa0/1', 10), swUp('fa0/1')],
+    cmds: ['vlan 10', 'exit', ...accessCmds('fa0/1', 10)],
   },
   intermediate: {
     sub: 'Create VLANs 10 and 20, and put Fa0/1 and Fa0/2 in them',
     steps: ['Create VLANs 10 and 20 on S1.', 'Put Fa0/1 in VLAN 10 and Fa0/2 in VLAN 20.', 'Bring both ports up.'],
     reqs: [swVlan(10), swVlan(20), ...PCS_IN_10_20],
+    cmds: ['vlan 10', 'exit', 'vlan 20', 'exit', ...PCS_10_20_CMDS],
   },
   advanced: {
     sub: 'Create named VLANs Sales (10) and Staff (20), and put Fa0/1 and Fa0/2 in them',
     steps: ['Create VLAN 10 named Sales and VLAN 20 named Staff.', 'Put Fa0/1 in VLAN 10 and Fa0/2 in VLAN 20.', 'Bring both ports up.'],
     reqs: [swVlan(10, 'Sales'), swVlan(20, 'Staff'), ...PCS_IN_10_20],
+    cmds: VLANS_A_CMDS,
   },
   expert: {
     sub: 'Add a Parking VLAN 999 for the unused Fa0/3 and shut Fa0/3 down',
     steps: ['Create VLAN 999 named Parking.', 'Put Fa0/3 in VLAN 999 and shut it down.', 'Keep Fa0/1 and Fa0/2 working in their VLANs.'],
     reqs: [swVlan(10, 'Sales'), swVlan(20, 'Staff'), swVlan(999, 'Parking'), ...PCS_IN_10_20, swAccess('fa0/3', 999), swDown('fa0/3')],
+    cmds: [...VLANS_A_CMDS, 'vlan 999', 'name Parking', 'exit', ...onIf('fa0/3', 'switchport mode access', 'switchport access vlan 999', 'shutdown')],
   },
 };
 
@@ -230,21 +254,25 @@ const ACCESS = {
     sub: 'Make Fa0/1 an access port and bring it up',
     steps: ['Set Fa0/1 to access mode.', 'Bring Fa0/1 up.'],
     reqs: [swMode('fa0/1'), swUp('fa0/1')],
+    cmds: accessUp('fa0/1'),
   },
   intermediate: {
     sub: 'Make Fa0/1 and Fa0/2 access ports and bring both up',
     steps: ['Set Fa0/1 and Fa0/2 to access mode.', 'Bring both ports up.'],
     reqs: [swMode('fa0/1'), swMode('fa0/2'), swUp('fa0/1'), swUp('fa0/2')],
+    cmds: [...accessUp('fa0/1'), ...accessUp('fa0/2')],
   },
   advanced: {
     sub: 'Make Fa0/1 and Fa0/2 access ports, and shut down the unused Fa0/3',
     steps: ['Set Fa0/1 and Fa0/2 to access mode.', 'Bring Fa0/1 and Fa0/2 up.', 'Shut down the unused Fa0/3.'],
     reqs: [swMode('fa0/1'), swMode('fa0/2'), swUp('fa0/1'), swUp('fa0/2'), swDown('fa0/3')],
+    cmds: ACCESS_A_CMDS,
   },
   expert: {
     sub: 'As Advanced, and give each PC port a description',
     steps: ['Set Fa0/1 and Fa0/2 to access mode and bring them up.', 'Shut down the unused Fa0/3.', 'Describe Fa0/1 as PC1 and Fa0/2 as PC2.'],
     reqs: [swMode('fa0/1'), swMode('fa0/2'), swUp('fa0/1'), swUp('fa0/2'), swDown('fa0/3'), swDesc('fa0/1', 'PC1'), swDesc('fa0/2', 'PC2')],
+    cmds: [...ACCESS_A_CMDS, ...onIf('fa0/1', 'description PC1'), ...onIf('fa0/2', 'description PC2')],
   },
 };
 
@@ -253,21 +281,29 @@ const TRUNK = {
     sub: 'Make Gi0/1 on S1 a trunk to R1 and bring both sides up',
     steps: ['Set Gi0/1 on S1 to trunk mode.', 'Bring Gi0/1 on S1 up.', 'Bring R1 Gi0/0 up.'],
     reqs: TRUNK_UP,
+    cmds: TRUNK_CMDS,
+    then: [R1_UP],
   },
   intermediate: {
     sub: 'Allow only VLANs 10 and 20 on the trunk',
     steps: ['Keep the trunk up on both sides.', 'Allow only VLANs 10 and 20 on the trunk.'],
     reqs: [...TRUNK_UP, swAllowed('gi0/1', [10, 20])],
+    cmds: [...TRUNK_CMDS, ...onIf('gi0/1', 'switchport trunk allowed vlan 10,20')],
+    then: [R1_UP],
   },
   advanced: {
     sub: 'Set the native VLAN to 99 and allow VLANs 10, 20 and 99 on the trunk',
     steps: ['Create VLAN 99.', 'Set VLAN 99 as the native VLAN.', 'Allow VLANs 10, 20 and 99 on the trunk.'],
     reqs: [...TRUNK_UP, ...NATIVE_99],
+    cmds: [...TRUNK_CMDS, ...NATIVE_99_CMDS],
+    then: [R1_UP],
   },
   expert: {
     sub: 'As Advanced, and make Fa0/1 and Fa0/2 access ports on VLANs 10 and 20',
     steps: ['Finish the trunk as in Advanced.', 'Make Fa0/1 an access port in VLAN 10 and Fa0/2 in VLAN 20.', 'Bring Fa0/1 and Fa0/2 up.'],
     reqs: [...TRUNK_UP, ...NATIVE_99, ...PCS_IN_10_20],
+    cmds: [...TRUNK_CMDS, ...NATIVE_99_CMDS, ...PCS_10_20_CMDS],
+    then: [R1_UP],
   },
 };
 
@@ -295,27 +331,38 @@ const r1Sub = vlan => {
 };
 const INTER_LEAD = 'R1 Gi0/0 is cabled to S1 Gi0/1 as a trunk. PC1 is on Fa0/1 and PC2 on Fa0/2.';
 const LACP = [swGroup('fa0/1', 1, 'active'), swGroup('fa0/2', 1, 'active')];
+const ROOT_10_20 = ['spanning-tree vlan 10 root primary', 'spanning-tree vlan 20 root primary'];
+const RSTP_CMD = 'spanning-tree mode rapid-pvst';
+const guardCmds = p => onIf(p, 'spanning-tree portfast', 'spanning-tree bpduguard enable');
+const ADVSTP_A_CMDS = [RSTP_CMD, ...guardCmds('fa0/1'), ...guardCmds('fa0/2')];
+// channel-group 1 on Fa0/1 and Fa0/2, with the same extra lines on both
+const chanCmds = (mode, ...lines) => ['fa0/1', 'fa0/2'].flatMap(p => onIf(p, `channel-group 1 mode ${mode}`, ...lines));
+const LB_CMD = 'port-channel load-balance src-dst-ip';
 
 const STP = {
   beginner: {
     sub: 'Make S1 the root bridge for VLAN 10',
     steps: ['Make S1 the root for VLAN 10 with spanning-tree vlan 10 root primary.'],
     reqs: [swRoot(10)],
+    cmds: ['spanning-tree vlan 10 root primary'],
   },
   intermediate: {
     sub: 'Make S1 the root bridge for VLANs 10 and 20',
     steps: ['Make S1 the root for VLAN 10.', 'Make S1 the root for VLAN 20.'],
     reqs: [swRoot(10), swRoot(20)],
+    cmds: ROOT_10_20,
   },
   advanced: {
     sub: 'Run Rapid PVST+ and make S1 the root for VLANs 10 and 20',
     steps: ['Set the spanning-tree mode to rapid-pvst.', 'Make S1 the root for VLANs 10 and 20.'],
     reqs: [swRstp, swRoot(10), swRoot(20)],
+    cmds: [RSTP_CMD, ...ROOT_10_20],
   },
   expert: {
     sub: 'As Advanced, and give VLAN 30 a backup priority of 28672',
     steps: ['Keep Rapid PVST+ and S1 root for VLANs 10 and 20.', 'Set VLAN 30 to priority 28672.'],
     reqs: [swRstp, swRoot(10), swRoot(20), swPrio(30, 28672)],
+    cmds: [RSTP_CMD, ...ROOT_10_20, 'spanning-tree vlan 30 priority 28672'],
   },
 };
 
@@ -324,21 +371,25 @@ const ADVSTP = {
     sub: 'Run Rapid PVST+ on S1',
     steps: ['Set the spanning-tree mode to rapid-pvst.'],
     reqs: [swRstp],
+    cmds: [RSTP_CMD],
   },
   intermediate: {
     sub: 'Run Rapid PVST+ and enable PortFast on Fa0/1 and Fa0/2',
     steps: ['Set the spanning-tree mode to rapid-pvst.', 'Enable PortFast on Fa0/1 and Fa0/2.'],
     reqs: [swRstp, swPortfast('fa0/1'), swPortfast('fa0/2')],
+    cmds: [RSTP_CMD, ...onIf('fa0/1', 'spanning-tree portfast'), ...onIf('fa0/2', 'spanning-tree portfast')],
   },
   advanced: {
     sub: 'As Intermediate, and enable BPDU guard on Fa0/1 and Fa0/2',
     steps: ['Keep Rapid PVST+ and PortFast on Fa0/1 and Fa0/2.', 'Enable BPDU guard on Fa0/1 and Fa0/2.'],
     reqs: [swRstp, swPortfast('fa0/1'), swPortfast('fa0/2'), swBpdu('fa0/1'), swBpdu('fa0/2')],
+    cmds: ADVSTP_A_CMDS,
   },
   expert: {
     sub: 'As Advanced, and also protect the unused Fa0/3 with PortFast and BPDU guard',
     steps: ['Keep the Advanced settings on Fa0/1 and Fa0/2.', 'Enable PortFast and BPDU guard on Fa0/3.'],
     reqs: [swRstp, swPortfast('fa0/1'), swPortfast('fa0/2'), swBpdu('fa0/1'), swBpdu('fa0/2'), swPortfast('fa0/3'), swBpdu('fa0/3')],
+    cmds: [...ADVSTP_A_CMDS, ...guardCmds('fa0/3')],
   },
 };
 
@@ -347,21 +398,25 @@ const ETHERCHANNEL = {
     sub: 'Bundle Fa0/1 and Fa0/2 into channel-group 1 with mode on',
     steps: ['Use channel-group 1 mode on on Fa0/1 and Fa0/2.'],
     reqs: [swGroup('fa0/1', 1, 'on'), swGroup('fa0/2', 1, 'on')],
+    cmds: chanCmds('on'),
   },
   intermediate: {
     sub: 'Bundle Fa0/1 and Fa0/2 into channel-group 1 with mode on, and bring both up',
     steps: ['Use channel-group 1 mode on on Fa0/1 and Fa0/2.', 'Bring both ports up.'],
     reqs: [swGroup('fa0/1', 1, 'on'), swGroup('fa0/2', 1, 'on'), swUp('fa0/1'), swUp('fa0/2')],
+    cmds: chanCmds('on', 'no shutdown'),
   },
   advanced: {
     sub: 'Use LACP (mode active) for channel-group 1 on Fa0/1 and Fa0/2, and bring both up',
     steps: ['Use channel-group 1 mode active on Fa0/1 and Fa0/2.', 'Bring both ports up.'],
     reqs: [...LACP, swUp('fa0/1'), swUp('fa0/2')],
+    cmds: chanCmds('active', 'no shutdown'),
   },
   expert: {
     sub: 'As Advanced, and make both channel ports trunks',
     steps: ['Keep the LACP channel on Fa0/1 and Fa0/2.', 'Make Fa0/1 and Fa0/2 trunks.'],
     reqs: [...LACP, swUp('fa0/1'), swUp('fa0/2'), swTrunk('fa0/1'), swTrunk('fa0/2')],
+    cmds: chanCmds('active', 'no shutdown', 'switchport mode trunk'),
   },
 };
 
@@ -370,48 +425,63 @@ const ADVETHER = {
     sub: 'Use LACP (mode active) for channel-group 1 on Fa0/1 and Fa0/2',
     steps: ['Use channel-group 1 mode active on Fa0/1 and Fa0/2.'],
     reqs: LACP,
+    cmds: chanCmds('active'),
   },
   intermediate: {
     sub: 'As Beginner, and balance traffic by source and destination IP',
     steps: ['Keep the LACP channel on Fa0/1 and Fa0/2.', 'Set load balancing to src-dst-ip.'],
     reqs: [...LACP, swLb('src-dst-ip')],
+    cmds: [LB_CMD, ...chanCmds('active')],
   },
   advanced: {
     sub: 'As Intermediate, with both channel ports up and trunked',
     steps: ['Keep the LACP channel and load balancing.', 'Bring both ports up and make them trunks.'],
     reqs: [...LACP, swLb('src-dst-ip'), swUp('fa0/1'), swUp('fa0/2'), swTrunk('fa0/1'), swTrunk('fa0/2')],
+    cmds: [LB_CMD, ...chanCmds('active', 'no shutdown', 'switchport mode trunk')],
   },
   expert: {
     sub: 'As Advanced, and allow only VLANs 10 and 20 on the channel',
     steps: ['Keep the Advanced settings.', 'Allow only VLANs 10 and 20 on Fa0/1 and Fa0/2.'],
     reqs: [...LACP, swLb('src-dst-ip'), swUp('fa0/1'), swUp('fa0/2'), swTrunk('fa0/1'), swTrunk('fa0/2'),
       swAllowed('fa0/1', [10, 20]), swAllowed('fa0/2', [10, 20])],
+    cmds: [LB_CMD, ...chanCmds('active', 'no shutdown', 'switchport mode trunk', 'switchport trunk allowed vlan 10,20')],
   },
 };
 
 const INTER_PCS = [pcStatic('PC1', '192.168.10.10', '192.168.10.1'), pcStatic('PC2', '192.168.20.10', '192.168.20.1'), pcPings('PC1', 'PC2')];
 const INTER_ADV = [...TRUNK_UP, ...r1Sub(10), ...r1Sub(20), ...PCS_IN_10_20, ...INTER_PCS];
+const r1SubCmds = vlan => onIf(`gi0/0.${vlan}`, `encapsulation dot1Q ${vlan}`, `ip address 192.168.${vlan}.1 ${MASK24}`, 'no shutdown');
+const r1StickCmds = (...vlans) => onDev('R1', ...onIf('gi0/0', 'no shutdown'), ...vlans.flatMap(r1SubCmds));
+const PC_STATIC_THEN = [['PC1', [`ip 192.168.10.10 ${MASK24} 192.168.10.1`]], ['PC2', [`ip 192.168.20.10 ${MASK24} 192.168.20.1`]]];
 const INTERVLAN = {
   beginner: {
     sub: 'Trunk S1 Gi0/1 to R1 and give R1 a VLAN 10 subinterface',
     steps: ['Make S1 Gi0/1 a trunk and bring it up.', 'On R1, create Gi0/0.10 with dot1Q 10 and 192.168.10.1/24.', 'Bring Gi0/0.10 up.'],
     reqs: [...TRUNK_UP, ...r1Sub(10)],
+    cmds: TRUNK_CMDS,
+    then: [r1StickCmds(10)],
   },
   intermediate: {
     sub: 'Add VLAN 20 on subinterface Gi0/0.20 with 192.168.20.1/24',
     steps: ['Keep the trunk and Gi0/0.10 working.', 'On R1, create Gi0/0.20 with dot1Q 20 and 192.168.20.1/24.', 'Bring Gi0/0.20 up.'],
     reqs: [...TRUNK_UP, ...r1Sub(10), ...r1Sub(20)],
+    cmds: TRUNK_CMDS,
+    then: [r1StickCmds(10, 20)],
   },
   advanced: {
     sub: 'As Intermediate, put the PCs in VLANs 10 and 20, and make PC1 reach PC2',
     steps: ['Keep the subinterfaces working.', 'Put Fa0/1 in VLAN 10 and Fa0/2 in VLAN 20, and bring both ports up.',
       'On PC1, set 192.168.10.10/24 with gateway 192.168.10.1; on PC2, 192.168.20.10/24 with gateway 192.168.20.1.', 'From PC1, ping PC2.'],
     reqs: INTER_ADV,
+    cmds: [...TRUNK_CMDS, ...PCS_10_20_CMDS],
+    then: [r1StickCmds(10, 20), ...PC_STATIC_THEN],
   },
   expert: {
     sub: 'As Advanced, and add Gi0/0.99 on 192.168.99.1/24 with VLANs 10, 20 and 99 allowed on the trunk',
     steps: ['Create VLAN 99 on S1.', 'On R1, create Gi0/0.99 with dot1Q 99 and 192.168.99.1/24.', 'Allow only VLANs 10, 20 and 99 on the trunk.'],
     reqs: [...INTER_ADV, ...r1Sub(99), swVlan(99), swAllowed('gi0/1', [10, 20, 99])],
+    cmds: [...TRUNK_CMDS, ...PCS_10_20_CMDS, 'vlan 99', 'exit', ...onIf('gi0/1', 'switchport trunk allowed vlan 10,20,99')],
+    then: [r1StickCmds(10, 20, 99), ...PC_STATIC_THEN],
   },
 };
 
@@ -453,24 +523,31 @@ const ROUTED_UPLINK = [
 ];
 const MLS_VLAN10 = [IP_ROUTING, swVlan(10), ...svi(10), swAccess('fa0/1', 10), swUp('fa0/1')];
 const MLS_BOTH = [...MLS_VLAN10, swVlan(20), ...svi(20), swAccess('fa0/2', 20), swUp('fa0/2')];
+const sviCmds = vlan => [`vlan ${vlan}`, 'exit', ...onIf(`vlan ${vlan}`, `ip address 192.168.${vlan}.1 ${MASK24}`, 'no shutdown'), ...accessCmds(`fa0/${vlan / 10}`, vlan)];
+const MLS_BOTH_CMDS = ['ip routing', ...sviCmds(10), ...sviCmds(20)];
 const MLSVLAN = {
   beginner: {
     sub: 'Turn on routing on MLS1 and give VLAN 10 a gateway on an SVI',
     steps: ['Turn on ip routing.', 'Create VLAN 10, then interface vlan 10 with 192.168.10.1/24, and bring it up.',
       'Make Fa0/1 an access port in VLAN 10 and bring it up.'],
     reqs: MLS_VLAN10,
+    cmds: ['ip routing', ...sviCmds(10)],
   },
   intermediate: {
     sub: 'Route between VLANs 10 and 20 on MLS1, and make PC1 reach PC2',
     steps: ['Keep VLAN 10 working.', 'Create VLAN 20 with SVI 192.168.20.1/24, and put Fa0/2 in VLAN 20.',
       'On PC1, set 192.168.10.10/24 with gateway 192.168.10.1; on PC2, 192.168.20.10/24 with gateway 192.168.20.1.', 'From PC1, ping PC2.'],
     reqs: [...MLS_BOTH, pcStatic('PC1', '192.168.10.10', '192.168.10.1'), pcStatic('PC2', '192.168.20.10', '192.168.20.1'), pcPings('PC1', 'PC2')],
+    cmds: MLS_BOTH_CMDS,
+    then: PC_STATIC_THEN,
   },
   advanced: {
     sub: 'Make Gi0/1 a routed port to DHCP1 and relay DHCP for VLAN 10',
     steps: ['Keep both VLANs and their SVIs.', 'Make Gi0/1 a routed port (no switchport) with 192.168.99.1/24, and bring it up.',
       'On interface vlan 10, add ip helper-address 192.168.99.10.', 'Open PC1 and type dhcp.'],
     reqs: [...MLS_BOTH, ...ROUTED_UPLINK, sviHelper(10), pcLease('PC1', '192.168.10')],
+    cmds: [...MLS_BOTH_CMDS, ...onIf('gi0/1', 'no switchport', `ip address 192.168.99.1 ${MASK24}`, 'no shutdown'), ...onIf('vlan 10', `ip helper-address ${DHCP1_IP}`)],
+    then: [['PC1', ['dhcp']]],
   },
   expert: {
     sub: 'As Advanced, relay DHCP for VLAN 20 too, and make PC1 reach PC2 with their DHCP addresses',
@@ -491,26 +568,35 @@ const swPsViol = (p, v) => swReq(p, `violation mode is ${v}`, q => q.psViolation
 const swPsSticky = p => swReq(p, 'learns sticky MAC addresses', q => q.psSticky === true, 'switchport port-security mac-address sticky');
 const PS_ADV = [swMode('fa0/1'), swMode('fa0/2'), swUp('fa0/1'), swUp('fa0/2'), swPsec('fa0/1'), swPsec('fa0/2'), swPsSticky('fa0/1'), swPsSticky('fa0/2'),
   swPsMax('fa0/1', 1), swPsMax('fa0/2', 1), swPsViol('fa0/1', 'shutdown'), swPsViol('fa0/2', 'restrict')];
+// sticky port security with one address and the given violation mode, on an access port that is up
+const stickyCmds = (p, viol) => onIf(p, 'switchport mode access', 'no shutdown', 'switchport port-security', 'switchport port-security mac-address sticky',
+  'switchport port-security maximum 1', `switchport port-security violation ${viol}`);
+const PS_ADV_CMDS = [...stickyCmds('fa0/1', 'shutdown'), ...stickyCmds('fa0/2', 'restrict')];
 const PORTSEC = {
   beginner: {
     sub: 'Turn on port security on Fa0/1',
     steps: ['Make Fa0/1 an access port and bring it up.', 'Enable port security on Fa0/1.'],
     reqs: [swMode('fa0/1'), swUp('fa0/1'), swPsec('fa0/1')],
+    cmds: onIf('fa0/1', 'switchport mode access', 'no shutdown', 'switchport port-security'),
   },
   intermediate: {
     sub: 'Allow one MAC address on Fa0/1 and shut the port on a violation',
     steps: ['Keep port security on Fa0/1.', 'Set the maximum to 1 and the violation mode to shutdown.'],
     reqs: [swMode('fa0/1'), swUp('fa0/1'), swPsec('fa0/1'), swPsMax('fa0/1', 1), swPsViol('fa0/1', 'shutdown')],
+    cmds: onIf('fa0/1', 'switchport mode access', 'no shutdown', 'switchport port-security', 'switchport port-security maximum 1',
+      'switchport port-security violation shutdown'),
   },
   advanced: {
     sub: 'Use sticky MAC addresses on Fa0/1 and Fa0/2, and restrict Fa0/2 on a violation',
     steps: ['Turn on sticky port security on Fa0/1 and Fa0/2.', 'Allow one MAC per port.', 'Shut Fa0/1 on a violation and restrict Fa0/2.'],
     reqs: PS_ADV,
+    cmds: PS_ADV_CMDS,
   },
   expert: {
     sub: 'As Advanced, and protect the unused Fa0/3 with sticky MAC, one address and shutdown',
     steps: ['Keep the Advanced settings on Fa0/1 and Fa0/2.', 'Protect Fa0/3 with sticky MAC, a maximum of 1 and shutdown on violation.'],
     reqs: [...PS_ADV, swPsec('fa0/3'), swPsSticky('fa0/3'), swPsMax('fa0/3', 1), swPsViol('fa0/3', 'shutdown')],
+    cmds: [...PS_ADV_CMDS, ...stickyCmds('fa0/3', 'shutdown')],
   },
 };
 
@@ -530,17 +616,14 @@ const RT_TOPO = {
 
 // an R1 interface requirement: the text after the interface name, the check on the interface, and the commands on it
 const rtReq = (k, text, ok, ...cmds) => ({text: `${portName(k)} ${text}`, ok: s => ok(R1(s).ifs[k]), hint: {cmds, port: portName(k)}});
+const rtUp = k => rtReq(k, 'is up', i => !i.shut, 'no shutdown');
 // an R1 interface with its address, and up
-const rtIf = (k, ip, mask) => [
-  rtReq(k, `is ${ip} ${mask}`, i => i.ip === ip && i.mask === mask, `ip address ${ip} ${mask}`),
-  rtReq(k, 'is up', i => !i.shut, 'no shutdown'),
-];
+const rtIf = (k, ip, mask) => [rtReq(k, `is ${ip} ${mask}`, i => i.ip === ip && i.mask === mask, `ip address ${ip} ${mask}`), rtUp(k)];
 const LAN_IF = x => rtIf('gi0/0', `192.168.${x}.1`, '255.255.255.0'); // towards PC1
 const WAN_IF = rtIf('gi0/1', '10.0.0.1', '255.255.255.252'); // towards R2
 const R3_IF = rtIf('gi0/2', '10.0.1.1', '255.255.255.252'); // towards R3
 const BOTH_IFS = x => [...LAN_IF(x), ...WAN_IF];
 // the same interfaces as solution commands; every piece of a solution ends back in global configuration
-const onIf = (k, ...lines) => [`int ${k}`, ...lines, 'exit'];
 const LAN_CMDS = x => onIf('gi0/0', `ip address 192.168.${x}.1 255.255.255.0`, 'no shutdown');
 const WAN_CMDS = onIf('gi0/1', 'ip address 10.0.0.1 255.255.255.252', 'no shutdown');
 const R3_CMDS = onIf('gi0/2', 'ip address 10.0.1.1 255.255.255.252', 'no shutdown');
@@ -564,28 +647,28 @@ const aclApplied = (k, dir, name) => rtReq(k, `applies ACL ${name} ${dir === 'in
 const STATIC = {
   beginner: {
     sub: 'Route the remote LAN 172.16.x.0/24 through R2 at 10.0.0.2',
-    lead: x => `R1 Gi0/0 serves 192.168.${x}.0/24. R2 is the next hop on Gi0/1.`,
+    lead: serves('R2 is the next hop on Gi0/1.'),
     steps: ['Address Gi0/0 and Gi0/1 on R1 and bring them up.', 'Add a static route for 172.16.x.0/24 via 10.0.0.2.'],
     reqs: x => [...BOTH_IFS(x), rtRoute(`172.16.${x}.0`, '255.255.255.0', '10.0.0.2')],
     cmds: x => [...BOTH_CMDS(x), `ip route 172.16.${x}.0 255.255.255.0 10.0.0.2`],
   },
   intermediate: {
     sub: 'Add a second remote LAN, 172.17.x.0/24, also through R2',
-    lead: x => `R1 Gi0/0 serves 192.168.${x}.0/24. R2 is the next hop on Gi0/1.`,
+    lead: serves('R2 is the next hop on Gi0/1.'),
     steps: ['Keep the first static route working.', 'Add a static route for 172.17.x.0/24 via 10.0.0.2.'],
     reqs: x => [...STATIC.beginner.reqs(x), rtRoute(`172.17.${x}.0`, '255.255.255.0', '10.0.0.2')],
     cmds: x => [...STATIC.beginner.cmds(x), `ip route 172.17.${x}.0 255.255.255.0 10.0.0.2`],
   },
   advanced: {
     sub: 'Add R3 on Gi0/2 as a backup for 172.16.x.0/24, using distance 150',
-    lead: x => `R1 Gi0/0 serves 192.168.${x}.0/24. R2 is on Gi0/1 and R3 on Gi0/2.`,
+    lead: serves('R2 is on Gi0/1 and R3 on Gi0/2.'),
     steps: ['Keep the routes to R2 working.', 'Address Gi0/2 as 10.0.1.1/30 and bring it up.', 'Add a backup route for 172.16.x.0/24 via 10.0.1.2 with distance 150.'],
     reqs: x => [...STATIC.intermediate.reqs(x), ...R3_IF, rtRoute(`172.16.${x}.0`, '255.255.255.0', '10.0.1.2', 150)],
     cmds: x => [...STATIC.intermediate.cmds(x), ...R3_CMDS, `ip route 172.16.${x}.0 255.255.255.0 10.0.1.2 150`],
   },
   expert: {
     sub: 'As Advanced, and add 172.18.x.0/24 as a route out the exit interface Gi0/2',
-    lead: x => `R1 Gi0/0 serves 192.168.${x}.0/24. R2 is on Gi0/1 and R3 on Gi0/2.`,
+    lead: serves('R2 is on Gi0/1 and R3 on Gi0/2.'),
     steps: ['Keep the Advanced routes.', 'Add a static route for 172.18.x.0/24 that uses Gi0/2 as the exit interface.'],
     reqs: x => [...STATIC.advanced.reqs(x), rtRoute(`172.18.${x}.0`, '255.255.255.0', 'Gi0/2')],
     cmds: x => [...STATIC.advanced.cmds(x), `ip route 172.18.${x}.0 255.255.255.0 gi0/2`],
@@ -595,28 +678,28 @@ const STATIC = {
 const DEFROUTE = {
   beginner: {
     sub: 'Send unknown traffic to R2 at 10.0.0.2 with a default route',
-    lead: x => `R1 Gi0/0 serves 192.168.${x}.0/24. R2 at 10.0.0.2 is the way out.`,
+    lead: serves('R2 at 10.0.0.2 is the way out.'),
     steps: ['Address Gi0/0 and Gi0/1 on R1 and bring them up.', 'Add a default route via 10.0.0.2.'],
     reqs: x => [...BOTH_IFS(x), DEFAULT_VIA_R2],
     cmds: x => [...BOTH_CMDS(x), DEFAULT_CMD],
   },
   intermediate: {
     sub: 'Add R3 at 10.0.1.2 as a backup default route with distance 150',
-    lead: x => `R1 Gi0/0 serves 192.168.${x}.0/24. R2 is on Gi0/1 and R3 on Gi0/2.`,
+    lead: serves('R2 is on Gi0/1 and R3 on Gi0/2.'),
     steps: ['Keep the default route via R2.', 'Address Gi0/2 as 10.0.1.1/30 and bring it up.', 'Add a backup default route via 10.0.1.2 with distance 150.'],
     reqs: x => [...BOTH_IFS(x), DEFAULT_VIA_R2, ...R3_IF, rtRoute('0.0.0.0', '0.0.0.0', '10.0.1.2', 150)],
     cmds: x => [...DEFROUTE.beginner.cmds(x), ...R3_CMDS, 'ip route 0.0.0.0 0.0.0.0 10.0.1.2 150'],
   },
   advanced: {
     sub: 'Make Gi0/1 the exit interface for the default route',
-    lead: x => `R1 Gi0/0 serves 192.168.${x}.0/24. R2 is on Gi0/1.`,
+    lead: serves('R2 is on Gi0/1.'),
     steps: ['Address Gi0/0 and Gi0/1 on R1 and bring them up.', 'Add a default route that uses Gi0/1 as the exit interface.'],
     reqs: x => [...BOTH_IFS(x), rtRoute('0.0.0.0', '0.0.0.0', 'Gi0/1')],
     cmds: x => [...BOTH_CMDS(x), 'ip route 0.0.0.0 0.0.0.0 gi0/1'],
   },
   expert: {
     sub: 'Default route via R2, plus a specific route to 172.16.x.0/24 via R2',
-    lead: x => `R1 Gi0/0 serves 192.168.${x}.0/24. R2 is on Gi0/1.`,
+    lead: serves('R2 is on Gi0/1.'),
     steps: ['Add a default route via 10.0.0.2.', 'Add a specific route for 172.16.x.0/24 via 10.0.0.2 so it is not sent to the default.'],
     reqs: x => [...BOTH_IFS(x), DEFAULT_VIA_R2, rtRoute(`172.16.${x}.0`, '255.255.255.0', '10.0.0.2')],
     cmds: x => [...DEFROUTE.beginner.cmds(x), `ip route 172.16.${x}.0 255.255.255.0 10.0.0.2`],
@@ -629,22 +712,26 @@ const ospfIn = (k, area, network) => ({text: `${portName(k)} runs OSPF in area $
 const ospfIfCmd = (k, area) => rtReq(k, `is put in area ${area} with the interface command`, i => i.ospf?.pid === 1 && i.ospf.area === area,
   `ip ospf 1 area ${area}`);
 const ospf6In = (k, area) => rtReq(k, `runs OSPFv3 in area ${area}`, i => i.ospf6?.pid === 1 && i.ospf6.area === area, `ipv6 ospf 1 area ${area}`);
+// routing processes on R1 by their key in its state (devices/router.js)
+const IGP_NAME = {ospf: 'OSPF', ospf6: 'OSPFv3', rip: 'RIP', eigrp: 'EIGRP'};
+const IGP_START = {ospf: 'router ospf 1', ospf6: 'ipv6 router ospf 1', rip: 'router rip', eigrp: 'router eigrp 100'};
+// R1 interface k is passive in process p (or, with on false, is not)
+const igpPassive = (p, k, on = true) => ({
+  text: `${portName(k)} is ${on ? '' : 'not '}passive in ${IGP_NAME[p]}`,
+  ok: s => R1(s)[p].passive.includes(portName(k)) === on,
+  hint: {cmds: on ? [`passive-interface ${portName(k)}`] : [IGP_START[p], `no passive-interface ${portName(k)}`]},
+});
 const ospfRid = (v6, rid) => ({
   text: `The ${v6 ? 'OSPFv3' : 'OSPF'} router ID is ${rid}`,
   ok: s => R1(s)[v6 ? 'ospf6' : 'ospf'].rid === rid,
   hint: {cmds: [v6 ? 'ipv6 router ospf 1' : 'router ospf 1', `router-id ${rid}`]},
 });
-const ospfPassive = (v6, k) => ({
-  text: `${portName(k)} is passive in ${v6 ? 'OSPFv3' : 'OSPF'}`,
-  ok: s => R1(s)[v6 ? 'ospf6' : 'ospf'].passive.includes(portName(k)),
-  hint: {cmds: [`passive-interface ${portName(k)}`]},
-});
 const OSPF_ORIGINATE = {text: 'OSPF advertises the default route', ok: s => R1(s).ospf.originate, hint: {cmds: ['router ospf 1', 'default-information originate']}};
-const v6If = (k, ip) => [rtReq(k, `is ${ip}`, i => i.ip6 === ip, `ipv6 address ${ip}`), rtReq(k, 'is up', i => !i.shut, 'no shutdown')];
+const v6If = (k, ip) => [rtReq(k, `is ${ip}`, i => i.ip6 === ip, `ipv6 address ${ip}`), rtUp(k)];
 const linkLocal = k => rtReq(k, 'has the link-local address fe80::1', i => i.ll === 'fe80::1', 'ipv6 address fe80::1 link-local');
 const V6_ROUTING = {text: 'IPv6 routing is on', ok: s => R1(s).v6routing, hint: {cmds: ['ipv6 unicast-routing']}};
 
-const OSPF_LEAD = x => `R1 Gi0/0 serves 192.168.${x}.0/24. R2 is an OSPF neighbour on Gi0/1.`;
+const OSPF_LEAD = serves('R2 is an OSPF neighbour on Gi0/1.');
 const OSPF_BASE = x => [...BOTH_IFS(x), ospfIn('gi0/0', 0, `network 192.168.${x}.0 0.0.0.255 area 0`), ospfIn('gi0/1', 0, 'network 10.0.0.0 0.0.0.3 area 0')];
 const OSPF = {
   beginner: {
@@ -659,19 +746,19 @@ const OSPF = {
     sub: 'As Beginner, with router ID 1.1.1.1 and no OSPF hellos sent to the LAN',
     lead: OSPF_LEAD,
     steps: ['Keep OSPF running on both networks.', 'Set the router ID to 1.1.1.1.', 'Make Gi0/0 a passive interface.'],
-    reqs: x => [...OSPF_BASE(x), ospfRid(false, '1.1.1.1'), ospfPassive(false, 'gi0/0')],
+    reqs: x => [...OSPF_BASE(x), ospfRid(false, '1.1.1.1'), igpPassive('ospf', 'gi0/0')],
     cmds: x => [...OSPF.beginner.cmds(x), 'router ospf 1', 'router-id 1.1.1.1', 'passive-interface gi0/0', 'exit'],
   },
   advanced: {
     sub: 'As Intermediate, and bring R3 on Gi0/2 into area 0 with the interface command',
-    lead: x => `R1 Gi0/0 serves 192.168.${x}.0/24. R2 is on Gi0/1 and R3 on Gi0/2.`,
+    lead: serves('R2 is on Gi0/1 and R3 on Gi0/2.'),
     steps: ['Keep the Intermediate settings.', 'Address Gi0/2 as 10.0.1.1/30 and bring it up.', 'On Gi0/2, use ip ospf 1 area 0 instead of a network statement.'],
     reqs: x => [...OSPF.intermediate.reqs(x), ...R3_IF, ospfIfCmd('gi0/2', 0)],
     cmds: x => [...OSPF.intermediate.cmds(x), ...onIf('gi0/2', 'ip address 10.0.1.1 255.255.255.252', 'no shutdown', 'ip ospf 1 area 0')],
   },
   expert: {
     sub: 'As Advanced, and advertise a default route via R2 into OSPF',
-    lead: x => `R1 Gi0/0 serves 192.168.${x}.0/24. R2 is the way out on Gi0/1; R3 is on Gi0/2.`,
+    lead: serves('R2 is the way out on Gi0/1; R3 is on Gi0/2.'),
     steps: ['Keep the Advanced settings.', 'Add a static default route via 10.0.0.2.', 'Under router ospf 1, add default-information originate.'],
     reqs: x => [...OSPF.advanced.reqs(x), DEFAULT_VIA_R2, OSPF_ORIGINATE],
     cmds: x => [...OSPF.advanced.cmds(x), DEFAULT_CMD, 'router ospf 1', 'default-information originate', 'exit'],
@@ -696,7 +783,7 @@ const OSPF6 = {
     sub: 'As Beginner, and stop OSPFv3 hellos on the LAN',
     lead: OSPF6_LEAD,
     steps: ['Keep OSPFv3 running on both interfaces.', 'Under ipv6 router ospf 1, make Gi0/0 passive.'],
-    reqs: x => [...OSPF6_BASE(x), ospfPassive(true, 'gi0/0')],
+    reqs: x => [...OSPF6_BASE(x), igpPassive('ospf6', 'gi0/0')],
     cmds: x => [...OSPF6.beginner.cmds(x), 'ipv6 router ospf 1', 'passive-interface gi0/0', 'exit'],
   },
   advanced: {
@@ -716,14 +803,7 @@ const OSPF6 = {
 };
 
 // RIP and EIGRP on R1 (EIGRP uses AS 100)
-const IGP_NAME = {rip: 'RIP', eigrp: 'EIGRP'};
-const IGP_START = {rip: 'router rip', eigrp: 'router eigrp 100'};
 const igpIn = (p, k, network) => ({text: `${portName(k)} runs ${IGP_NAME[p]}`, ok: s => !!netHit(R1(s), p, k), hint: {cmds: [IGP_START[p], network]}});
-const igpPassive = (p, k) => ({
-  text: `${portName(k)} is passive in ${IGP_NAME[p]}`,
-  ok: s => R1(s)[p].passive.includes(portName(k)),
-  hint: {cmds: [`passive-interface ${portName(k)}`]},
-});
 const igpNoSum = p => ({text: `${IGP_NAME[p]} auto-summary is off`, ok: s => R1(s)[p].nosum, hint: {cmds: ['no auto-summary']}});
 const RIP_V2 = {text: 'RIP runs version 2', ok: s => R1(s).rip.ver === 2, hint: {cmds: ['router rip', 'version 2']}};
 const RIP_ORIGINATE = {text: 'RIP advertises the default route', ok: s => R1(s).rip.originate, hint: {cmds: ['router rip', 'default-information originate']}};
@@ -731,7 +811,7 @@ const eigrpRid = rid => ({text: `The EIGRP router ID is ${rid}`, ok: s => R1(s).
 const EIGRP_AS = {text: 'EIGRP runs as AS 100', ok: s => R1(s).eigrp.pid === 100, hint: {cmds: ['router eigrp 100']}};
 const EIGRP_CLASSFUL = {text: 'EIGRP covers 10.0.0.0 with one classful network statement', ok: s => R1(s).eigrp.nets.some(n => n.cf && n.net === '10.0.0.0'), hint: {cmds: ['network 10.0.0.0']}};
 
-const RIP_LEAD = x => `R1 Gi0/0 serves 192.168.${x}.0/24. R2 is a RIP neighbour on Gi0/1.`;
+const RIP_LEAD = serves('R2 is a RIP neighbour on Gi0/1.');
 const RIP_BASE = x => [...BOTH_IFS(x), RIP_V2, igpIn('rip', 'gi0/0', `network 192.168.${x}.0`), igpIn('rip', 'gi0/1', 'network 10.0.0.0')];
 const RIP = {
   beginner: {
@@ -751,21 +831,56 @@ const RIP = {
   },
   advanced: {
     sub: 'As Intermediate, and advertise a default route via R2 into RIP',
-    lead: x => `R1 Gi0/0 serves 192.168.${x}.0/24. R2 is the way out on Gi0/1.`,
+    lead: serves('R2 is the way out on Gi0/1.'),
     steps: ['Keep the Intermediate settings.', 'Add a static default route via 10.0.0.2.', 'Under router rip, add default-information originate.'],
     reqs: x => [...RIP.intermediate.reqs(x), DEFAULT_VIA_R2, RIP_ORIGINATE],
     cmds: x => [...RIP.intermediate.cmds(x), DEFAULT_CMD, 'router rip', 'default-information originate', 'exit'],
   },
   expert: {
     sub: 'As Advanced, and bring up R3 on Gi0/2 without sending it RIP updates',
-    lead: x => `R1 Gi0/0 serves 192.168.${x}.0/24. R2 is the way out on Gi0/1; R3 is on Gi0/2.`,
+    lead: serves('R2 is the way out on Gi0/1; R3 is on Gi0/2.'),
     steps: ['Keep the Advanced settings.', 'Address Gi0/2 as 10.0.1.1/30 and bring it up (network 10.0.0.0 already covers it).', 'Make Gi0/2 a passive interface.'],
     reqs: x => [...RIP.advanced.reqs(x), ...R3_IF, igpIn('rip', 'gi0/2', 'network 10.0.0.0'), igpPassive('rip', 'gi0/2')],
     cmds: x => [...RIP.advanced.cmds(x), ...R3_CMDS, 'router rip', 'passive-interface gi0/2', 'exit'],
   },
 };
 
-const EIGRP_LEAD = x => `R1 Gi0/0 serves 192.168.${x}.0/24. R2 is an EIGRP neighbour on Gi0/1.`;
+// Legacy classful routing: RIPv1 on R1 (no masks in updates, so no VLSM and no turning auto-summary off)
+const RIP_V1 = {text: 'RIP runs version 1', ok: s => R1(s).rip.ver === 1, hint: {cmds: ['router rip', 'version 1']}};
+const RIP1_BASE = x => [...BOTH_IFS(x), RIP_V1, igpIn('rip', 'gi0/0', `network 192.168.${x}.0`), igpIn('rip', 'gi0/1', 'network 10.0.0.0')];
+const RIP1 = {
+  beginner: {
+    sub: 'Run legacy RIP version 1 on the LAN and the link to R2',
+    lead: RIP_LEAD,
+    steps: ['Address Gi0/0 and Gi0/1 on R1 and bring them up.', 'Start router rip and set version 1 (classful, no masks in updates).',
+      'Add network 192.168.x.0 and network 10.0.0.0.'],
+    reqs: RIP1_BASE,
+    cmds: x => [...BOTH_CMDS(x), 'router rip', 'version 1', `network 192.168.${x}.0`, 'network 10.0.0.0', 'exit'],
+  },
+  intermediate: {
+    sub: 'As Beginner, with no RIP updates sent to the LAN',
+    lead: RIP_LEAD,
+    steps: ['Keep RIPv1 running on both networks.', 'Make Gi0/0 a passive interface.'],
+    reqs: x => [...RIP1_BASE(x), igpPassive('rip', 'gi0/0')],
+    cmds: x => [...RIP1.beginner.cmds(x), 'router rip', 'passive-interface gi0/0', 'exit'],
+  },
+  advanced: {
+    sub: 'As Intermediate, and advertise a default route via R2 into RIP',
+    lead: serves('R2 is the way out on Gi0/1.'),
+    steps: ['Keep the Intermediate settings.', 'Add a static default route via 10.0.0.2.', 'Under router rip, add default-information originate.'],
+    reqs: x => [...RIP1.intermediate.reqs(x), DEFAULT_VIA_R2, RIP_ORIGINATE],
+    cmds: x => [...RIP1.intermediate.cmds(x), DEFAULT_CMD, 'router rip', 'default-information originate', 'exit'],
+  },
+  expert: {
+    sub: 'As Advanced, and bring up R3 on Gi0/2 without sending it RIP updates',
+    lead: serves('R2 is the way out on Gi0/1; R3 is on Gi0/2.'),
+    steps: ['Keep the Advanced settings.', 'Address Gi0/2 as 10.0.1.1/30 and bring it up (network 10.0.0.0 already covers it).', 'Make Gi0/2 a passive interface.'],
+    reqs: x => [...RIP1.advanced.reqs(x), ...R3_IF, igpIn('rip', 'gi0/2', 'network 10.0.0.0'), igpPassive('rip', 'gi0/2')],
+    cmds: x => [...RIP1.advanced.cmds(x), ...R3_CMDS, 'router rip', 'passive-interface gi0/2', 'exit'],
+  },
+};
+
+const EIGRP_LEAD = serves('R2 is an EIGRP neighbour on Gi0/1.');
 const EIGRP_BASE = x => [...BOTH_IFS(x), EIGRP_AS, igpIn('eigrp', 'gi0/0', `network 192.168.${x}.0 0.0.0.255`), igpIn('eigrp', 'gi0/1', 'network 10.0.0.0 0.0.0.3')];
 const EIGRP = {
   beginner: {
@@ -785,14 +900,14 @@ const EIGRP = {
   },
   advanced: {
     sub: 'As Intermediate, with auto-summary off and R3 on Gi0/2 in EIGRP',
-    lead: x => `R1 Gi0/0 serves 192.168.${x}.0/24. R2 is on Gi0/1 and R3 on Gi0/2.`,
+    lead: serves('R2 is on Gi0/1 and R3 on Gi0/2.'),
     steps: ['Keep the Intermediate settings.', 'Turn off auto-summary.', 'Address Gi0/2 as 10.0.1.1/30 and bring it up.', 'Add network 10.0.1.0 0.0.0.3.'],
     reqs: x => [...EIGRP.intermediate.reqs(x), igpNoSum('eigrp'), ...R3_IF, igpIn('eigrp', 'gi0/2', 'network 10.0.1.0 0.0.0.3')],
     cmds: x => [...EIGRP.intermediate.cmds(x), ...R3_CMDS, 'router eigrp 100', 'no auto-summary', 'network 10.0.1.0 0.0.0.3', 'exit'],
   },
   expert: {
     sub: 'As Advanced, and cover both 10.0.x.0/30 links with one classful network statement',
-    lead: x => `R1 Gi0/0 serves 192.168.${x}.0/24. R2 is on Gi0/1 and R3 on Gi0/2.`,
+    lead: serves('R2 is on Gi0/1 and R3 on Gi0/2.'),
     steps: ['Keep the Advanced settings.', 'Add network 10.0.0.0 with no wildcard mask, which EIGRP treats as the whole classful network.'],
     reqs: x => [...EIGRP.advanced.reqs(x), EIGRP_CLASSFUL],
     cmds: x => [...EIGRP.advanced.cmds(x), 'router eigrp 100', 'network 10.0.0.0', 'exit'],
@@ -812,51 +927,55 @@ const HARDEN_BASE = [
   {text: 'The privileged EXEC mode is protected by an enable secret', ok: s => R1(s).sec.secret, hint: {cmds: ['enable secret <word>']}},
   {text: 'Stored passwords are encrypted', ok: s => R1(s).sec.enc, hint: {cmds: ['service password-encryption']}},
 ];
+const HARDEN_I = [...HARDEN_BASE, {text: 'A MOTD banner is set', ok: s => !!R1(s).sec.banner, hint: {cmds: ['banner motd #Authorized access only#']}},
+  {text: 'DNS lookups for mistyped commands are off', ok: s => R1(s).sec.nolookup, hint: {cmds: ['no ip domain-lookup']}}];
+const HARDEN_A = [...HARDEN_I, ...hardenLine('console'), lineCheck('console', 'The console uses logging synchronous', l => l.sync, 'logging synchronous')];
+const HARDEN_B_CMDS = ['hostname EDGE1', 'enable secret class', 'service password-encryption'];
+const HARDEN_I_CMDS = [...HARDEN_B_CMDS, 'banner motd #Authorized access only#', 'no ip domain-lookup'];
+const HARDEN_A_CMDS = [...HARDEN_I_CMDS, 'line console 0', 'password cisco', 'login', 'logging synchronous', 'exit'];
 const HARDEN = {
   beginner: {
     sub: 'Name the router EDGE1, protect privileged mode and encrypt stored passwords',
-    lead: 'R1 is a fresh router with no security configured.',
     steps: ['Set the hostname to EDGE1.', 'Set an enable secret.', 'Turn on service password-encryption.'],
-    reqs: () => HARDEN_BASE,
-    cmds: ['hostname EDGE1', 'enable secret class', 'service password-encryption'],
+    reqs: HARDEN_BASE,
+    cmds: HARDEN_B_CMDS,
   },
   intermediate: {
     sub: 'As Beginner, with a login banner and no DNS lookups for mistyped commands',
-    lead: 'R1 is a fresh router with no security configured.',
     steps: ['Keep the Beginner settings.', 'Add a banner, for example banner motd #Authorized access only#.', 'Turn off DNS lookups with no ip domain-lookup.'],
-    reqs: () => [...HARDEN_BASE, {text: 'A MOTD banner is set', ok: s => !!R1(s).sec.banner, hint: {cmds: ['banner motd #Authorized access only#']}},
-      {text: 'DNS lookups for mistyped commands are off', ok: s => R1(s).sec.nolookup, hint: {cmds: ['no ip domain-lookup']}}],
-    cmds: () => [...HARDEN.beginner.cmds, 'banner motd #Authorized access only#', 'no ip domain-lookup'],
+    reqs: HARDEN_I,
+    cmds: HARDEN_I_CMDS,
   },
   advanced: {
     sub: 'As Intermediate, and lock down the console line',
-    lead: 'R1 is a fresh router with no security configured.',
     steps: ['Keep the Intermediate settings.', 'Under line console 0, set a password and login.', 'Add logging synchronous so log messages do not interrupt typing.'],
-    reqs: () => [...HARDEN.intermediate.reqs(), ...hardenLine('console'),
-      lineCheck('console', 'The console uses logging synchronous', l => l.sync, 'logging synchronous')],
-    cmds: () => [...HARDEN.intermediate.cmds(), 'line console 0', 'password cisco', 'login', 'logging synchronous', 'exit'],
+    reqs: HARDEN_A,
+    cmds: HARDEN_A_CMDS,
   },
   expert: {
     sub: 'As Advanced, and lock down the VTY lines with an idle timeout on every line',
-    lead: 'R1 is a fresh router with no security configured.',
     steps: ['Keep the Advanced settings.', 'Under line vty 0 4, set a password and login.', 'Set exec-timeout 5 0 on the console and on the VTY lines.'],
-    reqs: () => [...HARDEN.advanced.reqs(), ...hardenLine('vty'),
+    reqs: [...HARDEN_A, ...hardenLine('vty'),
       lineCheck('console', 'The console logs out after 5 idle minutes', l => l.timeout === '5 0', 'exec-timeout 5 0'),
       lineCheck('vty', 'VTY lines log out after 5 idle minutes', l => l.timeout === '5 0', 'exec-timeout 5 0')],
-    cmds: () => [...HARDEN.advanced.cmds(), 'line vty 0 4', 'password cisco', 'login', 'exec-timeout 5 0', 'exit',
+    cmds: [...HARDEN_A_CMDS, 'line vty 0 4', 'password cisco', 'login', 'exec-timeout 5 0', 'exit',
       'line console 0', 'exec-timeout 5 0', 'exit'],
   },
 };
 
-const TELNET_ACL = [aclEntries('110', 'extended', ['deny tcp any any eq telnet', 'permit ip any any']), aclApplied('gi0/0', 'in', '110')];
-const TELNET_CMDS = ['ip access-list extended 110', 'deny tcp any any eq telnet', 'permit ip any any', 'exit', ...onIf('gi0/0', 'ip access-group 110 in')];
+// the entries of the ACL labs' ACLs (the troubleshooting ACL labs in labs-fix.js break and fix the same ones)
+const BLOCK10 = x => [`deny host 192.168.${x}.10`, 'permit any'];
+const TELNET_ENTRIES = ['deny tcp any any eq telnet', 'permit ip any any'];
+const WEB_ENTRIES = x => [`deny tcp 192.168.${x}.0 0.0.0.127 any eq www`, 'permit ip any any'];
+const TELNET_ACL = [aclEntries('110', 'extended', TELNET_ENTRIES), aclApplied('gi0/0', 'in', '110')];
+const TELNET_CMDS = ['ip access-list extended 110', ...TELNET_ENTRIES, 'exit', ...onIf('gi0/0', 'ip access-group 110 in')];
 const ACL = {
   beginner: {
     sub: 'Block 192.168.x.10 with standard ACL 10 on inbound Gi0/0',
     lead: x => `PC1 is on 192.168.${x}.0/24 behind Gi0/0.`,
     steps: ['Create standard ACL 10: deny host 192.168.x.10, then permit any.', 'Apply ACL 10 inbound on Gi0/0.'],
-    reqs: x => [...LAN_IF(x), aclEntries('10', 'standard', [`deny host 192.168.${x}.10`, 'permit any']), aclApplied('gi0/0', 'in', '10')],
-    cmds: x => [...LAN_CMDS(x), 'ip access-list standard 10', `deny host 192.168.${x}.10`, 'permit any', 'exit', ...onIf('gi0/0', 'ip access-group 10 in')],
+    reqs: x => [...LAN_IF(x), aclEntries('10', 'standard', BLOCK10(x)), aclApplied('gi0/0', 'in', '10')],
+    cmds: x => [...LAN_CMDS(x), 'ip access-list standard 10', ...BLOCK10(x), 'exit', ...onIf('gi0/0', 'ip access-group 10 in')],
   },
   intermediate: {
     sub: 'Block the first half of the LAN with standard ACL 10 on outbound Gi0/1',
@@ -877,10 +996,9 @@ const ACL = {
     lead: x => `PC1 is on 192.168.${x}.0/24. R2 is reached through Gi0/1.`,
     steps: ['Keep ACL 110 inbound on Gi0/0.', 'Create extended ACL web-filter: deny tcp the first half of the LAN to any eq www, then permit ip any any.',
       'Apply web-filter outbound on Gi0/1.'],
-    reqs: x => [...BOTH_IFS(x), ...TELNET_ACL,
-      aclEntries('web-filter', 'extended', [`deny tcp 192.168.${x}.0 0.0.0.127 any eq www`, 'permit ip any any']), aclApplied('gi0/1', 'out', 'web-filter')],
-    cmds: x => [...BOTH_CMDS(x), ...TELNET_CMDS, 'ip access-list extended web-filter', `deny tcp 192.168.${x}.0 0.0.0.127 any eq www`,
-      'permit ip any any', 'exit', ...onIf('gi0/1', 'ip access-group web-filter out')],
+    reqs: x => [...BOTH_IFS(x), ...TELNET_ACL, aclEntries('web-filter', 'extended', WEB_ENTRIES(x)), aclApplied('gi0/1', 'out', 'web-filter')],
+    cmds: x => [...BOTH_CMDS(x), ...TELNET_CMDS, 'ip access-list extended web-filter', ...WEB_ENTRIES(x), 'exit',
+      ...onIf('gi0/1', 'ip access-group web-filter out')],
   },
 };
 
@@ -1054,15 +1172,11 @@ const SERVICES = {
 // a requirement on any configurable device's port or interface: dev is S1, S2, R1 or R2
 const portOf = (s, dev, k) => (s.config(dev).ports || s.config(dev).ifs)[k];
 const devReq = (dev, k, text, ok, ...cmds) => ({text: `${dev} ${portName(k)} ${text}`, ok: s => ok(portOf(s, dev, k)), hint: {cmds, port: portName(k), dev}});
-// global configuration lines on another device, as a solution step
-const onDev = (dev, ...lines) => [dev, ['enable', 'conf t', ...lines, 'end']];
 // a switch lab's solution: the diagram opens on R1, but the commands go to S1
-const onS1 = lines => ({cmds: [], then: [onDev('S1', ...lines)]});
 
 // 1.0 EUI-64 and SLAAC on R1: the interface ID comes from the MAC (see show interfaces)
 const v6Eui = (k, prefix) => rtReq(k, `builds its address in ${prefix} with EUI-64`,
   i => i.eui && !!i.ip6 && v6Canon(i.ip6) === v6Canon(prefix), `ipv6 address ${prefix} eui-64`);
-const rtUp = k => rtReq(k, 'is up', i => !i.shut, 'no shutdown');
 const EUI_LEAD = x => `Your prefix is 2001:db8:${x}::/48. R1 has no IPv6 addressing yet. Each interface has its own MAC address.`;
 const EUI_B = x => [v6Eui('gi0/0', `2001:db8:${x}:1::/64`), rtUp('gi0/0')];
 const EUI_I = x => [...EUI_B(x), v6Eui('gi0/1', `2001:db8:${x}:2::/64`), rtUp('gi0/1')];
@@ -1166,26 +1280,26 @@ const VOICEVLAN = {
     sub: 'Put the PC on Fa0/1 in data VLAN 10 and the phone in voice VLAN 150',
     steps: ['Create VLANs 10 and 150.', 'Make Fa0/1 an access port in VLAN 10.', 'Add switchport voice vlan 150 on Fa0/1 and bring it up.'],
     reqs: [swVlan(10), swVlan(150), ...phonePort('fa0/1')],
-    ...onS1(['vlan 10', 'exit', 'vlan 150', 'exit', ...phoneCmds('fa0/1')]),
+    cmds: ['vlan 10', 'exit', 'vlan 150', 'exit', ...phoneCmds('fa0/1')],
   },
   intermediate: {
     sub: 'Name the VLANs DATA and VOICE, and set up Fa0/2 the same way',
     steps: ['Name VLAN 10 DATA and VLAN 150 VOICE.', 'Give Fa0/1 and Fa0/2 data VLAN 10 and voice VLAN 150.', 'Bring both ports up.'],
     reqs: VOICE_I,
-    ...onS1(VOICE_I_CMDS),
+    cmds: VOICE_I_CMDS,
   },
   advanced: {
     sub: 'As Intermediate, with PortFast on both phone ports',
     steps: ['Keep the Intermediate settings.', 'Enable PortFast on Fa0/1 and Fa0/2 so the phones come up fast.'],
     reqs: [...VOICE_I, swPortfast('fa0/1'), swPortfast('fa0/2')],
-    ...onS1([...VOICE_I_CMDS, ...onIf('fa0/1', 'spanning-tree portfast'), ...onIf('fa0/2', 'spanning-tree portfast')]),
+    cmds: [...VOICE_I_CMDS, ...onIf('fa0/1', 'spanning-tree portfast'), ...onIf('fa0/2', 'spanning-tree portfast')],
   },
   expert: {
     sub: 'As Advanced, and trunk Gi0/1 to R1 carrying only VLANs 10 and 150',
     steps: ['Keep the Advanced settings.', 'Make Gi0/1 a trunk, allow only VLANs 10 and 150, and bring it up.'],
     reqs: [...VOICE_I, swPortfast('fa0/1'), swPortfast('fa0/2'), swTrunk('gi0/1'), swAllowed('gi0/1', [10, 150]), swUp('gi0/1')],
-    ...onS1([...VOICE_I_CMDS, ...onIf('fa0/1', 'spanning-tree portfast'), ...onIf('fa0/2', 'spanning-tree portfast'),
-      ...onIf('gi0/1', 'switchport mode trunk', 'switchport trunk allowed vlan 10,150', 'no shutdown')]),
+    cmds: [...VOICE_I_CMDS, ...onIf('fa0/1', 'spanning-tree portfast'), ...onIf('fa0/2', 'spanning-tree portfast'),
+      ...onIf('gi0/1', 'switchport mode trunk', 'switchport trunk allowed vlan 10,150', 'no shutdown')],
   },
 };
 
@@ -1449,26 +1563,26 @@ const DHCPSNOOP = {
     sub: 'Turn on DHCP snooping for VLAN 1 and trust the port to R1',
     steps: ['Turn on ip dhcp snooping.', 'Turn it on for VLAN 1.', 'Trust Gi0/1, where the real server is.'],
     reqs: [SNOOP_ON, snoopVlan(1), SNOOP_TRUST],
-    ...onS1(snoopCmds(1)),
+    cmds: snoopCmds(1),
   },
   intermediate: {
     sub: 'As Beginner, and stop S1 inserting option 82',
     steps: ['Keep the Beginner settings.', 'Turn off option 82 insertion, which R1 would otherwise reject.'],
     reqs: [SNOOP_ON, snoopVlan(1), SNOOP_TRUST, SNOOP_NO82],
-    ...onS1([...snoopCmds(1), 'no ip dhcp snooping information option']),
+    cmds: [...snoopCmds(1), 'no ip dhcp snooping information option'],
   },
   advanced: {
     sub: 'As Intermediate, and rate-limit DHCP on the PC ports to stop starvation attacks',
     steps: ['Keep the Intermediate settings.', 'Limit DHCP on Fa0/1 and Fa0/2 to 10 packets per second.'],
     reqs: [SNOOP_ON, snoopVlan(1), SNOOP_TRUST, SNOOP_NO82, snoopRate('fa0/1'), snoopRate('fa0/2')],
-    ...onS1([...snoopCmds(1), 'no ip dhcp snooping information option', ...rateCmds]),
+    cmds: [...snoopCmds(1), 'no ip dhcp snooping information option', ...rateCmds],
   },
   expert: {
     sub: 'Move the PCs to VLAN 10 and protect that VLAN with the Advanced settings',
     steps: ['Create VLAN 10 and make Fa0/1 and Fa0/2 access ports in it.', 'Turn on snooping for VLAN 10, trust Gi0/1 and turn off option 82.',
       'Rate-limit DHCP on Fa0/1 and Fa0/2 to 10 packets per second.'],
     reqs: [...VLAN10_PCS, SNOOP_ON, snoopVlan(10), SNOOP_TRUST, SNOOP_NO82, snoopRate('fa0/1'), snoopRate('fa0/2')],
-    ...onS1([...VLAN10_CMDS, ...snoopCmds(10), 'no ip dhcp snooping information option', ...rateCmds]),
+    cmds: [...VLAN10_CMDS, ...snoopCmds(10), 'no ip dhcp snooping information option', ...rateCmds],
   },
 };
 
@@ -1486,26 +1600,26 @@ const DAI = {
     steps: ['DAI checks ARP against the snooping table: turn on DHCP snooping for VLAN 1 and trust Gi0/1.',
       'Turn on ip arp inspection vlan 1.', 'Trust Gi0/1 for ARP inspection too.'],
     reqs: daiBase(1),
-    ...onS1(daiCmds(1)),
+    cmds: daiCmds(1),
   },
   intermediate: {
     sub: 'As Beginner, and also check the source MAC of ARP packets',
     steps: ['Keep the Beginner settings.', 'Add ip arp inspection validate src-mac.'],
     reqs: [...daiBase(1), DAI_SRC],
-    ...onS1([...daiCmds(1), 'ip arp inspection validate src-mac']),
+    cmds: [...daiCmds(1), 'ip arp inspection validate src-mac'],
   },
   advanced: {
     sub: 'As Beginner, and check source MAC, destination MAC and IP together',
     steps: ['Keep the Beginner settings.', 'Each validate line replaces the last one, so list all three checks in one command.'],
     reqs: [...daiBase(1), DAI_ALL],
-    ...onS1([...daiCmds(1), 'ip arp inspection validate src-mac dst-mac ip']),
+    cmds: [...daiCmds(1), 'ip arp inspection validate src-mac dst-mac ip'],
   },
   expert: {
     sub: 'Move the PCs to VLAN 10 and protect it with snooping and full ARP inspection',
     steps: ['Create VLAN 10 and make Fa0/1 and Fa0/2 access ports in it.', 'Turn on snooping and ARP inspection for VLAN 10, trusting Gi0/1 for both.',
       'Validate source MAC, destination MAC and IP.'],
     reqs: [...VLAN10_PCS, ...daiBase(10), DAI_ALL],
-    ...onS1([...VLAN10_CMDS, ...daiCmds(10), 'ip arp inspection validate src-mac dst-mac ip']),
+    cmds: [...VLAN10_CMDS, ...daiCmds(10), 'ip arp inspection validate src-mac dst-mac ip'],
   },
 };
 
@@ -1518,7 +1632,7 @@ const LABS = {
   vlsm: {kind: 'v4', maskRule: 'the smallest mask that fits its hosts',
     lead: x => `Your network is 192.168.${x}.0/24. Each LAN has a host requirement.`, levels: VLSM},
   ipv6: {kind: 'v6', lead: x => `Your prefix is 2001:db8:${x}::/48. R1 has no IPv6 addressing yet.`, levels: IPV6},
-  cdp: {kind: 'sw', levels: CDP},
+  cdp: {kind: 'cdp', levels: CDP},
   vlans: {kind: 'sw', lead: SW_LEAD, levels: VLANS},
   access: {kind: 'sw', lead: SW_LEAD, levels: ACCESS},
   trunk: {kind: 'sw', lead: SW_LEAD, levels: TRUNK},
@@ -1534,8 +1648,9 @@ const LABS = {
   ospf: {kind: 'rt', levels: OSPF},
   ospfv3: {kind: 'rt', levels: OSPF6},
   rip: {kind: 'rt', levels: RIP},
+  legacyrouting: {kind: 'rt', levels: RIP1},
   eigrp: {kind: 'rt', levels: EIGRP},
-  harden: {kind: 'rt', levels: HARDEN},
+  harden: {kind: 'rt', lead: 'R1 is a fresh router with no security configured.', levels: HARDEN},
   acl: {kind: 'rt', levels: ACL},
   dhcp: {kind: 'rt', levels: DHCP},
   // the DHCP server behind R2: it answers once R1 has Gi0/1 up and a route towards it
@@ -1559,7 +1674,7 @@ const LABS = {
 // IPv4 and IPv6 addressing labs: requirements, solution, steps and diagram all follow from the level's interfaces
 function addressingLab(T, cfg, x) {
   const v6 = T.kind === 'v6';
-  const ifs = cfg.ifs.map(r => ({...r, name: portName(r.k), ip: v6 ? `2001:db8:${x}:${r.sub}::1/64` : `192.168.${x}.${r.host}`}));
+  const ifs = atNet(cfg.ifs, x).map(r => ({...r, name: portName(r.k), ip: v6 ? `2001:db8:${x}:${r.sub}::1/64` : `192.168.${x}.${r.host}`}));
   const reqs = [], cmds = [], steps = [];
   for (const r of ifs) {
     reqs.push(v6
@@ -1574,7 +1689,7 @@ function addressingLab(T, cfg, x) {
     steps.push(v6 ? `${r.name} serves subnet ${r.sub}; use ::1 as its address`
       : `${r.name} serves ${r.lan}${r.need ? ` (${r.need} hosts)` : ''}${T.showNet ? ` at 192.168.${x}.${r.net}` : ''}; use the ${r.rule} usable address as the gateway`);
   }
-  for (const r of ifs) reqs.push(rtReq(r.k, 'is up', i => !i.shut, 'no shutdown'));
+  reqs.push(...ifs.map(r => rtUp(r.k)));
   steps.push('Bring each interface up and check that it stays up.');
   // R1 on the left, one PC per interface stacked on the right
   const n = ifs.length, height = Math.max(180, (n - 1) * 64 + 92), mid = height / 2;
@@ -1587,21 +1702,22 @@ function addressingLab(T, cfg, x) {
   return {reqs, solution: solutionOf('R1', cmds), steps, nodes, links, height, home: 'R1'};
 }
 
-// the known-good config: cmds typed in global configuration on the home device, then the other devices' lines; [] without cmds
-const solutionOf = (home, cmds, then = []) => cmds ? [[home, ['enable', 'conf t', ...cmds, 'end']], ...then] : [];
+// the known-good config: cmds typed in global configuration on the home device (if any), then the other devices' lines
+const solutionOf = (home, cmds, then = []) => [...(cmds?.length ? [[home, ['enable', 'conf t', ...cmds, 'end']]] : []), ...then];
 
-// how each kind of lab builds a level for the network x
+// how each kind of lab builds level cfg of topic T for the network x; a level's fields may be values or functions of x
 const atNet = (v, x) => (typeof v === 'function' ? v(x) : v);
-const fixedLab = topo => (T, cfg) => x => ({...topo, reqs: atNet(cfg.reqs, x), steps: cfg.steps,
+const fixedLab = topo => (T, cfg, x) => ({...topo, reqs: atNet(cfg.reqs, x), steps: cfg.steps,
   setup: cfg.setup && atNet(cfg.setup, x), solution: solutionOf(topo.home, atNet(cfg.cmds, x), cfg.then && atNet(cfg.then, x))});
 const LAB_KINDS = {
-  v4: (T, cfg) => x => addressingLab(T, cfg, x),
-  v6: (T, cfg) => x => addressingLab(T, cfg, x),
+  v4: addressingLab,
+  v6: addressingLab,
   sw: fixedLab(SW_TOPO),
+  cdp: fixedLab({...SW_TOPO, home: 'R1'}),
   mls: fixedLab(MLS_TOPO),
   rt: fixedLab(RT_TOPO),
   sw2: fixedLab(SW2_TOPO),
   hsrp: fixedLab(HSRP_TOPO),
 };
 // a level of topic T built for the network x (troubleshooting topics join LABS later, in labs-fix.js)
-const buildLab = (T, cfg, x) => LAB_KINDS[T.kind](T, cfg)(x);
+const buildLab = (T, cfg, x) => LAB_KINDS[T.kind](T, cfg, x);

@@ -4,7 +4,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 const FILES = ['topics.js', 'devices/device.js', 'devices/ios.js', 'help.js', 'devices/router.js', 'devices/switch.js',
-  'devices/mls.js', 'devices/pc.js', 'devices/readonly.js', 'labs.js', 'labs-fix.js', 'session.js'];
+  'devices/mls.js', 'devices/pc.js', 'devices/readonly.js', 'labs.js', 'labs-fix.js', 'session.js', 'topo-data.js', 'sandbox-model.js'];
 
 const ctx = vm.createContext({console});
 for (const f of FILES) {

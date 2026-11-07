@@ -1229,7 +1229,7 @@ details.card summary {
   cursor: pointer;
 }
 
-#topo-canvas [data-dev] {
+:is(#topo-canvas, .sb-canvas) [data-dev] {
   cursor: grab;
 }
 
@@ -1315,43 +1315,43 @@ details.card summary {
 }
 
 /* the wide invisible line over each cable that makes it easy to click */
-#topo-canvas .hit {
+:is(#topo-canvas, .sb-canvas) .hit {
   stroke: transparent;
   stroke-width: 14;
   cursor: pointer;
 }
 
-#topo-canvas .hit:hover {
+:is(#topo-canvas, .sb-canvas) .hit:hover {
   stroke: var(--bad-tint);
 }
 
 /* the empty-canvas prompt */
-#topo-canvas .empty {
+:is(#topo-canvas, .sb-canvas) .empty {
   fill: none;
   stroke: var(--border);
   stroke-width: 1.5;
   stroke-dasharray: 6 6;
 }
 
-#topo-canvas .empty-t {
+:is(#topo-canvas, .sb-canvas) .empty-t {
   fill: var(--text);
   font: 600 14px var(--sans);
   text-anchor: middle;
 }
 
-#topo-canvas .empty-s {
+:is(#topo-canvas, .sb-canvas) .empty-s {
   fill: var(--muted);
   font: 13px var(--sans);
   text-anchor: middle;
 }
 
 /* port labels and cable-type labels */
-#topo-canvas .pchip rect {
+:is(#topo-canvas, .sb-canvas) .pchip rect {
   fill: var(--surface-2);
   stroke: var(--border);
 }
 
-#topo-canvas .pchip text {
+:is(#topo-canvas, .sb-canvas) .pchip text {
   fill: var(--muted);
   font: 10px var(--mono);
   text-anchor: middle;
@@ -1366,11 +1366,11 @@ details.card summary {
   stroke-width: 4px;
 }
 
-#topo-canvas :is(.pchip, .ctype, .empty, .empty-t, .empty-s) {
+:is(#topo-canvas, .sb-canvas) :is(.pchip, .ctype, .empty, .empty-t, .empty-s) {
   pointer-events: none;
 }
 
-#topo-canvas {
+:is(#topo-canvas, .sb-canvas) {
   touch-action: none;
   user-select: none;
 }
@@ -1854,4 +1854,160 @@ details.card summary {
   .lab-top {
     flex-direction: column-reverse;
   }
+}
+
+/* ---- Sandbox page (sandbox.html): the canvas shares the Topology page's drawing styles above ---- */
+.sb-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 520px);
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .sb-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.sb-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.sb-bar :is(select, input[type="text"]),
+.sb-ping :is(select, input) {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  min-width: 0;
+}
+
+.sb-bar button {
+  padding: 10px 14px;
+}
+
+.sb-chips,
+.sb-modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sb-chips {
+  display: contents;
+}
+
+.sb-modes {
+  margin: 0 0 14px;
+}
+
+.sb-modes button {
+  padding: 8px 14px;
+}
+
+.sb-modes button[aria-pressed="true"] {
+  background: var(--accent-tint);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.sb-wrap {
+  position: relative;
+}
+
+#topo.sb-canvas svg {
+  max-height: none;
+}
+
+#topo.sb-canvas [data-dev] {
+  cursor: grab;
+}
+
+#topo.sb-canvas [data-dev]:focus-visible {
+  outline: none;
+}
+
+#topo.sb-canvas [data-dev]:focus-visible .box,
+#topo.sb-canvas [data-dev].pend .box {
+  stroke: var(--warn);
+  stroke-width: 2;
+}
+
+/* a cable with a shut down end */
+#topo.sb-canvas .link.down {
+  stroke: var(--bad);
+  stroke-dasharray: 6 5;
+}
+
+/* the packet of the packet test */
+#topo.sb-canvas .pkt {
+  fill: var(--success);
+  stroke: var(--canvas);
+  stroke-width: 2;
+  pointer-events: none;
+}
+
+#topo.sb-canvas .pkt.lost {
+  fill: var(--bad);
+}
+
+.sb-menu {
+  position: absolute;
+  z-index: 5;
+  display: grid;
+  gap: 4px;
+  min-width: 150px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .35);
+}
+
+.sb-menu .note {
+  margin: 0 0 4px;
+  font-size: 12px;
+}
+
+.sb-menu button {
+  padding: 5px 10px;
+  font: 12px var(--mono);
+  text-align: left;
+}
+
+.sb-ping {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+@media (max-width: 600px) {
+  .sb-ping {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.sb-events {
+  margin: 12px 0 0;
+  padding-left: 22px;
+  color: var(--muted);
+  font: 12px/1.9 var(--mono);
+}
+
+.sb-events:empty {
+  display: none;
+}
+
+.sb-events .ok {
+  color: var(--success);
+}
+
+.sb-events .err {
+  color: var(--bad);
 }

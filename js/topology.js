@@ -1,31 +1,5 @@
 // Topology page: drag devices from the palette onto the canvas, move them, then cable them to match a task.
 
-// device icons (24x24), also used by the lab diagram in lab.js and the palette buttons below
-const TOPO_ICONS = {
-  router: '<rect x="2" y="9" width="20" height="10" rx="2"/><path d="M6 14h.01M10 14h.01M14 14h.01M12 9V5"/>',
-  switch: '<rect x="2" y="10" width="20" height="8" rx="2"/><path d="M6 14h.01M10 14h.01M14 14h.01M18 14h.01"/>',
-  mls: '<rect x="2" y="10" width="20" height="8" rx="2"/><path d="M6 14h.01M10 14h.01M14 14h.01M18 14h.01M12 6v3M9 7l3-3 3 3"/>',
-  dhcp: '<rect x="4" y="3" width="16" height="6" rx="1"/><rect x="4" y="11" width="16" height="6" rx="1"/><path d="M8 6h.01M8 14h.01M12 20v-3"/>',
-  pc: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M9 20h6M12 16v4"/>',
-  notebook: '<rect x="5" y="5" width="14" height="10" rx="1"/><path d="M2 19h20"/>',
-  printer: '<path d="M7 9V4h10v5"/><rect x="3" y="9" width="18" height="8" rx="2"/><rect x="7" y="14" width="10" height="6"/>',
-  ap: '<rect x="4" y="15" width="16" height="5" rx="2"/><path d="M8.5 11a5 5 0 0 1 7 0M5.5 8a9 9 0 0 1 13 0M12 17.5h.01"/>',
-  wlc: '<rect x="2" y="11" width="20" height="8" rx="2"/><path d="M6 15h.01M10 15h.01M9 7.5a4.2 4.2 0 0 1 6 0M12 9.5v1"/>',
-};
-const TOPO_TYPES = {
-  router: {prefix: 'R', label: 'router', sub: 'router', ports: ['Gi0/0', 'Gi0/1', 'Gi0/2']},
-  switch: {prefix: 'S', label: 'switch', sub: 'switch', ports: ['Fa0/1', 'Fa0/2', 'Fa0/3', 'Fa0/4', 'Fa0/5', 'Fa0/6', 'Fa0/7', 'Fa0/8']},
-  pc: {prefix: 'PC', label: 'PC', sub: 'PC', ports: ['NIC']},
-  mls: {prefix: 'MLS', label: 'multilayer switch', sub: 'L3 switch', ports: ['Gi1/0/1', 'Gi1/0/2', 'Gi1/0/3', 'Gi1/0/4', 'Gi1/0/5', 'Gi1/0/6']},
-  dhcp: {prefix: 'DHCP', label: 'DHCP server', sub: 'server', ports: ['NIC']},
-  notebook: {prefix: 'NB', label: 'notebook', sub: 'notebook', ports: ['NIC']},
-  printer: {prefix: 'PRN', label: 'printer', sub: 'printer', ports: ['NIC']},
-  ap: {prefix: 'AP', label: 'access point', sub: 'access point', ports: ['Gi0']},
-  wlc: {prefix: 'WLC', label: 'wireless LAN controller', sub: 'WLC', ports: ['Gi0/0', 'Gi0/1', 'Gi0/2', 'Gi0/3']},
-};
-// device names are a type prefix plus a number (R1, MLS2), so the name tells the type
-const typeOf = name => Object.keys(TOPO_TYPES).find(type => TOPO_TYPES[type].prefix === name.replace(/\d+$/, ''));
-
 const TOPO_TASKS = [
   {level: 'beginner', title: 'Connect the router to the switch', devices: ['R1', 'S1'], links: [['R1', 'S1']]},
   {level: 'beginner', title: 'Connect the switch to a PC', devices: ['S1', 'PC1'], links: [['S1', 'PC1']]},
@@ -74,7 +48,7 @@ const rightCable = (x, y) => (SWITCHY.has(typeOf(x)) === SWITCHY.has(typeOf(y)) 
 const CABLE_NAMES = {straight: 'straight-through', cross: 'crossover', fiber: 'fiber', serial: 'serial', console: 'console', coax: 'coaxial'};
 
 // canvas size (the SVG viewBox), device box size, and the margin devices keep from the edge
-const TOPO_W = 600, TOPO_H = 340, NODE_W = 120, NODE_H = 44, EDGE = 8;
+const TOPO_W = 600, TOPO_H = 340, EDGE = 8; // the device box size (NODE_W, NODE_H) is in topo-data.js
 
 let topoLevel = 'beginner';
 let topoTask = null;
@@ -88,7 +62,6 @@ const topoCanvas = document.getElementById('topo-canvas');
 
 const nodeOf = name => topoNodes.find(n => n.name === name);
 const cableOf = (x, y) => topoCables.find(c => (c.a === x && c.b === y) || (c.a === y && c.b === x));
-const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
 function topoMsg(text) {
   document.getElementById('topo-msg').textContent = text;
@@ -178,22 +151,8 @@ function topoReqs() {
   return [...devices, ...cables, {text: 'No extra cables', ok: topoCables.length === topoTask.links.length}];
 }
 
-// the pointer position in canvas (viewBox) coordinates
-function svgPoint(e) {
-  const svg = topoCanvas.querySelector('svg');
-  const point = Object.assign(svg.createSVGPoint(), {x: e.clientX, y: e.clientY});
-  return point.matrixTransform(svg.getScreenCTM().inverse());
-}
 
 function topoSvg() {
-  const mid = n => ({x: n.x + NODE_W / 2, y: n.y + NODE_H / 2});
-  // a port label just outside a device's edge, along the cable (d is the cable's direction, length 1)
-  const portChip = (n, d, port) => {
-    const c = mid(n);
-    const k = Math.min(NODE_W / 2 / (Math.abs(d.x) || 1e-9), NODE_H / 2 / (Math.abs(d.y) || 1e-9)) + 16;
-    const x = c.x + d.x * k, y = c.y + d.y * k, w = port.length * 6 + 10;
-    return `<g class="pchip"><rect x="${x - w / 2}" y="${y - 8}" width="${w}" height="16" rx="4"/><text x="${x}" y="${y + 3.5}">${port}</text></g>`;
-  };
   let svg = `<svg viewBox="0 0 ${TOPO_W} ${TOPO_H}" role="img" aria-label="Lab topology. Drag devices to move them.">`;
   if (!topoNodes.length) {
     svg += `<rect class="empty" x="40" y="40" width="${TOPO_W - 80}" height="${TOPO_H - 80}" rx="12"/>` +
@@ -202,7 +161,7 @@ function topoSvg() {
   }
   let labels = ''; // drawn last, on top of the devices
   for (const c of topoCables) {
-    const a = mid(nodeOf(c.a)), b = mid(nodeOf(c.b));
+    const a = nodeMid(nodeOf(c.a)), b = nodeMid(nodeOf(c.b));
     const ends = `x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"`;
     // the visible line, then a wide invisible one on top that is easier to click
     svg += `<line class="link ${c.type}" ${ends}/>` +
@@ -258,7 +217,7 @@ function topoNewTask() {
 topoCanvas.addEventListener('pointerdown', e => {
   const g = e.target.closest('[data-dev]');
   if (!g) return;
-  const n = nodeOf(g.dataset.dev), p = svgPoint(e);
+  const n = nodeOf(g.dataset.dev), p = svgPoint(topoCanvas, e);
   topoDrag = {name: n.name, dx: p.x - n.x, dy: p.y - n.y, startX: e.clientX, startY: e.clientY, moved: false};
   topoCanvas.setPointerCapture(e.pointerId);
 });
@@ -266,7 +225,7 @@ topoCanvas.addEventListener('pointermove', e => {
   if (!topoDrag) return;
   if (!topoDrag.moved && Math.hypot(e.clientX - topoDrag.startX, e.clientY - topoDrag.startY) < 5) return; // still a click
   topoDrag.moved = true;
-  const p = svgPoint(e);
+  const p = svgPoint(topoCanvas, e);
   moveNode(nodeOf(topoDrag.name), p.x - topoDrag.dx, p.y - topoDrag.dy);
   topoRender();
 });
@@ -281,32 +240,9 @@ topoCanvas.addEventListener('pointercancel', () => { topoDrag = null; });
 document.querySelectorAll('.topo-chip').forEach(chip => {
   const type = chip.dataset.type;
   chip.insertAdjacentHTML('afterbegin', `<svg class="chip-ico" viewBox="0 0 24 24" aria-hidden="true">${TOPO_ICONS[type]}</svg>`);
-  chip.addEventListener('pointerdown', e => {
-    const ghost = document.getElementById('topo-ghost'); // the label that follows the pointer
-    const follow = ev => {
-      ghost.style.left = ev.clientX + 12 + 'px';
-      ghost.style.top = ev.clientY + 12 + 'px';
-    };
-    const stop = () => {
-      chip.removeEventListener('pointermove', follow);
-      chip.removeEventListener('pointerup', drop);
-      chip.removeEventListener('pointercancel', stop);
-      ghost.hidden = true;
-    };
-    const drop = ev => {
-      stop();
-      const r = topoCanvas.getBoundingClientRect();
-      if (ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom) addNode(type, svgPoint(ev));
-      else topoMsg('Drop the device on the canvas.');
-    };
-    ghost.textContent = TOPO_TYPES[type].label;
-    ghost.hidden = false;
-    follow(e);
-    chip.setPointerCapture(e.pointerId);
-    chip.addEventListener('pointermove', follow);
-    chip.addEventListener('pointerup', drop);
-    chip.addEventListener('pointercancel', stop);
-  });
+  const miss = () => topoMsg('Drop the device on the canvas.');
+  dragFromChip(chip, TOPO_TYPES[type].label, topoCanvas, p => addNode(type, p), miss);
+  chip.addEventListener('click', () => { if (!chip.dragged) miss(); }); // a plain click: say how to add it
 });
 
 document.getElementById('nav-topo').addEventListener('click', () => {

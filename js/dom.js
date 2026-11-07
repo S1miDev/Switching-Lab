@@ -34,5 +34,8 @@ document.addEventListener('click', e => {
   body.anim.oncancel = () => { body.style.overflow = ''; };
 });
 
+// seconds as m:ss, for the lab and exam timers
+const clock = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+
 // escapes text for use inside HTML
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));

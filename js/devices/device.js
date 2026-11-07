@@ -20,7 +20,7 @@
 //   run(line, out)             execute one typed line; out(text, cls) takes each line of output
 //   complete(line)             Tab: {value, cycle, list}; value is the new input text, cycle the ports to step
 //                              through with further Tabs, list a line of options to print
-//   help(line, out)            "?": line is what was typed plus the trailing "?"
+//   help(line, out)            "?": line is what was typed plus the trailing "?" (the session sends "?" and "help" here, not to run)
 //   banner()                   the lines shown when its console is opened
 //   ports()                    its interfaces or ports (objects with a name, and an ip once addressed)
 //
@@ -43,8 +43,15 @@ function defineDevice(props) {
   return device;
 }
 
-// the devices cabled to the one called name, each with the lab link that joins them: [[device, link], ...]
+// the port at a device's end of a link. A sandbox link names both ends (pa on a, pb on b). A lab link names one port, the
+// router's (port); in every lab the other end of a router link is a switch's Gi0/1 uplink.
+function portAt(session, l, name) {
+  if (l.pa) return l.a === name ? l.pa : l.pb;
+  return session.devices[name]?.type === 'router' ? l.port : 'Gi0/1';
+}
+
+// the devices cabled to the one called name, each with the ports that join them: [[device, {mine, theirs}], ...]
 const peersOf = (session, name) => session.links.flatMap(l => {
-  const peer = session.devices[l.a === name ? l.b : l.b === name ? l.a : null];
-  return peer ? [[peer, l]] : [];
+  const other = l.a === name ? l.b : l.b === name ? l.a : null, peer = session.devices[other];
+  return peer ? [[peer, {mine: portAt(session, l, name), theirs: portAt(session, l, other)}]] : [];
 });

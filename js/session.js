@@ -8,6 +8,17 @@ function randomNet(avoid) {
   return x;
 }
 
+// Type one line on a session's device; returns its output as [{text, cls}]. A line ending in "?" (or just "help") asks for
+// help; the device does the rest. Shared by lab sessions and the sandbox (sandbox-model.js).
+function runOn(session, name, raw) {
+  const d = session.devices[name], line = raw.trim(), out = [];
+  const print = (text, cls = '') => out.push({text, cls});
+  if (line === 'help') d.help('?', print);
+  else if (line.endsWith('?')) d.help(line, print);
+  else if (line || d.state?.askPw) d.run(line, print); // an empty line still answers a password prompt
+  return out;
+}
+
 // A lab for a topic and difficulty on the network 192.168.net.0, with fresh devices. Everything about the lab comes from its build (labs.js):
 //   reqs, solution   the requirements ({text, ok, hint}) and a known-good config [[device, lines], ...] (empty when the lab has none)
 //   sub, lead, steps, nodes, links, height   the texts and the diagram
@@ -24,10 +35,9 @@ function randomNet(avoid) {
 //   reset()          fresh devices
 function createSession({topic, level, net}) {
   const T = LABS[topic], cfg = T.levels[level];
-  const lead = cfg.lead || T.lead;
   const session = {
-    topic, level, net, sub: cfg.sub,
-    lead: typeof lead === 'function' ? lead(net) : lead,
+    topic, level, net, sub: atNet(cfg.sub, net),
+    lead: atNet(cfg.lead || T.lead, net),
     height: 180,
     ...buildLab(T, cfg, net),
     server: T.server ? T.server(net) : null,
@@ -39,14 +49,7 @@ function createSession({topic, level, net}) {
       const judged = session.judge();
       return {done: judged.filter(r => r === true).length, total: session.startMet.filter(m => !m).length};
     },
-    // a line ending in "?" asks for help; the device does the rest
-    run(name, raw) {
-      const d = session.devices[name], line = raw.trim(), out = [];
-      const print = (text, cls = '') => out.push({text, cls});
-      if (line.length > 1 && line.endsWith('?')) d.help(line, print);
-      else if (line || d.state?.askPw) d.run(line, print); // an empty line still answers a password prompt
-      return out;
-    },
+    run: (name, raw) => runOn(session, name, raw),
     reset() {
       // a node marked readonly is display-only whatever its type
       session.devices = Object.fromEntries(session.nodes.map(n => [n.id, DEVICE_TYPES[n.readonly ? 'readonly' : n.type](n, session)]));

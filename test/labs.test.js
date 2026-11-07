@@ -26,12 +26,12 @@ for (const [id, T] of Object.entries(LABS)) {
       for (const r of session.reqs) {
         assert.ok(r.text && typeof r.ok === 'function' && Array.isArray(r.hint.cmds) && r.hint.cmds.length, `requirement shape: ${r.text}`);
       }
-      if (T.kind === 'rt') assert.ok(session.solution.length, 'router labs have a solution');
+      assert.ok(session.solution.length, 'has a known-good solution');
+      for (const [name, lines] of session.solution) assert.ok(lines.some(l => !['enable', 'conf t', 'end'].includes(l)), `${name} block is not empty`);
       // a preset config is typed on every reset, which hides its errors: type it again here to see them
       for (const [name, lines] of session.setup || []) {
         for (const line of ['enable', 'conf t', ...lines, 'end', 'disable']) assert.deepEqual(errorsOf(session, name, line), [], `setup ${name}: ${line}`);
       }
-      if (!session.solution.length) return;
       assert.ok(!session.grade().every(Boolean), 'starts out solved');
       for (const [name, lines] of session.solution) {
         for (const line of lines) assert.deepEqual(errorsOf(session, name, line), [], `${name}: ${line}`);
@@ -40,3 +40,23 @@ for (const [id, T] of Object.entries(LABS)) {
     });
   }
 }
+
+test('vlsm host needs vary per network and always fit aligned in the /24', () => {
+  const seen = new Set();
+  for (let x = 0; x < 256; x++) {
+    for (const level of Object.keys(LABS.vlsm.levels)) {
+      const s = createSession({topic: 'vlsm', level, net: x});
+      const ifs = s.nodes.filter(n => n.type === 'pc').map(n => +n.sub.match(/(\d+) hosts/)[1]);
+      let off = 0;
+      for (const need of ifs) {
+        let size = 4;
+        while (size - 2 < need) size *= 2;
+        assert.equal(off % size, 0, `x=${x} ${level}: block of ${size} misaligned at ${off}`);
+        off += size;
+      }
+      assert.ok(off <= 256, `x=${x} ${level}: overflows /24`);
+      if (level === 'advanced') seen.add(ifs.join());
+    }
+  }
+  assert.ok(seen.size > 20, 'needs differ between labs');
+});

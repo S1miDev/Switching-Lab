@@ -27,6 +27,22 @@ test('"?" lists help, and empty lines print nothing', () => {
   assert.deepEqual(session.run('S1', '   '), []);
 });
 
+test('help, interface-mode short forms, saving and ip interface brief on both IOS devices', () => {
+  const s = get('createSession')({topic: 'vlans', level: 'beginner', net: 5});
+  const run = (name, line) => s.run(name, line).map(l => l.text);
+  for (const [name, port] of [['R1', 'gi0/1'], ['S1', 'fa0/2']]) {
+    assert.deepEqual(run(name, 'help'), run(name, '?'));
+    for (const l of ['en', 'conf t', 'int ' + port, 'no sh', 'sh']) run(name, l);
+    assert.ok(s.devices[name].ports().find(p => p.name.toLowerCase() === port).shut, 'sh means shutdown');
+    run(name, 'en');
+    assert.match(s.devices[name].prompt(), /#$/, 'en means end');
+    assert.match(run(name, 'show startup-config')[0], /not present/);
+    assert.deepEqual(run(name, 'wr'), ['Building configuration...', '[OK]']);
+    assert.ok(run(name, 'show startup-config').includes(`hostname ${name}`));
+    assert.match(run(name, 'show ip interface brief')[0], /^Interface +IP-Address +Status$/);
+  }
+});
+
 test('a PC takes a static address', () => {
   session.run('PC1', 'ip 192.168.1.10 255.255.255.0 192.168.1.1');
   assert.ok(texts('PC1', 'ipconfig').some(t => t.includes('192.168.1.10/24')));

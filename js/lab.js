@@ -18,8 +18,7 @@ const labPage = (() => {
   // the elapsed-time pill ticks every second and freezes once the lab is solved or checked
   function tick() {
     if (solved || stoppedAt) return;
-    const s = Math.floor((Date.now() - startedAt) / 1000);
-    $('lab-timer').textContent = `⏱ ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+    $('lab-timer').textContent = '⏱ ' + clock(Math.floor((Date.now() - startedAt) / 1000));
   }
   setInterval(tick, 1000);
 
@@ -181,12 +180,24 @@ const labPage = (() => {
     return box;
   }
 
-  document.getElementById('check').addEventListener('click', () => {
-    tick();
-    stoppedAt ||= Date.now();
-    $('cmd').disabled = true;
-    const results = shown.judge();
-    check(results);
+  // one requirement on the result popup; res is its judge() result (null: met since the start, shown but not scored)
+  const RES_ICON = {pre: '<path d="M3.5 8h9"/>', ok: '<path d="M3 8.5l3.2 3.2L13 4.5"/>', bad: '<path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/>'};
+  function resultCard(r, res) {
+    const kind = res === null ? 'pre' : res ? 'ok' : 'bad';
+    const c = el('div', 'res-req ' + kind);
+    const icon = el('span', 'res-icon');
+    icon.innerHTML = '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      RES_ICON[kind] + '</svg>';
+    const txt = el('div', 'res-txt');
+    txt.append(el('b', '', r.text));
+    if (kind === 'pre') txt.append(el('span', 'note', 'Already in place at the start, not scored'));
+    else if (kind === 'bad') txt.append(el('span', 'note', hintCmds(r.hint)));
+    c.append(icon, txt);
+    return c;
+  }
+
+  // the popup Check opens: score, time, hints used, each requirement and the reference solution
+  function showResult(results) {
     const {done, total} = shown.score();
     const hints = reqHints.reduce((a, n) => a + (n || 0), 0);
     const cost = hints * HINT_COST[shown.level]; // percentage points
@@ -198,22 +209,20 @@ const labPage = (() => {
     head.append(el('span', 'res-badge ' + (complete ? 'ok' : 'bad'), complete ? 'COMPLETE' : 'INCOMPLETE'), el('b', 'res-pct', pct + '%'));
     const tiles = el('div', 'res-tiles');
     tiles.append(tile('REQUIREMENTS', `${done}/${total}`), tile('TIME', `${Math.floor(secs / 60)}m ${secs % 60}s`), tile('HINTS', cost ? `${hints} (−${cost}%)` : String(hints)));
-    const cards = shown.reqs.map((r, i) => {
-      const pre = results[i] === null; // met since the start: shown, but neutral and not scored
-      const c = el('div', 'res-req ' + (pre ? 'pre' : results[i] ? 'ok' : 'bad'));
-      const icon = el('span', 'res-icon');
-      icon.innerHTML = '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-        (pre ? '<path d="M3.5 8h9"/>' : results[i] ? '<path d="M3 8.5l3.2 3.2L13 4.5"/>' : '<path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/>') + '</svg>';
-      c.append(icon, el('div', 'res-txt'));
-      c.lastChild.append(el('b', '', r.text));
-      if (pre) c.lastChild.append(el('span', 'note', 'Already in place at the start, not scored'));
-      else if (!results[i]) c.lastChild.append(el('span', 'note', hintCmds(r.hint)));
-      return c;
-    });
+    const cards = shown.reqs.map((r, i) => resultCard(r, results[i]));
     const sol = shown.solution.length ? shown.solution : [['', [...new Set(shown.reqs.map(r => hintCmds(r.hint)))]]];
     resultBody.replaceChildren(head, tiles, el('p', 'note', `${commandCount} command${commandCount === 1 ? '' : 's'} entered`),
       ...cards, solutionBox(sol), resultClose);
     resultDlg.showModal();
+  }
+
+  document.getElementById('check').addEventListener('click', () => {
+    tick();
+    stoppedAt ||= Date.now();
+    $('cmd').disabled = true;
+    const results = shown.judge();
+    check(results);
+    showResult(results);
   });
   document.getElementById('reset').addEventListener('click', () => {
     shown.reset();

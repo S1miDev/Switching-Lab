@@ -40,7 +40,7 @@ function renderProgress(done) {
       segs.append(seg);
     }
     row.append(head, segs);
-    (groups[c.domain] ||= []).push(row);
+    (groups[c.refGroup === 'Troubleshooting' ? 'Troubleshooting' : c.domain] ||= []).push(row); // own card after the domains
   }
   const pct = total ? Math.round(100 * have / total) : 0;
   $('pf-ring').style.setProperty('--pct', pct);
@@ -49,7 +49,7 @@ function renderProgress(done) {
   $('pf-sum-text').textContent = `${have} of ${total} labs solved`;
   $('pf-progress').replaceChildren(...Object.entries(groups).map(([d, rows]) => {
     const g = el('div', 'pf-domain');
-    g.append(el('h3', '', `${d}.0 ${DOMAINS[d]}`), ...rows);
+    g.append(el('h3', '', DOMAINS[d] ? `${d}.0 ${DOMAINS[d]}` : d), ...rows);
     return g;
   }));
 }

@@ -16,6 +16,7 @@
     <button class="nav-item active" id="nav-labs">Labs</button>
     <button class="nav-item" id="nav-trouble">Troubleshooting</button>
     <button class="nav-item" id="nav-topo">Topology</button>
+    <button class="nav-item" id="nav-sandbox">Sandbox</button>
     <button class="nav-item" id="nav-exam">Mock exam</button>
     <button class="nav-item" id="nav-ref">Reference</button>
     <button class="nav-item" id="nav-auth">Log in</button>
@@ -40,6 +41,30 @@
     </header>
 
     <div class="domains" id="dash-domains"></div>
+  </section>
+
+  <!-- Sandbox hub: the nav tab lands here; the canvas itself is sandbox.html -->
+  <section id="sandbox" class="page" hidden>
+    <header class="page-head">
+      <div>
+        <h1>Sandbox</h1>
+        <p>Build network topologies straight from your browser.</p>
+      </div>
+      <div class="seg" id="sandbox-seg" role="group" aria-label="Sandbox sections">
+        <button class="seg-btn active" data-sb-tab="guided">Guided labs</button>
+        <button class="seg-btn" data-sb-tab="mine">My workspace</button>
+      </div>
+    </header>
+    <div class="card" id="sb-guided">
+      <h2>Practise guided labs</h2>
+      <p class="note">Pick a topic and difficulty, follow the lab, and configure each device from its console.</p>
+      <button id="sb-go-labs">Browse labs →</button>
+    </div>
+    <div class="card" id="sb-mine" hidden>
+      <h2>Build and share from your browser</h2>
+      <p class="note">An empty canvas: add devices, cable them, and configure each one from its console. Your work is saved in this browser.</p>
+      <a href="sandbox.html"><button>Open my workspace →</button></a>
+    </div>
   </section>
 
   <!-- Troubleshooting: the topics with refGroup 'Troubleshooting' (renderDashboard in js/script.js) -->
@@ -235,6 +260,7 @@
   <script src="js/labs.js"></script>
   <script src="js/labs-fix.js"></script>
   <script src="js/reference.js"></script>
+  <script src="js/topo-data.js"></script>
   <script src="js/topology.js"></script>
   <script src="js/session.js"></script>
   <script src="js/console.js"></script>

@@ -54,15 +54,28 @@ const labConsole = (() => {
   function show(s, callback = () => {}) {
     session = s;
     onCommand = callback;
-    document.querySelector('.tabs').replaceChildren(...s.nodes.map(n => {
+    for (const out of Object.values(logs)) out.textContent = '';
+    cmdHistory.length = 0;
+    historyPos = 0;
+    dev = s.home; // sync opens it (or the first device: an empty sandbox has no home)
+    sync();
+  }
+
+  // the session's devices changed (sandbox): redo the tabs, keep the output of devices still there, drop the rest
+  function sync() {
+    for (const n of Object.keys(logs)) {
+      if (session.devices[n]) continue;
+      logs[n].remove();
+      delete logs[n];
+    }
+    document.querySelector('.tabs').replaceChildren(...session.nodes.map(n => {
       const tab = el('button', 'tab', n.id);
       tab.dataset.dev = n.id;
       return tab;
     }));
-    for (const out of Object.values(logs)) out.textContent = '';
-    cmdHistory.length = 0;
-    historyPos = 0;
-    showDevice(s.home);
+    input.disabled = !session.nodes.length;
+    if (!session.nodes.length) return void (promptEl.textContent = '');
+    showDevice(session.devices[dev] ? dev : session.nodes[0].id);
   }
 
   // Tab asks the open device to complete the input (it knows its commands and ports). When several ports match, the device
@@ -121,5 +134,5 @@ const labConsole = (() => {
   });
   term.addEventListener('click', () => input.focus());
 
-  return {show};
+  return {show, sync, open: name => session && session.devices[name] && showDevice(name)};
 })();

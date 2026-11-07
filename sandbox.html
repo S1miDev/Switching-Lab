@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Sandbox · SwitchingLab</title>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/output.css">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+  <nav class="side" aria-label="Main">
+    <a class="brand" href="index.html"><span class="brand-dot" aria-hidden="true"></span>SwitchingLab</a>
+    <a class="nav-item" href="index.html">Back to labs</a>
+    <a class="nav-item active" href="sandbox.html" aria-current="page">Sandbox</a>
+  </nav>
+
+  <!-- Sandbox: js/sandbox-model.js holds the network, js/sandbox.js draws it. The ids lab, topo, term, prompt and cmd are the ones console.js uses. -->
+  <main id="lab" class="page">
+    <header class="page-head">
+      <div>
+        <h1>Sandbox</h1>
+        <p>Build your own network, cable it, and configure every device from its console. Your work is saved in this browser as you go.</p>
+      </div>
+      <div class="sb-bar" role="group" aria-label="Sandbox files">
+        <select id="sb-preset" aria-label="Start from a preset"></select>
+        <select id="sb-saved" aria-label="Saved sandboxes"></select>
+        <button class="ghost" id="sb-open" type="button">Open</button>
+        <button class="ghost" id="sb-delete" type="button">Delete save</button>
+        <input id="sb-name" type="text" maxlength="40" placeholder="Name this sandbox" aria-label="Name this sandbox">
+        <button id="sb-save" type="button">Save</button>
+        <button class="ghost" id="sb-export" type="button">Export</button>
+        <button class="ghost" id="sb-import" type="button">Import</button>
+        <input id="sb-file" type="file" accept=".json,application/json" hidden>
+      </div>
+    </header>
+
+    <div class="sb-grid">
+      <section class="card">
+        <div class="topo-palette">
+          <span class="tool-label">Add</span>
+          <span id="sb-chips" class="sb-chips"></span>
+        </div>
+        <div class="sb-modes" role="group" aria-label="Tool">
+          <button class="ghost" type="button" data-mode="move" aria-pressed="true">Move / open console</button>
+          <button class="ghost" type="button" data-mode="cable" aria-pressed="false">Cable</button>
+          <button class="ghost" type="button" data-mode="delete" aria-pressed="false">Delete</button>
+          <button class="ghost" id="sb-clear" type="button">Clear canvas</button>
+        </div>
+        <div class="sb-wrap">
+          <div id="topo" class="sb-canvas"></div>
+          <div id="sb-menu" class="sb-menu" role="menu" hidden></div>
+        </div>
+        <div class="statusbar"><span class="dot" aria-hidden="true"></span><span id="sb-msg" role="status">Add a device to begin.</span></div>
+      </section>
+
+      <div class="lab-col">
+        <section class="card console">
+          <div class="console-head">
+            <span class="console-label">Console</span>
+            <div class="tabs"></div>
+          </div>
+          <div class="term" id="term">
+            <div class="line"><span id="prompt"></span><input id="cmd" aria-label="CLI input" spellcheck="false" autocomplete="off"></div>
+          </div>
+        </section>
+        <section class="card">
+          <h2>Packet test</h2>
+          <p class="note">Send a ping from a PC. The answer comes from the real configuration of the devices on the way.</p>
+          <form id="sb-ping" class="sb-ping">
+            <select id="sb-src" aria-label="Source PC"></select>
+            <input id="sb-dst" type="text" inputmode="decimal" placeholder="Destination IP, e.g. 192.168.20.10" aria-label="Destination IP address" autocomplete="off" spellcheck="false">
+            <button type="submit">Send ping</button>
+          </form>
+          <ol id="sb-events" class="sb-events" aria-live="polite"></ol>
+        </section>
+      </div>
+    </div>
+  </main>
+  <div id="topo-ghost" class="topo-ghost" hidden></div>
+
+  <!-- same device scripts as index.html, without the labs, exam and account code -->
+  <script src="js/dom.js"></script>
+  <script src="js/topics.js"></script>
+  <script src="js/devices/device.js"></script>
+  <script src="js/devices/ios.js"></script>
+  <script src="js/help.js"></script>
+  <script src="js/devices/router.js"></script>
+  <script src="js/devices/switch.js"></script>
+  <script src="js/devices/mls.js"></script>
+  <script src="js/devices/pc.js"></script>
+  <script src="js/topo-data.js"></script>
+  <script src="js/session.js"></script>
+  <script src="js/sandbox-model.js"></script>
+  <script src="js/console.js"></script>
+  <script src="js/sandbox.js"></script>
+</body>
+</html>

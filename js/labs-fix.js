@@ -19,7 +19,6 @@ const TRUNKFIX = {
     steps: ['On S2, run show interfaces trunk: Gi0/1 is missing.', 'Check Gi0/1 in show running-config on S2.', 'Make S2 Gi0/1 a trunk.'],
     setup: [['S1', [...SW2_BASE, ...uplink('switchport mode trunk')]], ['S2', [...SW2_BASE, ...uplink('switchport mode access')]]],
     reqs: bothTrunk,
-    cmds: [],
     then: [onDev('S2', ...onIf('gi0/1', 'switchport mode trunk'))],
   },
   intermediate: {
@@ -28,7 +27,6 @@ const TRUNKFIX = {
     setup: [['S1', [...SW2_BASE, ...uplink('switchport mode trunk', 'switchport trunk native vlan 99')]],
       ['S2', [...SW2_BASE, ...uplink('switchport mode trunk')]]],
     reqs: [...bothTrunk, ...bothNative],
-    cmds: [],
     then: [onDev('S2', ...onIf('gi0/1', 'switchport trunk native vlan 99'))],
   },
   advanced: {
@@ -52,14 +50,12 @@ const TRUNKFIX = {
 };
 
 // 3.0 OSPF troubleshooting on R1: R2 on Gi0/1 should be an area 0 neighbour
-const OSPFFIX_LEAD = x => `R1 Gi0/0 serves 192.168.${x}.0/24. R2 on Gi0/1 should be an OSPF neighbour in area 0, but the adjacency is not working. ` +
-  'Find the fault with show ip ospf interface brief and show running-config, and fix it.';
-const notPassive = k => ({text: `${portName(k)} is not passive in OSPF`, ok: s => !R1(s).ospf.passive.includes(portName(k)),
-  hint: {cmds: ['router ospf 1', `no passive-interface ${portName(k)}`]}});
+const OSPFFIX_LEAD = serves('R2 on Gi0/1 should be an OSPF neighbour in area 0, but the adjacency is not working. ' +
+  'Find the fault with show ip ospf interface brief and show running-config, and fix it.');
 // a working OSPF config with the given router ID, network lines and passive interfaces
 const ospfSetup = (x, rid, nets, passive, extra = []) => [...BOTH_CMDS(x), ...extra, 'router ospf 1', `router-id ${rid}`,
   `network 192.168.${x}.0 0.0.0.255 area 0`, ...nets, ...passive.map(p => `passive-interface ${p}`), 'exit'];
-const OSPFFIX_ALL = x => [...OSPF_BASE(x), ospfRid(false, '1.1.1.1'), ospfPassive(false, 'gi0/0'), notPassive('gi0/1')];
+const OSPFFIX_ALL = x => [...OSPF_BASE(x), ospfRid(false, '1.1.1.1'), igpPassive('ospf', 'gi0/0'), igpPassive('ospf', 'gi0/1', false)];
 const OSPFFIX = {
   beginner: {
     sub: 'The link to R2 is in the wrong area: put it in area 0',
@@ -113,15 +109,14 @@ const INTERVLANFIX = {
     steps: ['On R1, check Gi0/0.20 in show running-config.', 'The dot1Q tag must match the VLAN the subinterface serves.', 'Set the right encapsulation.'],
     setup: [['R1', r1Stick({tag20: 30})], ['S1', s1Stick()]],
     reqs: INTERFIX_ALL,
-    cmds: onIf('gi0/0.20', 'encapsulation dot1Q 20'),
+    then: [onDev('R1', ...onIf('gi0/0.20', 'encapsulation dot1Q 20'))],
   },
   intermediate: {
     sub: 'Neither VLAN reaches R1: check the switch side of the link',
     steps: ['On S1, run show interfaces trunk: Gi0/1 is missing.', 'Check Gi0/1 in show running-config on S1.', 'Make it a trunk again.'],
     setup: [['R1', r1Stick()], ['S1', s1Stick({mode: 'access'})]],
     reqs: INTERFIX_ALL,
-    cmds: [],
-    then: [onDev('S1', ...onIf('gi0/1', 'switchport mode trunk'))],
+    cmds: onIf('gi0/1', 'switchport mode trunk'),
   },
   advanced: {
     sub: 'Two faults: one on R1, one on S1',
@@ -129,8 +124,8 @@ const INTERVLANFIX = {
       'On S1, run show vlan brief: is each PC in the VLAN of its gateway?', 'Fix both.'],
     setup: [['R1', r1Stick({phys: 'shutdown'})], ['S1', s1Stick({vlan2: 10})]],
     reqs: INTERFIX_ALL,
-    cmds: onIf('gi0/0', 'no shutdown'),
-    then: [onDev('S1', ...onIf('fa0/2', 'switchport access vlan 20'))],
+    cmds: onIf('fa0/2', 'switchport access vlan 20'),
+    then: [onDev('R1', ...onIf('gi0/0', 'no shutdown'))],
   },
   expert: {
     sub: 'Three faults: the trunk drops VLAN 20, Gi0/0.10 has the wrong mask, and a PC port is down',
@@ -138,8 +133,8 @@ const INTERVLANFIX = {
       'On R1, check the mask of Gi0/0.10: PC1 must fit in its subnet.', 'On S1, check that both PC ports are up.'],
     setup: [['R1', r1Stick({mask10: '255.255.255.252'})], ['S1', s1Stick({allowed: '10', fa1: 'shutdown'})]],
     reqs: [...INTERFIX_ALL, swAllowed('gi0/1', [10, 20])],
-    cmds: onIf('gi0/0.10', `ip address 192.168.10.1 ${MASK24}`),
-    then: [onDev('S1', ...onIf('gi0/1', 'switchport trunk allowed vlan add 20'), ...onIf('fa0/1', 'no shutdown'))],
+    cmds: [...onIf('gi0/1', 'switchport trunk allowed vlan add 20'), ...onIf('fa0/1', 'no shutdown')],
+    then: [onDev('R1', ...onIf('gi0/0.10', `ip address 192.168.10.1 ${MASK24}`))],
   },
 };
 
@@ -195,11 +190,9 @@ const ACLFIX_LEAD = x => `PC1 is on 192.168.${x}.0/24 behind Gi0/0 and R2 is rea
   'Read them in show running-config (and show access-lists on real IOS), and fix them.';
 const aclNone = (k, dir, name) => rtReq(k, `has no ACL ${dir === 'in' ? 'inbound' : 'outbound'}`, i => !(dir === 'in' ? i.aclIn : i.aclOut),
   `no ip access-group ${name} ${dir}`);
-const BLOCK10 = x => [`deny host 192.168.${x}.10`, 'permit any'];
 // starts by deleting the ACL, so typing it twice does not double its entries
 const aclSetup = (type, name, entries) => [`no ip access-list ${type} ${name}`, `ip access-list ${type} ${name}`, ...entries, 'exit'];
-const TELNET_WRONG = aclSetup('extended', '110', ['permit ip any any', 'deny tcp any any eq telnet']);
-const WEB_ENTRIES = x => [`deny tcp 192.168.${x}.0 0.0.0.127 any eq www`, 'permit ip any any'];
+const TELNET_WRONG = aclSetup('extended', '110', ['permit ip any any', 'deny tcp any any eq telnet']); // the deny never matches
 const ACLFIX = {
   beginner: {
     sub: 'ACL 10 should stop 192.168.x.10 entering R1, but it is applied in the wrong direction',
@@ -222,13 +215,13 @@ const ACLFIX = {
       'Write it again with the deny first; the ip access-group line on Gi0/0 can stay.'],
     setup: x => [['R1', [...LAN_CMDS(x), ...TELNET_WRONG, ...onIf('gi0/0', 'ip access-group 110 in')]]],
     reqs: x => [...LAN_IF(x), ...TELNET_ACL],
-    cmds: [...aclSetup('extended', '110', ['deny tcp any any eq telnet', 'permit ip any any'])],
+    cmds: aclSetup('extended', '110', TELNET_ENTRIES),
   },
   expert: {
     sub: 'Two faults: ACL 110 sits on the wrong interface, and web-filter blocks the whole LAN instead of its first half',
     steps: ['ACL 110 must filter traffic from the LAN as it enters R1: find where it is applied now.', 'Move it to inbound Gi0/0.',
       'Check the wildcard in web-filter: the first half of a /24 is 0.0.0.127. Delete and rewrite web-filter.'],
-    setup: x => [['R1', [...BOTH_CMDS(x), ...aclSetup('extended', '110', ['deny tcp any any eq telnet', 'permit ip any any']),
+    setup: x => [['R1', [...BOTH_CMDS(x), ...aclSetup('extended', '110', TELNET_ENTRIES),
       ...aclSetup('extended', 'web-filter', [`deny tcp 192.168.${x}.0 0.0.0.255 any eq www`, 'permit ip any any']),
       ...onIf('gi0/1', 'ip access-group 110 in', 'ip access-group web-filter out')]]],
     reqs: x => [...BOTH_IFS(x), ...TELNET_ACL, aclNone('gi0/1', 'in', '110'),

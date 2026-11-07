@@ -22,8 +22,8 @@ function createPc(node, session) {
 
   // The router interface or SVI that is the gateway of the PC's LAN, or null when the path to it is down
   const gateway = () => {
-    const [name, key] = st.at.split(' ');
-    return session.devices[name].gateway(key);
+    const [name, key] = (st.at || '').split(' '); // a sandbox PC may not be cabled yet
+    return session.devices[name]?.gateway(key) ?? null;
   };
 
   // the gateway, when the PC has an address on its subnet
@@ -76,9 +76,8 @@ function createPc(node, session) {
     ports: () => [st], // its one network card
     link, canReach,
     run(line, out) {
-      if (line === '?' || line === 'help') return self.help('?', out);
       const w = line.toLowerCase().split(/\s+/);
-      const c = pick(w[0], ['ip', 'dhcp', 'ipconfig', 'ping', 'show', 'help']);
+      const c = pick(w[0], ['ip', 'dhcp', 'ipconfig', 'ping', 'show']);
       if (c === 'dhcp' || (c === 'ip' && pick(w[1], ['dhcp']) && w.length === 2)) return dhcp(out);
       if (c === 'ip' && (w.length === 3 || w.length === 4) && w.slice(1).every(a => DOTTED.test(a))) {
         Object.assign(st, {ip: w[1], mask: w[2], gw: w[3] || null, dhcp: false});

@@ -5,7 +5,7 @@
 let level = localStorage.getItem('level') || 'intermediate';  // the chosen difficulty, remembered across visits
 let topic = 'ipv4';          // the open lab (an id of CATALOGUE, with its build in LABS)
 let lastNet = null;          // the previous lab's random network, so the next one differs
-let labFrom = 'dash';        // the page a lab was started from, where Back returns
+let labFrom = 'dash';        // the page a lab was started from ('dash', 'trouble' or 'exam'): its tab stays lit, Back returns there
 
 // ---- labs ----
 
@@ -56,21 +56,24 @@ function renderDashboard(box, fix) {
 
 // ---- navigation ----
 
+// each view: its section, its nav tab (the lab page has none: it lights the tab of labFrom) and its segmented control
+const VIEWS = {
+  dash: {page: 'dash', nav: 'nav-labs', seg: 'dash-seg'},
+  trouble: {page: 'trouble', nav: 'nav-trouble', seg: 'trouble-seg'},
+  sandbox: {page: 'sandbox', nav: 'nav-sandbox', seg: 'sandbox-seg'},
+  topo: {page: 'topo-view', nav: 'nav-topo', seg: 'topo-seg'},
+  exam: {page: 'exam-view', nav: 'nav-exam'},
+  ref: {page: 'ref', nav: 'nav-ref'},
+  lab: {page: 'lab'},
+};
+
 function show(view) {
-  $('dash').hidden = view !== 'dash';
-  $('lab').hidden = view !== 'lab';
-  $('topo-view').hidden = view !== 'topo';
-  $('exam-view').hidden = view !== 'exam';
-  $('ref').hidden = view !== 'ref';
-  $('trouble').hidden = view !== 'trouble';
-  $('nav-trouble').classList.toggle('active', view === 'trouble' || (view === 'lab' && labFrom === 'trouble'));
-  $('nav-labs').classList.toggle('active', view === 'dash' || (view === 'lab' && labFrom !== 'trouble'));
-  $('nav-topo').classList.toggle('active', view === 'topo');
-  $('nav-exam').classList.toggle('active', view === 'exam');
-  $('nav-ref').classList.toggle('active', view === 'ref');
-  if (view === 'dash') moveSeg($('dash-seg'));
-  if (view === 'trouble') moveSeg($('trouble-seg'));
-  if (view === 'topo') moveSeg($('topo-seg'));
+  const lit = view === 'lab' ? labFrom : view;
+  for (const [name, v] of Object.entries(VIEWS)) {
+    $(v.page).hidden = name !== view;
+    if (v.nav) $(v.nav).classList.toggle('active', name === lit);
+  }
+  if (VIEWS[view].seg) moveSeg($(VIEWS[view].seg));
   if (view === 'ref') refHome();
   window.scrollTo(0, 0);
   if (view === 'lab') $('cmd').focus();
@@ -78,6 +81,14 @@ function show(view) {
 
 $('nav-labs').addEventListener('click', () => show('dash'));
 $('nav-brand').addEventListener('click', () => show('dash'));
+$('nav-sandbox').addEventListener('click', () => show('sandbox'));
+$('sb-go-labs').addEventListener('click', () => show('dash'));
+document.querySelectorAll('[data-sb-tab]').forEach(b => b.addEventListener('click', () => {
+  $('sb-guided').hidden = b.dataset.sbTab !== 'guided';
+  $('sb-mine').hidden = b.dataset.sbTab !== 'mine';
+  document.querySelectorAll('[data-sb-tab]').forEach(x => x.classList.toggle('active', x === b));
+  moveSeg($('sandbox-seg'));
+}));
 $('nav-ref').addEventListener('click', () => show('ref'));
 $('nav-trouble').addEventListener('click', () => show('trouble'));
 $('back').addEventListener('click', () => show(labFrom));
@@ -105,9 +116,7 @@ $('search').addEventListener('input', e => {
 $('new-net').addEventListener('click', () => newLab());
 
 window.addEventListener('resize', () => {
-  moveSeg($('dash-seg'));
-  moveSeg($('trouble-seg'));
-  moveSeg($('topo-seg'));
+  for (const v of Object.values(VIEWS)) if (v.seg) moveSeg($(v.seg));
 });
 
 // ---- start ----

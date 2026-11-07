@@ -167,12 +167,6 @@ function swConfigLines(s) {
   return lines;
 }
 
-function swSave(s, out) {
-  s.saved = swConfigLines(s);
-  out('Building configuration...');
-  out('[OK]', 'ln-ok');
-}
-
 // ---- show commands ----
 
 function swVlanBrief(s, out) {
@@ -247,14 +241,9 @@ function swArpInspection(s, out) {
   for (const p of Object.values(s.ports)) if (!p.svi) out(p.name.padEnd(17) + (p.daiTrust ? 'Trusted' : 'Untrusted'));
 }
 
-function swBriefV4(s, out) {
-  out('Interface    IP-Address       Status');
-  for (const p of Object.values(s.ports)) out(p.name.padEnd(13) + (p.ip || 'unassigned').padEnd(17) + (p.shut ? 'administratively down' : 'up'));
-}
-
 // the order matters: "show s" means spanning-tree
 function swShow(s, args, out) {
-  if (pick(args[0], ['ip']) && pick(args[1], ['interface']) && pick(args[2], ['brief'])) return swBriefV4(s, out);
+  if (pick(args[0], ['ip']) && pick(args[1], ['interface']) && pick(args[2], ['brief'])) return ipBrief(Object.values(s.ports), out);
   if (pick(args[0], ['vlan']) && pick(args[1], ['brief'])) return swVlanBrief(s, out);
   if (pick(args[0], ['interfaces']) && pick(args[1], ['status'])) return swStatus(s, out);
   if (pick(args[0], ['interfaces']) && pick(args[1], ['trunk'])) return swTrunks(s, out);
@@ -266,9 +255,7 @@ function swShow(s, args, out) {
   if (pick(args[0], ['running-config']) && args.length === 1) return swConfigLines(s).forEach(l => out(l));
   if (pick(args[0], ['etherchannel']) && pick(args[1], ['summary'])) return swEtherSummary(s, out);
   if (pick(args[0], ['spanning-tree'])) return swStp(s, out);
-  if (pick(args[0], ['startup-config']) && args.length === 1) {
-    return s.saved ? s.saved.forEach(l => out(l)) : out('startup-config is not present', 'ln-err');
-  }
+  if (pick(args[0], ['startup-config']) && args.length === 1) return showStartup(s, out);
   out('% Invalid input detected', 'ln-err');
 }
 
@@ -276,19 +263,17 @@ function swShow(s, args, out) {
 
 function runSw(s, line, out) {
   const w = line.toLowerCase().split(/\s+/);
-  const mode = s.mode;
-  const c = mode === 'ifc' && w[0] === 'sh' ? 'shutdown' : pick(w[0], SW_CMDS[mode]); // "sh" means shutdown in interface mode
+  const c = iosWord(w[0], s.mode, SW_CMDS[s.mode]);
   if (c === 'show') return swShow(s, w.slice(1), out);
-  const done = execCommand(c, w, s, () => swSave(s, out))
+  const done = execCommand(c, w, s, () => saveConfig(s, swConfigLines(s), out))
     || (c === 'interface' && enterInterface(s, swKey(s, w.slice(1).join(''))))
-    || (mode === 'config' && swConfigCommand(s, c, w, line))
-    || (mode === 'vlan' && swVlanCommand(s, c, w, line))
-    || (mode === 'ifc' && swInterfaceCommand(s, c, w, line, out))
+    || SW_MODES[s.mode]?.(s, c, w, line, out)
     || leaveMode(c, s);
   if (!done) out('% Invalid input detected', 'ln-err');
 }
 
-// The handlers below return false when they do not know the command (see router.js)
+// The handler of each configuration mode (as ROUTER_MODES in router.js); it returns false when it does not know the command
+const SW_MODES = {config: swConfigCommand, vlan: swVlanCommand, ifc: swInterfaceCommand};
 
 // global configuration
 function swConfigCommand(s, c, w, line) {
@@ -410,25 +395,21 @@ function createSwitch(node, session, {l3 = false, keys = SW_KEYS} = {}) {
     ports: () => Object.values(st.ports),
     routes: () => st.routing,
     // The interface a host on port key uses as its gateway: the VLAN's SVI on a multilayer switch, otherwise the router's
-    // subinterface for the VLAN, over the Gi0/1 trunk to a cabled router (router-on-a-stick).
-    // shortcut: the uplink is Gi0/1 in every lab; read it from the links when a lab cables the switch to a router elsewhere
+    // subinterface for the VLAN, over a trunk port that is cabled to that router (router-on-a-stick)
     gateway(key) {
       const p = st.ports[key];
-      if (p.shut || p.mode === 'trunk' || p.routed) return null;
+      if (!p || p.shut || p.mode === 'trunk' || p.routed) return null;
       if (st.l3) return usable(st.ports['vlan' + p.vlan]);
-      const up = st.ports['gi0/1'];
-      if (up.mode !== 'trunk' || up.shut || (up.allowed && !up.allowed.includes(p.vlan))) return null;
       for (const [peer, l] of peersOf(session, node.id)) {
-        const g = peer.vlanGateway?.(l.port.toLowerCase(), p.vlan);
+        const up = st.ports[l.mine.toLowerCase()];
+        if (!up || up.mode !== 'trunk' || up.shut || (up.allowed && !up.allowed.includes(p.vlan))) continue;
+        const g = peer.vlanGateway?.(l.theirs.toLowerCase(), p.vlan);
         if (g) return g;
       }
       return null;
     },
-    run(line, out) {
-      if (line === '?' || line === 'help') return self.help('?', out);
-      runSw(st, line, out);
-    },
-    complete: line => tabComplete(line, keys[st.mode], st.mode === 'config' || st.mode === 'ifc' ? self.ports().map(p => p.name) : null),
+    run: (line, out) => runSw(st, line, out),
+    complete: line => iosComplete(line, keys[st.mode], st.mode, self.ports()),
     help: (line, out) => helpFor(line, SWITCH_HELP[st.mode], st.mode, 's', out),
   });
   return self;

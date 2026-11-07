@@ -352,18 +352,7 @@ function configLines(st) {
 // an IPv6 static route as typed: ipv6 route <prefix> [interface] [next hop] [distance]
 const route6Text = r => `ipv6 route ${r.prefix}${r.iface ? ' ' + r.iface : ''}${r.nh ? ' ' + r.nh : ''}${r.dist !== 1 ? ' ' + r.dist : ''}`;
 
-function save(st, out) {
-  st.saved = configLines(st);
-  out('Building configuration...');
-  out('[OK]', 'ln-ok');
-}
-
 // ---- show commands ----
-
-function briefV4(st, out) {
-  out('Interface    IP-Address       Status');
-  for (const i of Object.values(st.ifs)) out(i.name.padEnd(13) + (i.ip || 'unassigned').padEnd(17) + (i.shut ? 'administratively down' : 'up'));
-}
 
 function briefV6(st, out) {
   out('Interface    ' + 'IPv6-Address'.padEnd(46) + 'Link-local');
@@ -422,7 +411,7 @@ function neighbors(st, name, session, proto, out) {
   if (!st[proto]) return out(`% ${proto.toUpperCase()} is not enabled on ${name}`, 'ln-err');
   const seen = [];
   for (const [peer, l] of peersOf(session, name)) {
-    const link = peer.discoverable && st.ifs[l.port.toLowerCase()];
+    const link = peer.discoverable && st.ifs[l.mine.toLowerCase()];
     if (link && !link.shut && (proto === 'lldp' || link.cdp)) seen.push([peer.name, link.name]);
   }
   out('Device ID    Local Intf');
@@ -461,10 +450,10 @@ function showCmd(st, name, session, args, out) {
     return out(`${st.host} uptime: this lab session`);
   }
   if (what === 'running-config' && alone) return configLines(st).forEach(l => out(l));
-  if (what === 'startup-config' && alone) return st.saved ? st.saved.forEach(l => out(l)) : out('startup-config is not present', 'ln-err');
+  if (what === 'startup-config' && alone) return showStartup(st, out);
   if (what === 'ip' && args.length === 2 && pick(args[1], ['route'])) return routeTable(st, out);
   if (args.length === 3 && pick(args[1], ['interface']) && pick(args[2], ['brief'])) {
-    if (what === 'ip') return briefV4(st, out);
+    if (what === 'ip') return ipBrief(Object.values(st.ifs), out);
     if (what === 'ipv6') return briefV6(st, out);
   }
   if (args.length === 2 && (what === 'cdp' || what === 'lldp') && pick(args[1], ['neighbors'])) return neighbors(st, name, session, what, out);
@@ -482,27 +471,21 @@ function runRouter(st, name, session, line, out) {
     return;
   }
   const w = line.toLowerCase().split(/\s+/);
-  const mode = st.mode;
-  // in interface mode "sh" means shutdown and "en" means end; elsewhere short forms resolve as usual
-  const c = mode === 'ifc' && w[0] === 'sh' ? 'shutdown'
-    : mode === 'ifc' && w[0] === 'en' ? 'end'
-    : pick(w[0], ROUTER_CMDS[mode]);
+  const c = iosWord(w[0], st.mode, ROUTER_CMDS[st.mode]);
   if (c === 'show') return showCmd(st, name, session, w.slice(1), out);
-  const done = execCommand(c, w, st, () => save(st, out))
+  const done = execCommand(c, w, st, () => saveConfig(st, configLines(st), out))
     || (c === 'ping' && ping(st, w[1], out))
     || (c === 'interface' && enterInterface(st, ifKey(st, w[1])))
-    || (mode === 'config' && configCommand(st, c, w, line, out))
-    || (mode === 'ifc' && interfaceCommand(st, c, w, line))
-    || (mode === 'router' && routerCommand(st, c, w))
-    || (mode === 'line' && lineCommand(st, c, w, line))
-    || (mode === 'dhcp' && dhcpCommand(st, c, w))
-    || (mode === 'nacl' && aclCommand(st, c, w))
+    || ROUTER_MODES[st.mode]?.(st, c, w, line, out)
     || leaveMode(c, st);
   if (!done) out('% Invalid input detected', 'ln-err');
 }
 
-// The handlers below return false when they do not know the command.
-// Where two branches could both match an abbreviation, the earlier one wins, so keep their order.
+// The handler of each configuration mode, called as handler(st, c, w, line, out): c is the resolved first word, w the
+// lower-cased words, line the line as typed. A handler returns false when it does not know the command.
+const ROUTER_MODES = {config: configCommand, ifc: interfaceCommand, router: routerCommand, line: lineCommand, dhcp: dhcpCommand, nacl: aclCommand};
+
+// Where two branches of a handler could both match an abbreviation, the earlier one wins, so keep their order.
 
 // ipv6 route <prefix> [interface] [next hop] [distance], from the words after "route"; returns the route, an error text or null
 function parseRoute6(st, words) {
@@ -809,11 +792,8 @@ function createRouter(node, session) {
     pools: () => Object.values(st.dhcp).map(p => ({...p, ex: st.dhcpEx})),
     // the subinterface of a VLAN, for a switch trunked to the physical interface key (router-on-a-stick)
     vlanGateway: (key, vlan) => (st.ifs[key].shut ? null : usable(Object.values(st.ifs).find(i => i.encap === vlan))),
-    run(line, out) {
-      if (line === '?' || line === 'help') return self.help('?', out);
-      runRouter(st, node.id, session, line, out);
-    },
-    complete: line => tabComplete(line, ROUTER_KEYS[st.mode], st.mode === 'config' || st.mode === 'ifc' ? self.ports().map(p => p.name) : null),
+    run: (line, out) => runRouter(st, node.id, session, line, out),
+    complete: line => iosComplete(line, ROUTER_KEYS[st.mode], st.mode, self.ports()),
     help: (line, out) => helpFor(line, routerHelpEntry(st), st.mode, 'r', out),
   });
   return self;

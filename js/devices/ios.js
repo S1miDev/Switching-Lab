@@ -102,6 +102,32 @@ function leaveMode(c, st) {
   return true;
 }
 
+// The command a typed first word means in a mode; in interface mode "sh" means shutdown and "en" means end, as on IOS
+function iosWord(word, mode, cmds) {
+  if (mode === 'ifc' && word === 'sh') return 'shutdown';
+  if (mode === 'ifc' && word === 'en') return 'end';
+  return pick(word, cmds);
+}
+
+// copy running-config startup-config / write memory
+function saveConfig(st, lines, out) {
+  st.saved = lines;
+  out('Building configuration...');
+  out('[OK]', 'ln-ok');
+}
+
+// show startup-config
+const showStartup = (st, out) => (st.saved ? st.saved.forEach(l => out(l)) : out('startup-config is not present', 'ln-err'));
+
+// show ip interface brief, for a router's interfaces or a switch's ports
+function ipBrief(ports, out) {
+  out('Interface    IP-Address       Status');
+  for (const p of ports) out(p.name.padEnd(13) + (p.ip || 'unassigned').padEnd(17) + (p.shut ? 'administratively down' : 'up'));
+}
+
+// Tab on an IOS device: interface names complete in global and interface configuration
+const iosComplete = (line, keys, mode, ports) => tabComplete(line, keys, mode === 'config' || mode === 'ifc' ? ports.map(p => p.name) : null);
+
 // IOS-style ping output (shared with the PCs)
 function pingResult(target, ok, out) {
   const cls = ok ? 'ln-ok' : 'ln-err';

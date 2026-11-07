@@ -25,7 +25,6 @@ examBar.innerHTML = `
 const examPosEl = examBar.querySelector('[data-pos]'), examTimeEl = examBar.querySelector('[data-time]'), examNext = examBar.querySelector('[data-next]');
 
 const secondsLeft = () => Math.max(0, Math.round((examEnd - Date.now()) / 1000));
-const clock = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 const cap = s => s[0].toUpperCase() + s.slice(1);
 
 // keep the open lab's result before moving on
@@ -49,12 +48,11 @@ function examOpen() {
   examShowLab();
 }
 
-// the lab page, but with Mock exam staying the highlighted tab
+// the lab page, with Mock exam staying the highlighted tab
 function examShowLab() {
   if (!labPage.shows(examSession)) examMount(); // another lab was opened meanwhile
+  labFrom = 'exam';
   show('lab');
-  $('nav-labs').classList.remove('active');
-  $('nav-exam').classList.add('active');
 }
 
 function examStart(form) {
