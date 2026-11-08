@@ -185,3 +185,27 @@ test('loading refuses data that is not a sandbox', () => {
     assert.throws(() => loadSandbox(data), /Not a valid sandbox/, JSON.stringify(data)?.slice(0, 80));
   }
 });
+
+test('undo is the history one step shorter, and it works for cables, devices and typed lines', () => {
+  const sb = build(['switch', 'pc'], [['S1', 'Fa0/1', 'PC1', 'NIC']]);
+  type(sb, 'S1', 'enable', 'conf t', 'vlan 10');
+  const undone = loadSandbox(plain(sb.undoData()));
+  assert.notStrictEqual(JSON.stringify(undone.devices.S1.state), JSON.stringify(sb.devices.S1.state), 'the last typed line is gone');
+  assert.strictEqual(undone.log.length, sb.log.length - 1);
+  const noCable = loadSandbox(plain(build(['switch', 'pc'], [['S1', 'Fa0/1', 'PC1', 'NIC']]).undoData()));
+  assert.strictEqual(noCable.links.length, 0);
+  assert.ok(!noCable.devices.PC1.state.at);
+  const noDevice = loadSandbox(plain(build(['pc']).undoData()));
+  assert.strictEqual(noDevice.nodes.length, 0);
+  assert.strictEqual(createSandbox().undoData().log.length, 0);
+});
+
+test('a share link carries a save and refuses what is too long or unreadable', () => {
+  const share = get('sbShare'), unshare = get('sbUnshare');
+  const data = plain(preset('Router on a stick').serialize());
+  assert.deepEqual(plain(unshare(share(data))), data);
+  assert.strictEqual(share({v: 2, pos: {}, log: Array(5000).fill(['run', 'R1', 'a line of text'])}), null);
+  assert.strictEqual(unshare('#s=%E0%A4%A'), null);
+  assert.strictEqual(unshare('#other'), null);
+  assert.strictEqual(unshare('#s=' + 'x'.repeat(20000)), null);
+});

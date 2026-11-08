@@ -11,6 +11,7 @@ let mode = 'move';  // 'move' (click a device to open its console), 'cable' or '
 let cabling = null; // {a, pa}: the first end of the cable being made
 let drag = null;    // {id, dx, dy, startX, startY, moved}
 let savedSteps = 0; // the length of the history when it was last saved
+let arrived = null; // the device just added: drawn with a short fade-in (css, off with reduced motion)
 const canvas = $('topo'), menu = $('sb-menu');
 
 const msg = text => { $('sb-msg').textContent = text; };
@@ -42,8 +43,11 @@ function render() {
     labels += portChip(sb.nodeOf(l.a), d, l.pa) + portChip(sb.nodeOf(l.b), {x: -d.x, y: -d.y}, l.pb);
   });
   for (const n of sb.nodes) {
-    svg += `<g data-dev="${esc(n.id)}" tabindex="0" role="button" aria-label="${esc(n.id)}, ${TOPO_TYPES[n.type].label}">` +
+    // lamp: green when the device has a cable that is up, grey when it has none or only dead ones
+    const lit = sb.links.some(l => (l.a === n.id || l.b === n.id) && sb.linkUp(l));
+    svg += `<g data-dev="${esc(n.id)}" tabindex="0" role="button" aria-label="${esc(n.id)}, ${TOPO_TYPES[n.type].label}"${n.id === arrived ? ' class="arrive"' : ''}>` +
       `<rect class="box" x="${n.x}" y="${n.y}" width="${NODE_W}" height="${NODE_H}" rx="12"/>` +
+      `<circle class="lamp${lit ? ' on' : ''}" cx="${n.x + NODE_W - 12}" cy="${n.y + 12}" r="4"><title>${lit ? 'Has a cable that is up' : 'No working cable'}</title></circle>` +
       `<circle class="ico-bg" cx="${n.x + 22}" cy="${n.y + 22}" r="16"/>` +
       `<g class="icon" transform="translate(${n.x + 13} ${n.y + 13}) scale(0.75)">${TOPO_ICONS[n.type]}</g>` +
       `<text class="name" x="${n.x + 44}" y="${n.y + 19}">${esc(n.id)}</text>` +
@@ -91,9 +95,22 @@ function setSandbox(next, text) {
 function addDevice(type, x, y) {
   const n = sb.addNode(type, x, y);
   if (typeof n === 'string') return msg(n);
+  arrived = n.id;
   structureChanged();
+  arrived = null;
+  showDock(true);
   labConsole.open(n.id);
   msg(`Added ${n.id}. Drag it to move it; the console is open on it.`);
+}
+
+// Undo the last step: the history is a replay, so loading it one step shorter is exact. Positions are kept.
+function undo() {
+  if (!sb.log.length) return msg('Nothing to undo.');
+  try {
+    setSandbox(loadSandbox(sb.undoData()), 'Undid the last step.');
+  } catch (err) {
+    msg(err.message);
+  }
 }
 
 function removeDevice(id) {
@@ -146,6 +163,10 @@ menu.addEventListener('click', e => {
 function activate(id) {
   closeMenu();
   if (mode === 'delete') return removeDevice(id);
+  if (mode === 'copy') { // a new device of the same type; its configuration is not copied
+    const p = sb.freeSpot(), n = sb.nodeOf(id);
+    return addDevice(n.type, p.x, p.y);
+  }
   if (mode === 'cable') {
     if (cabling && cabling.a === id) {
       cabling = null;
@@ -154,6 +175,7 @@ function activate(id) {
     }
     return openMenu(id);
   }
+  showDock(true);
   labConsole.open(id);
 }
 
@@ -164,8 +186,31 @@ function setMode(next) {
   document.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-pressed', b.dataset.mode === mode));
   render();
   msg({move: 'Drag devices to move them; click one to open its console.', cable: 'Click a device, pick a port, then click the device at the other end.',
-    delete: 'Click a device or a cable to delete it.'}[mode]);
+    delete: 'Click a device or a cable to delete it.', copy: 'Click a device to add another of the same type (its configuration is not copied).'}[mode]);
 }
+$('sb-undo').addEventListener('click', undo);
+
+// the console and packet test sit in a dock under the canvas; it opens when a device is opened
+const dock = $('sb-dock'), dockBtn = $('sb-dock-toggle');
+function showDock(show) {
+  dock.hidden = !show;
+  dockBtn.textContent = show ? 'Hide console' : 'Show console';
+  dockBtn.setAttribute('aria-expanded', show);
+}
+dockBtn.addEventListener('click', () => showDock(dock.hidden));
+// one letter picks a tool, like the live editor (not while typing in a field)
+const KEYS = {v: 'move', l: 'cable', c: 'copy', d: 'delete'};
+document.addEventListener('keydown', e => {
+  const mode = KEYS[e.key.toLowerCase()];
+  if (!mode || e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName)) return;
+  setMode(mode);
+});
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName)) {
+    e.preventDefault();
+    undo();
+  }
+});
 document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
 
 // ---- the canvas: drag a device to move it; a press that does not move counts as a click ----
@@ -268,10 +313,48 @@ $('sb-ping').addEventListener('submit', e => {
 
 const savedList = () => { const s = store.get(SB_SAVED); return Array.isArray(s) ? s : []; };
 
-function fillLists() {
-  $('sb-preset').replaceChildren(new Option('Start from a preset…', ''), ...SB_PRESETS.map((p, i) => new Option(p.name, i)));
-  $('sb-saved').replaceChildren(new Option('Saved sandboxes…', ''), ...savedList().map(s => new Option(s.name, s.name)));
+// a small picture of a save: boxes where the devices are and lines for the 'cable' steps (from the data, no replay)
+function thumb(data) {
+  const pos = data?.pos && typeof data.pos === 'object' ? data.pos : {}, mid = id => (pos[id] || [0, 0]).map((v, i) => (+v || 0) + (i ? NODE_H : NODE_W) / 2);
+  const lines = (data?.log || []).filter(e => e[0] === 'cable').map(e => {
+    const [x1, y1] = mid(e[1]), [x2, y2] = mid(e[3]);
+    return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`;
+  }).join('');
+  const boxes = Object.keys(pos).map(id => `<rect x="${+pos[id][0] || 0}" y="${+pos[id][1] || 0}" width="${NODE_W}" height="${NODE_H}" rx="12"/>`).join('');
+  return `<svg class="sb-thumb" viewBox="0 0 ${SB_W} ${SB_H}" aria-hidden="true">${lines}${boxes}</svg>`;
 }
+
+function card(name, desc, data, ...buttons) {
+  const c = el('article', 'sb-card');
+  c.insertAdjacentHTML('afterbegin', thumb(data));
+  c.append(el('h3', '', name), el('p', 'note', desc), ...buttons);
+  return c;
+}
+
+function fillLists() {
+  const q = $('sb-search').value.trim().toLowerCase();
+  const presets = SB_PRESETS.filter(p => `${p.name} ${p.desc}`.toLowerCase().includes(q)).map(p => {
+    const b = el('button', 'ghost', 'Use this');
+    b.type = 'button';
+    b.addEventListener('click', () => openData(p.data, `${p.name}: ${p.desc}`));
+    return card(p.name, p.desc, p.data, b);
+  });
+  $('sb-presets').replaceChildren(...(presets.length ? presets : [el('p', 'note', 'No presets match your search.')]));
+  const saves = savedList().map(s => {
+    const open = el('button', 'ghost', 'Open'), del = el('button', 'ghost', 'Delete');
+    open.type = del.type = 'button';
+    open.addEventListener('click', () => openData(s.data, `Opened "${s.name}".`));
+    del.addEventListener('click', () => {
+      if (!confirm(`Delete the saved sandbox "${s.name}"?`)) return;
+      store.set(SB_SAVED, savedList().filter(x => x.name !== s.name));
+      fillLists();
+      msg(`Deleted "${s.name}".`);
+    });
+    return card(s.name, `${s.data?.pos ? Object.keys(s.data.pos).length : 0} devices`, s.data, open, del);
+  });
+  $('sb-saves').replaceChildren(...(saves.length ? saves : [el('p', 'note', 'Nothing saved yet. Name your sandbox above and press Save.')]));
+}
+$('sb-search').addEventListener('input', fillLists);
 
 // hand the browser a file to save
 function download(data, name) {
@@ -292,23 +375,16 @@ function openData(data, text) {
   }
 }
 
-$('sb-preset').addEventListener('change', e => {
-  const p = SB_PRESETS[e.target.value];
-  e.target.value = '';
-  if (p) openData(p.data, `${p.name}: ${p.desc}`);
-});
-$('sb-open').addEventListener('click', () => {
-  const s = savedList().find(x => x.name === $('sb-saved').value);
-  if (s) openData(s.data, `Opened "${s.name}".`);
-  else msg('Pick a saved sandbox first.');
-});
-$('sb-delete').addEventListener('click', () => {
-  const name = $('sb-saved').value;
-  if (!name) return msg('Pick a saved sandbox first.');
-  if (!confirm(`Delete the saved sandbox "${name}"?`)) return;
-  store.set(SB_SAVED, savedList().filter(s => s.name !== name));
-  fillLists();
-  msg(`Deleted "${name}".`);
+$('sb-share').addEventListener('click', async () => {
+  const hash = sbShare(sb.serialize());
+  if (!hash) return msg('This sandbox is too big for a link. Use Export instead.');
+  const url = location.origin + location.pathname + hash;
+  try {
+    await navigator.clipboard.writeText(url);
+    msg('Link copied. Anyone who opens it gets their own copy of this sandbox.');
+  } catch {
+    prompt('Copy this link:', url);
+  }
 });
 $('sb-save').addEventListener('click', () => {
   const name = $('sb-name').value.trim(), saves = savedList(), at = saves.findIndex(s => s.name === name);
@@ -318,7 +394,6 @@ $('sb-save').addEventListener('click', () => {
   else saves.push({name, data: sb.serialize()});
   if (!store.set(SB_SAVED, saves)) return msg('The browser would not save it (storage is full or blocked). Use Export instead.');
   fillLists();
-  $('sb-saved').value = name;
   msg(`Saved "${name}".`);
 });
 $('sb-export').addEventListener('click', () => {
@@ -364,4 +439,12 @@ if (failed) {
   $('sb-msg').after(b);
 } else if (sb.nodes.length) {
   msg('Welcome back. Your last sandbox is open.');
+}
+// a share link: open what it carries (asks first when there is work here), then drop the hash so a reload does not ask again
+const shared = sbUnshare(location.hash);
+if (shared) {
+  history.replaceState(null, '', location.pathname + location.search);
+  openData(shared, 'Opened the shared sandbox.');
+} else if (location.hash.startsWith('#s=')) {
+  msg('That share link is not readable.');
 }

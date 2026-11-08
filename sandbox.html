@@ -10,53 +10,51 @@
   <link rel="stylesheet" href="css/style.css">
 </head>
 
-<body>
-  <nav class="side" aria-label="Main">
-    <a class="brand" href="index.html"><span class="brand-dot" aria-hidden="true"></span>SwitchingLab</a>
-    <a class="nav-item" href="index.html">Back to labs</a>
-    <a class="nav-item active" href="sandbox.html" aria-current="page">Sandbox</a>
-  </nav>
-
+<body class="sb-full">
   <!-- Sandbox: js/sandbox-model.js holds the network, js/sandbox.js draws it. The ids lab, topo, term, prompt and cmd are the ones console.js uses. -->
-  <main id="lab" class="page">
-    <header class="page-head">
-      <div>
-        <h1>Sandbox</h1>
-        <p>Build your own network, cable it, and configure every device from its console. Your work is saved in this browser as you go.</p>
-      </div>
-      <div class="sb-bar" role="group" aria-label="Sandbox files">
-        <select id="sb-preset" aria-label="Start from a preset"></select>
-        <select id="sb-saved" aria-label="Saved sandboxes"></select>
-        <button class="ghost" id="sb-open" type="button">Open</button>
-        <button class="ghost" id="sb-delete" type="button">Delete save</button>
-        <input id="sb-name" type="text" maxlength="40" placeholder="Name this sandbox" aria-label="Name this sandbox">
-        <button id="sb-save" type="button">Save</button>
-        <button class="ghost" id="sb-export" type="button">Export</button>
-        <button class="ghost" id="sb-import" type="button">Import</button>
-        <input id="sb-file" type="file" accept=".json,application/json" hidden>
-      </div>
-    </header>
+  <header class="sb-top">
+    <a class="sb-back" href="index.html" aria-label="Back to labs" title="Back to labs">&larr;</a>
+    <a class="brand" href="index.html"><span class="brand-dot" aria-hidden="true"></span>SwitchingLab</a>
+    <h1>Sandbox</h1>
+    <div class="sb-bar" role="group" aria-label="Sandbox files">
+      <input id="sb-name" type="text" maxlength="40" placeholder="Name this sandbox" aria-label="Name this sandbox">
+      <button id="sb-save" type="button">Save</button>
+      <button class="ghost" id="sb-undo" type="button" title="Undo (Ctrl+Z)">Undo</button>
+      <button class="ghost" id="sb-export" type="button">Export</button>
+      <button class="ghost" id="sb-import" type="button">Import</button>
+      <button class="ghost" id="sb-share" type="button">Copy share link</button>
+      <input id="sb-file" type="file" accept=".json,application/json" hidden>
+    </div>
+  </header>
 
-    <div class="sb-grid">
-      <section class="card">
-        <div class="topo-palette">
-          <span class="tool-label">Add</span>
-          <span id="sb-chips" class="sb-chips"></span>
-        </div>
-        <div class="sb-modes" role="group" aria-label="Tool">
-          <button class="ghost" type="button" data-mode="move" aria-pressed="true">Move / open console</button>
-          <button class="ghost" type="button" data-mode="cable" aria-pressed="false">Cable</button>
-          <button class="ghost" type="button" data-mode="delete" aria-pressed="false">Delete</button>
-          <button class="ghost" id="sb-clear" type="button">Clear canvas</button>
-        </div>
-        <div class="sb-wrap">
-          <div id="topo" class="sb-canvas"></div>
-          <div id="sb-menu" class="sb-menu" role="menu" hidden></div>
-        </div>
-        <div class="statusbar"><span class="dot" aria-hidden="true"></span><span id="sb-msg" role="status">Add a device to begin.</span></div>
-      </section>
+  <main id="lab" class="sb-shell">
+    <aside class="sb-side" aria-label="Tools">
+      <h2>Canvas tools</h2>
+      <div class="sb-modes" role="group" aria-label="Tool">
+        <button class="ghost" type="button" data-mode="move" aria-pressed="true" title="V">Select</button>
+        <button class="ghost" type="button" data-mode="cable" aria-pressed="false" title="L">Cable</button>
+        <button class="ghost" type="button" data-mode="copy" aria-pressed="false" title="C">Copy</button>
+        <button class="ghost" type="button" data-mode="delete" aria-pressed="false" title="D">Delete</button>
+      </div>
+      <h2>Device garage</h2>
+      <div id="sb-chips" class="sb-chips"></div>
+      <button class="ghost" id="sb-clear" type="button">Clear canvas</button>
+      <details class="sb-gallery" open>
+        <summary>Presets and saved sandboxes</summary>
+        <input id="sb-search" type="search" placeholder="Search presets" aria-label="Search presets" autocomplete="off">
+        <div id="sb-presets" class="sb-cards"></div>
+        <h3>Saved sandboxes</h3>
+        <div id="sb-saves" class="sb-cards"></div>
+      </details>
+    </aside>
 
-      <div class="lab-col">
+    <section class="sb-stage">
+      <div class="sb-wrap">
+        <div id="topo" class="sb-canvas"></div>
+        <div id="sb-menu" class="sb-menu" role="menu" hidden></div>
+      </div>
+
+      <div class="sb-dock" id="sb-dock">
         <section class="card console">
           <div class="console-head">
             <span class="console-label">Console</span>
@@ -66,7 +64,7 @@
             <div class="line"><span id="prompt"></span><input id="cmd" aria-label="CLI input" spellcheck="false" autocomplete="off"></div>
           </div>
         </section>
-        <section class="card">
+        <section class="card sb-packet">
           <h2>Packet test</h2>
           <p class="note">Send a ping from a PC. The answer comes from the real configuration of the devices on the way.</p>
           <form id="sb-ping" class="sb-ping">
@@ -77,8 +75,14 @@
           <ol id="sb-events" class="sb-events" aria-live="polite"></ol>
         </section>
       </div>
-    </div>
+    </section>
   </main>
+
+  <footer class="sb-foot">
+    <span class="dot" aria-hidden="true"></span><span id="sb-msg" role="status">Add a device to begin.</span>
+    <span class="sb-keys"><kbd>V</kbd> Select <kbd>L</kbd> Cable <kbd>C</kbd> Copy <kbd>D</kbd> Delete <kbd>Esc</kbd> Cancel <kbd>Ctrl+Z</kbd> Undo</span>
+    <button class="ghost" id="sb-dock-toggle" type="button" aria-expanded="true">Hide console</button>
+  </footer>
   <div id="topo-ghost" class="topo-ghost" hidden></div>
 
   <!-- same device scripts as index.html, without the labs, exam and account code -->

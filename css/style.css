@@ -2011,3 +2011,360 @@ details.card summary {
 .sb-events .err {
   color: var(--bad);
 }
+
+/* ---- Sandbox gallery: presets and saved sandboxes as cards ---- */
+.sb-gallery {
+  margin-bottom: 24px;
+}
+
+.sb-gallery-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sb-gallery input[type="search"] {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  min-width: 0;
+}
+
+.sb-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  margin: 12px 0 20px;
+}
+
+.sb-card {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+
+.sb-card h3 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.sb-card .note {
+  margin: 0;
+  font-size: 12px;
+}
+
+.sb-card button {
+  justify-self: start;
+  padding: 6px 12px;
+}
+
+.sb-thumb {
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  background: var(--canvas);
+}
+
+.sb-thumb rect {
+  fill: var(--surface);
+  stroke: var(--border);
+  stroke-width: 6;
+}
+
+.sb-thumb line {
+  stroke: var(--muted);
+  stroke-width: 6;
+}
+
+/* the lamp on a device: green when it has a cable that is up */
+#topo.sb-canvas .lamp {
+  fill: var(--muted);
+}
+
+#topo.sb-canvas .lamp.on {
+  fill: var(--success);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  #topo.sb-canvas .arrive {
+    animation: sb-arrive .28s ease-out both;
+  }
+}
+
+@keyframes sb-arrive {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ---- Sandbox as a full-screen editor: top bar, tools on the left, the canvas filling the rest, console dock and hints below ---- */
+body.sb-full {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.sb-top {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  padding: 8px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.sb-top .brand {
+  margin: 0;
+  font-size: 16px;
+}
+
+.sb-top h1 {
+  margin: 0 auto;
+  font-size: 17px;
+}
+
+.sb-back {
+  padding: 4px 8px;
+  border-radius: 8px;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 18px;
+}
+
+.sb-back:hover {
+  color: var(--text);
+}
+
+.sb-top .sb-bar :is(input[type="text"]) {
+  padding: 7px 10px;
+}
+
+.sb-top .sb-bar button {
+  padding: 7px 12px;
+}
+
+.sb-shell {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  min-height: 0;
+}
+
+.sb-side {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  overflow-y: auto;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+}
+
+.sb-side h2 {
+  margin: 6px 0 0;
+  font: 600 11px var(--mono);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.sb-side .sb-modes,
+.sb-side .sb-chips {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 0;
+}
+
+.sb-side .sb-modes button {
+  padding: 9px 10px;
+}
+
+.sb-side .topo-chip {
+  justify-content: flex-start;
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+.sb-side .sb-gallery {
+  margin: 8px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.sb-side .sb-gallery summary {
+  font: 600 11px var(--mono);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.sb-side .sb-gallery input[type="search"] {
+  width: 100%;
+  margin: 10px 0 0;
+  box-sizing: border-box;
+}
+
+.sb-side .sb-gallery h3 {
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.sb-side .sb-cards {
+  grid-template-columns: 1fr;
+  margin: 8px 0 0;
+}
+
+.sb-side .sb-thumb {
+  height: 72px;
+}
+
+.sb-stage {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.sb-stage .sb-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  background: var(--canvas) radial-gradient(var(--border) 1px, transparent 1px) 0 0 / 22px 22px;
+}
+
+.sb-stage #topo.sb-canvas {
+  height: 100%;
+}
+
+.sb-stage #topo.sb-canvas svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.sb-dock {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: 12px;
+  height: 300px;
+  padding: 12px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+
+.sb-dock[hidden] {
+  display: none;
+}
+
+.sb-dock .console {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.sb-dock .term {
+  flex: 1;
+  height: auto;
+  min-height: 0;
+  padding: 12px 16px;
+}
+
+.sb-dock .sb-packet {
+  overflow: auto;
+}
+
+.sb-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  font: 12px var(--mono);
+}
+
+.sb-foot .dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--success);
+}
+
+.sb-foot #sb-msg {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sb-keys {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.sb-keys kbd {
+  margin-left: 10px;
+  padding: 1px 6px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+}
+
+.sb-foot button {
+  flex: none;
+  white-space: nowrap;
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+@media (max-width: 900px) {
+  body.sb-full {
+    display: block;
+    height: auto;
+    overflow: auto;
+  }
+
+  .sb-shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sb-side {
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sb-stage .sb-wrap {
+    height: 60vh;
+  }
+
+  .sb-dock {
+    grid-template-columns: minmax(0, 1fr);
+    height: auto;
+  }
+
+  .sb-dock .term {
+    height: 260px;
+    flex: none;
+  }
+
+  .sb-keys {
+    display: none;
+  }
+}

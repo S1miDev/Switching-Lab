@@ -161,9 +161,28 @@ function createSandbox() {
       pos: Object.fromEntries(sb.nodes.map(n => [n.id, [n.x, n.y]])),
       log: sb.log.map(e => [...e]),
     }),
+    // the saved form one step shorter: loading it is "undo" (the history is a replay, so this is exact)
+    undoData() {
+      const data = sb.serialize();
+      data.log.pop();
+      return data;
+    },
   };
   return sb;
 }
+
+// A share link carries the whole save in the URL hash (no server). shortcut: a long history will not fit; upgrade to a
+// compressed or hosted link if people need bigger ones. Returns null when it is too long.
+const SB_SHARE_MAX = 12000;
+const sbShare = data => {
+  const hash = '#s=' + encodeURIComponent(JSON.stringify(data));
+  return hash.length <= SB_SHARE_MAX ? hash : null;
+};
+// the save inside a hash made by sbShare, or null when there is none or it is not readable (loadSandbox checks the rest)
+const sbUnshare = hash => {
+  if (typeof hash !== 'string' || !hash.startsWith('#s=') || hash.length > SB_SHARE_MAX) return null;
+  try { return JSON.parse(decodeURIComponent(hash.slice(3))); } catch { return null; }
+};
 
 // The first saved form (v1: the final nodes and links, then the typed lines), still used to write the presets below
 function sbUpgrade(data) {
