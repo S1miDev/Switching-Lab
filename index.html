@@ -18,6 +18,7 @@
     <button class="nav-item" id="nav-topo">Topology</button>
     <button class="nav-item" id="nav-sandbox">Sandbox</button>
     <button class="nav-item" id="nav-exam">Mock exam</button>
+    <button class="nav-item" id="nav-ccna">CCNA</button>
     <button class="nav-item" id="nav-ref">Reference</button>
     <button class="nav-item" id="nav-auth">Log in</button>
   </nav>
@@ -219,6 +220,17 @@
     <div class="exam-wrap"><div id="exam-card"></div></div>
   </section>
 
+  <!-- CCNA question exams: js/ccna.js -->
+  <section id="ccna-view" class="page" hidden>
+    <header class="page-head">
+      <div>
+        <h1>CCNA exams</h1>
+        <p>Choose an exam. Questions are drawn at random from its pool.</p>
+      </div>
+    </header>
+    <div class="exam-wrap"><div id="ccna-card"></div></div>
+  </section>
+
   <!-- Reference: the topic rows are built from CATALOGUE in js/topics.js (js/reference.js) -->
   <section id="ref" class="page" hidden>
     <header class="ref-head">
@@ -266,6 +278,7 @@
   <script src="js/console.js"></script>
   <script src="js/lab.js"></script>
   <script src="js/exam.js"></script>
+  <script src="js/ccna.js"></script>
   <script src="js/script.js"></script>
   <!-- accounts: after script.js; supabase-js is pinned with an integrity hash -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" integrity="sha384-0w2KAL2YHP6wKOkUDzkCDGgVvfmHnj02DHeQ6XcHOgTfFsGyonKOpShMH1x6nk9o" crossorigin="anonymous"></script>

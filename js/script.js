@@ -63,6 +63,7 @@ const VIEWS = {
   sandbox: {page: 'sandbox', nav: 'nav-sandbox', seg: 'sandbox-seg'},
   topo: {page: 'topo-view', nav: 'nav-topo', seg: 'topo-seg'},
   exam: {page: 'exam-view', nav: 'nav-exam'},
+  ccna: {page: 'ccna-view', nav: 'nav-ccna'},
   ref: {page: 'ref', nav: 'nav-ref'},
   lab: {page: 'lab'},
 };
