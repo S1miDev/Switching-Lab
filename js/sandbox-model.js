@@ -9,7 +9,8 @@
 //         reloaded sandbox is in exactly the state it was in (a DHCP lease taken before a cable moved stays as it was).
 
 const SB_TYPES = ['router', 'switch', 'mls', 'pc'];
-const SB_W = 900, SB_H = 520, SB_EDGE = 8;   // the canvas (viewBox) size and the margin devices keep from its edge
+const SB_W = 1400, SB_H = 800, SB_EDGE = 8;   // the default view (viewBox) size; new devices are placed inside it with this margin
+const SB_LIMIT = 5000; // devices may be dragged anywhere within +-SB_LIMIT (the view pans and zooms)
 const SB_MAX_DEVICES = 30, SB_MAX_LOG = 20000; // the history limit keeps a save small enough for localStorage and quick to replay
 const SB_ID = /^[A-Za-z]{1,4}\d{1,2}$/;        // a device name like R1 or MLS2 (it ends up in the page)
 
@@ -20,8 +21,8 @@ const sbPorts = type => (sbPortCache[type] ||= type === 'pc' ? ['NIC']
 
 // keep a device's box on the canvas
 function sbPlace(n, x, y) {
-  n.x = clamp(Number.isFinite(+x) ? +x : 0, SB_EDGE, SB_W - NODE_W - SB_EDGE);
-  n.y = clamp(Number.isFinite(+y) ? +y : 0, SB_EDGE, SB_H - NODE_H - SB_EDGE);
+  n.x = clamp(Number.isFinite(+x) ? +x : 0, -SB_LIMIT, SB_LIMIT);
+  n.y = clamp(Number.isFinite(+y) ? +y : 0, -SB_LIMIT, SB_LIMIT);
 }
 
 function createSandbox() {

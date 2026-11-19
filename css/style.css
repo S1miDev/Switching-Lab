@@ -1129,10 +1129,6 @@ a.nav-item {
   font-weight: 500;
 }
 
-.rexp {
-  color: var(--muted);
-}
-
 .rhint {
   flex-basis: 100%;
   margin: 0 0 0 36px;
@@ -1923,6 +1919,8 @@ details.card summary {
 
 #topo.sb-canvas svg {
   max-height: none;
+  border: 0;
+  border-radius: 0;
 }
 
 #topo.sb-canvas [data-dev] {

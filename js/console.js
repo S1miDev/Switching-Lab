@@ -134,5 +134,5 @@ const labConsole = (() => {
   });
   term.addEventListener('click', () => input.focus());
 
-  return {show, sync, open: name => session && session.devices[name] && showDevice(name)};
+  return {show, sync, current: () => dev, open: name => session && session.devices[name] && showDevice(name)};
 })();

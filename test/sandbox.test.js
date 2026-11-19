@@ -154,7 +154,7 @@ test('a full history refuses more changes, so what is saved always loads again',
   assert.throws(() => loadSandbox(saved), /too long/);
 });
 
-test('devices stay on the canvas: added ones never overlap, loaded ones are pulled back in', () => {
+test('devices stay on the canvas: added ones never overlap, loaded ones may sit past the old edge but are limited', () => {
   const sb = createSandbox();
   for (let i = 0; i < 30; i++) {
     const p = sb.freeSpot();
@@ -165,8 +165,8 @@ test('devices stay on the canvas: added ones never overlap, loaded ones are pull
     assert.ok(n.x >= 0 && n.y >= 0 && n.x + NODE_W <= W && n.y + NODE_H <= H, `${n.id} inside`);
     for (const m of sb.nodes) if (m !== n) assert.ok(Math.abs(n.x - m.x) >= NODE_W || Math.abs(n.y - m.y) >= NODE_H, `${n.id} / ${m.id}`);
   }
-  const far = loadSandbox({v: 2, pos: {R1: [5000, -40]}, log: [['add', 'R1', 'router']]}).nodeOf('R1');
-  assert.ok(far.x + NODE_W <= W && far.y >= 0);
+  const far = loadSandbox({v: 2, pos: {R1: [99999, -40]}, log: [['add', 'R1', 'router']]}).nodeOf('R1');
+  assert.ok(far.x <= 5000 && far.y === -40);
 });
 
 test('loading refuses data that is not a sandbox', () => {

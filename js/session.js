@@ -13,6 +13,7 @@ function randomNet(avoid) {
 function runOn(session, name, raw) {
   const d = session.devices[name], line = raw.trim(), out = [];
   const print = (text, cls = '') => out.push({text, cls});
+  if (line && session.typed && !d.state?.askPw) (session.typed[name] ||= []).push(line); // for context-aware hints (lab.js)
   if (line === 'help') d.help('?', print);
   else if (line.endsWith('?')) d.help(line, print);
   else if (line || d.state?.askPw) d.run(line, print); // an empty line still answers a password prompt
@@ -32,6 +33,7 @@ function runOn(session, name, raw) {
 //   score()          {done, total}: scored requirements met, and how many are scored
 //   judge()          like grade, but null for a requirement met since the (re)start in a lab with a preset config: not the
 //                    student's work, so it is neither ticked nor scored; once broken it counts as false again
+//   typed            the lines typed on each device since the (re)start, {name: [line]}, for the hints
 //   reset()          fresh devices
 function createSession({topic, level, net}) {
   const T = LABS[topic], cfg = T.levels[level];
@@ -52,6 +54,7 @@ function createSession({topic, level, net}) {
     run: (name, raw) => runOn(session, name, raw),
     reset() {
       // a node marked readonly is display-only whatever its type
+      session.typed = {};
       session.devices = Object.fromEntries(session.nodes.map(n => [n.id, DEVICE_TYPES[n.readonly ? 'readonly' : n.type](n, session)]));
       for (const [name, lines] of session.setup || []) for (const l of ['enable', 'conf t', ...lines, 'end', 'disable']) session.run(name, l);
       // only a preset config (troubleshooting) makes requirements "given"; in other labs every requirement is the student's work

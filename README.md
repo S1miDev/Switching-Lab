@@ -26,8 +26,8 @@ Nauč se sestavit síť a správně zvolit kabeláž mezi prvky.
 - **Ovládání:** prvky přetáhneš na plochu, přesouvat je můžeš tažením, kabel vytvoříš kliknutím na jedno zařízení a poté na druhé
 ## 🧰 Sandbox
 Volné prostředí, kde si sestavíš vlastní topologii a nastavíš ji z konzole.
-- **Guided labs** – labs z části Labs, otevřené přímo ze Sandboxu
 - **My workspace** – prázdné plátno: přidáš zařízení (router, switch, multilayer switch, PC, max. 30), propojíš je kabely a každé nastavíš z konzole
+- **Guided labs** – labs z části Labs, otevřené přímo ze Sandboxu
 - **Packet test** – pošle ping mezi zařízeními, ověříš tak funkčnost sítě
 - **Uložení** – až 20 pojmenovaných uložení v prohlížeči, dále **Export** a **Import** do souboru nebo **Copy share link** pro odkaz (u velkých sítí použij Export)
 - Uložení je v tomto prohlížeči, ne v účtu

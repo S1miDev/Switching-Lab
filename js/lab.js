@@ -43,7 +43,6 @@ const labPage = (() => {
       li.append(el('span', 'mark', res === null ? '○' : res ? '✓' : '✗'));
       const txt = el('span', 'rtext');
       txt.append(el('b', '', r.text));
-      if (res === false && !exam) txt.append(el('span', 'rexp', hintCmds(r.hint)));
       li.append(txt);
       const used = reqHints[i] || 0;
       if (res !== true && !given[i] && used < 3 && !exam) {
@@ -79,12 +78,24 @@ const labPage = (() => {
   // a requirement's exact commands: on its interface (if any), on its device (if named)
   const hintCmds = ({cmds, port, dev}) => [...(port ? ['interface ' + port] : []), ...cmds].join(' → ') + (dev ? ` (on ${dev})` : '');
 
-  // Hint 1 names the command to think about, hint 2 shows its syntax, hint 3 gives the exact commands
+  // Hints follow what was typed on the requirement's device: they talk about the first step (mode entry, then commands) not typed yet.
+  // Hint 1 nudges (device or mode), hint 2 shows that step's syntax, hint 3 gives the exact remaining steps.
+  const norm = c => c.toLowerCase().replace(/\s+/g, ' ').replace(/^int /, 'interface ').replace(/^conf t$/, 'configure terminal');
   function hintLines(r, k) {
-    const {cmds, dev} = r.hint, on = dev ? ` (on ${dev})` : '';
-    if (k === 0) return `Think about which mode you need, then the command "${cmdSyntax(cmds[0]).split(' ').slice(0, 2).join(' ')} ..."${on}`;
-    if (k === 1) return 'Syntax: ' + cmds.map(cmdSyntax).join(' → ') + on;
-    return 'Commands: ' + hintCmds(r.hint);
+    const {cmds, port, dev} = r.hint, home = dev || shown.home;
+    const typed = new Set((shown.typed[home] || []).map(norm));
+    const steps = [...(port ? ['interface ' + port] : []), ...cmds];
+    const left = steps.filter(c => !typed.has(norm(c)));
+    const on = dev ? ` (on ${dev})` : '';
+    if (!left.length) return 'You typed all the commands, so check the values, the interface and the device: use show running-config.';
+    if (k === 0) {
+      if (labConsole.current() !== home) return `Open the ${home} console first.`;
+      const pr = shown.devices[home].prompt(), cfg = /\(([^)]+)\)/.exec(pr);
+      const mode = cfg ? cfg[1] + ' mode' : pr.endsWith('>') ? 'user mode' : 'privileged mode';
+      return `You are in ${mode}. Think about which mode the command "${cmdSyntax(left[0]).split(' ').slice(0, 2).join(' ')} ..." needs${on}`;
+    }
+    if (k === 1) return 'Syntax: ' + left.map(cmdSyntax).join(' → ') + on;
+    return 'Commands: ' + left.join(' → ') + on;
   }
 
   // a command with its values replaced by placeholders, so the card does not give the answers away

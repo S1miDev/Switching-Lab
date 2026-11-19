@@ -12,6 +12,8 @@ let cabling = null; // {a, pa}: the first end of the cable being made
 let drag = null;    // {id, dx, dy, startX, startY, moved}
 let savedSteps = 0; // the length of the history when it was last saved
 let arrived = null; // the device just added: drawn with a short fade-in (css, off with reduced motion)
+let view = {x: 0, y: 0, w: SB_W, h: SB_H}; // the part of the canvas shown (svg viewBox): wheel zooms, dragging empty space pans
+let pan = null;     // {x, y, scale, vx, vy}: the start of a pan
 const canvas = $('topo'), menu = $('sb-menu');
 
 const msg = text => { $('sb-msg').textContent = text; };
@@ -25,7 +27,7 @@ const store = {
 // ---- drawing ----
 
 function render() {
-  let svg = `<svg viewBox="0 0 ${SB_W} ${SB_H}" role="img" aria-label="Network canvas. Drag devices to move them.">`;
+  let svg = `<svg viewBox="${view.x} ${view.y} ${view.w} ${view.h}" role="img" aria-label="Network canvas. Drag devices to move them.">`;
   if (!sb.nodes.length) {
     svg += `<rect class="empty" x="60" y="60" width="${SB_W - 120}" height="${SB_H - 120}" rx="14"/>` +
       `<text class="empty-t" x="${SB_W / 2}" y="${SB_H / 2 - 4}">An empty network</text>` +
@@ -85,6 +87,7 @@ function structureChanged() {
 // replace the whole network (a preset, a saved sandbox, an imported file or a new one)
 function setSandbox(next, text) {
   sb = next;
+  view = {x: 0, y: 0, w: SB_W, h: SB_H};
   cabling = null;
   closeMenu();
   labConsole.show(sb, afterCommand);
@@ -135,9 +138,10 @@ function openMenu(id) {
     return b;
   });
   menu.replaceChildren(el('p', 'note', cabling ? `Cable ${cabling.a} ${cabling.pa} to ${id}, port:` : `Cable from ${id}, port:`), ...buttons);
-  const r = canvas.querySelector('svg').getBoundingClientRect(), w = canvas.parentElement.getBoundingClientRect(), scale = r.width / SB_W;
-  menu.style.left = clamp(r.left - w.left + (n.x + NODE_W) * scale, 0, Math.max(0, w.width - 180)) + 'px';
-  menu.style.top = clamp(r.top - w.top + n.y * scale, 0, Math.max(0, w.height - 120)) + 'px';
+  const r = canvas.querySelector('svg').getBoundingClientRect(), w = canvas.parentElement.getBoundingClientRect(), scale = canvas.querySelector('svg').getScreenCTM().a;
+  const ctm = canvas.querySelector('svg').getScreenCTM();
+  menu.style.left = clamp(ctm.e - w.left + (n.x + NODE_W) * scale, 0, Math.max(0, w.width - 180)) + 'px';
+  menu.style.top = clamp(ctm.f - w.top + n.y * scale, 0, Math.max(0, w.height - 120)) + 'px';
   menu.hidden = false;
   menu.dataset.owner = id;
   buttons[0].focus();
@@ -218,12 +222,23 @@ document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click'
 canvas.addEventListener('pointerdown', e => {
   closeMenu();
   const g = e.target.closest('[data-dev]');
-  if (!g) return;
+  if (!g) {
+    if (e.button !== 0 || e.target.closest('[data-cable]')) return;
+    pan = {x: e.clientX, y: e.clientY, scale: canvas.querySelector('svg').getScreenCTM().a, vx: view.x, vy: view.y};
+    canvas.setPointerCapture(e.pointerId);
+    canvas.style.cursor = 'grabbing';
+    return;
+  }
   const n = sb.nodeOf(g.dataset.dev), p = svgPoint(canvas, e);
   drag = {id: n.id, dx: p.x - n.x, dy: p.y - n.y, startX: e.clientX, startY: e.clientY, moved: false};
   canvas.setPointerCapture(e.pointerId);
 });
 canvas.addEventListener('pointermove', e => {
+  if (pan) {
+    view.x = pan.vx - (e.clientX - pan.x) / pan.scale;
+    view.y = pan.vy - (e.clientY - pan.y) / pan.scale;
+    return render();
+  }
   if (!drag) return;
   if (!drag.moved && Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY) < 5) return;
   drag.moved = true;
@@ -231,14 +246,22 @@ canvas.addEventListener('pointermove', e => {
   sbPlace(sb.nodeOf(drag.id), p.x - drag.dx, p.y - drag.dy);
   render();
 });
+const endPan = () => { pan = null; canvas.style.cursor = ''; };
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const p = svgPoint(canvas, e), w = clamp(view.w * (e.deltaY < 0 ? 0.9 : 1.1), SB_W / 5, SB_W * 5), k = w / view.w;
+  view = {x: p.x - (p.x - view.x) * k, y: p.y - (p.y - view.y) * k, w, h: w * SB_H / SB_W};
+  render();
+}, {passive: false});
 canvas.addEventListener('pointerup', () => {
+  endPan();
   const d = drag;
   drag = null;
   if (!d) return;
   if (d.moved) store.set(SB_CURRENT, sb.serialize());
   else activate(d.id);
 });
-canvas.addEventListener('pointercancel', () => { drag = null; });
+canvas.addEventListener('pointercancel', () => { drag = null; endPan(); });
 canvas.addEventListener('keydown', e => {
   const g = e.target.closest?.('[data-dev]');
   if (g && (e.key === 'Enter' || e.key === ' ')) {
@@ -411,6 +434,11 @@ $('sb-file').addEventListener('change', async e => {
   } catch {
     msg('That file is not a sandbox (it is not valid JSON).');
   }
+});
+$('sb-recenter').addEventListener('click', () => {
+  view = {x: 0, y: 0, w: SB_W, h: SB_H};
+  render();
+  msg('View reset.');
 });
 $('sb-clear').addEventListener('click', () => {
   if (!sb.nodes.length) return msg('The canvas is already empty.');
