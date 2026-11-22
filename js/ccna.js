@@ -1,5 +1,6 @@
 // CCNA tab: question exams (multiple choice) to choose from. Each exam is a pool of questions, from which `count` are drawn at random.
 // A question is [text, options, correct option indexes, optional exhibit picture in img/ccna/];it is right only when exactly the correct options are ticked.
+// A matching/ordering question is {q, rows: [[prompt, answer], ...], extra: [unused answers], img}; each prompt gets a dropdown, right only when every row is correct.
 // Needs EXAM_PASS, BOX, TILE (exam.js), esc, cap (dom.js / exam.js) and show (script.js, only called on a click).
 const CCNA_EXAMS = [{
   id: 'srwe-1-4',
@@ -76,6 +77,20 @@ const CCNA_EXAMS = [{
     ['Refer to the exhibit. A network administrator has configured R1 as shown. When the administrator checks the status of the serial interface, the interface is shown as being administratively down. What additional command must be entered on the serial interface of R1 to bring the interface up?', ['IPv6 enable', 'clockrate 128000', 'end', 'no shutdown'], [3], 'q70.jpg'],
     ['Refer to the exhibit. The network administrator wants to configure Switch1 to allow SSH connections and prohibit Telnet connections. How should the network administrator change the displayed configuration to satisfy the requirement?', ['Use SSH version 1.', 'Reconfigure the RSA key.', 'Configure SSH on a different line.', 'Modify the transport input command.'], [3], 'q71.jpg'],
     ['Refer to the exhibit. A network administrator is configuring inter-VLAN routing on a network. For now, only one VLAN is being used, but more will be added soon. What is the missing parameter that is shown as the highlighted question mark in the graphic?', ['It identifies the subinterface.', 'It identifies the VLAN number.', 'It identifies the native VLAN number.', 'It identifies the type of encapsulation that is used.', 'It identifies the number of hosts that are allowed on the interface.'], [1], 'q74.png'],
+    ['A technician is configuring a new Cisco 2960 switch. What is the effect of issuing the BranchSw# configure terminal command?', ['It enters the global configuration mode.', 'It saves the running configuration to NVRAM.', 'It disables a virtual or physical switch interface.', 'It updates the MAC address table for the associated port.', 'It saves the startup configuration to the running configuration.'], [0]],
+    ['A technician is configuring a new Cisco 2960 switch. What is the effect of issuing the BranchSw(config-if)# shutdown command?', ['It disables a virtual or physical switch interface.', 'It applies an IPv6 address to the virtual interface.', 'It applies an IPv4 address to the virtual interface.', 'It permits an IPv6 address to be configured on a switch physical interface.', 'It updates the MAC address table for the associated port.'], [0]],
+    ['Which message is displayed when 10.10.10.1 is entered into the PC1 Web Browser address bar?', ['Local Server', 'Test Server', 'File Server', 'Cisco Server'], [2]],
+    {q: 'Refer to the exhibit. A switch receives a Layer 2 frame that contains a source MAC address of 000b.a023.c501 and a destination MAC address of 0050.0fae.75aa. Place the switch steps in the order they occur. (Not all options are used.)', img: 'q20.png',
+      rows: [['Occurs first', 'The switch adds the source MAC address to the MAC address table.'], ['Occurs second', 'Because the destination is not known, the switch forwards the frame out all ports except the port through which the frame arrived.']],
+      extra: ['The switch drops the frame.', 'The switch adds the destination MAC address to the MAC address table.', 'Because the source MAC address is not known, the switch broadcasts the frame out all ports except the port through which the frame arrived.']},
+    {q: 'Match the IEEE 802.1Q standard VLAN tag field with the description. (Not all options are used.)',
+      rows: [['Type', 'a value for the tag protocol ID value'], ['VLAN ID', 'a VLAN number'], ['User Priority', 'a value that supports level or service implementation'], ['Canonical Format Identifier', 'an identifier that enables Token Ring frames to be carried across Ethernet links']],
+      extra: ['a value for the application protocol of the user data in the frame']},
+    {q: 'Match the DTP mode with its function.',
+      rows: [['Nonegotiate', 'Requires manual configuration of trunking or nontrunking'], ['Dynamic desirable', 'Actively attempts to convert the link to a trunk'], ['Trunk', 'Permanent trunking mode'], ['Dynamic auto', 'Passively waits for the neighbor to initiate trunking']]},
+    {q: 'Match each DHCP message type with its description. (Not all options are used.)',
+      rows: [['a client initiating a message to find a DHCP server', 'DHCPDISCOVER'], ['a DHCP server responding to the initial request by a client', 'DHCPOFFER'], ['the client accepting the IP address provided by the DHCP server', 'DHCPREQUEST'], ['the DHCP server confirming that the address lease has been accepted', 'DHCPACK']],
+      extra: ['DHCPNACK']},
   ],
 }];
 
@@ -87,33 +102,62 @@ function ccnaListHtml() {
   return '<div class="grid gap-3">' + CCNA_EXAMS.map(e =>
     `<div class="${BOX} flex flex-wrap items-center justify-between gap-4"><div>` +
     `<p class="m-0 text-lg font-semibold">${esc(e.title)}</p>` +
-    `<p class="note !m-0">${esc(e.desc)} ${Math.min(e.count, e.questions.length)} questions, pass mark ${EXAM_PASS}%.</p></div>` +
-    `<button data-ccna-start="${e.id}">Start exam →</button></div>`).join('') + '</div>';
+    `<p class="note !m-0">${esc(e.desc)} ${Math.min(e.count, e.questions.length)} questions, pass mark ${EXAM_PASS}%. Practice and See questions use all ${e.questions.length}.</p></div>` +
+    `<div class="flex flex-wrap gap-3"><button data-ccna-start="${e.id}">Start exam →</button>` +
+    `<button class="ghost" data-ccna-practice="${e.id}">Practice</button>` +
+    `<button class="ghost" data-ccna-browse="${e.id}">See questions</button></div></div>`).join('') + '</div>';
+}
+
+// raw question -> {q, img, multi, opts} or {q, img, rows, pool}
+const ccnaItem = x => Array.isArray(x)
+  ? {q: x[0], img: x[3], multi: x[2].length > 1, opts: shuffled(x[1].map((text, i) => ({text, ok: x[2].includes(i)})))}
+  : {q: x.q, img: x.img, rows: x.rows, pool: shuffled([...x.rows.map(r => r[1]), ...(x.extra || [])])};
+
+// one question's fieldset; n is its 0-based number (also the form field name)
+function ccnaQuestionHtml(it, n) {
+  return `<fieldset class="${BOX} min-w-0"${it.multi ? ` data-max="${it.opts.filter(o => o.ok).length}"` : ''}><legend class="sr-only">Question ${n + 1}</legend>` +
+    `<p class="mb-3 mt-0 font-semibold"><span class="font-mono text-[color:var(--success)]">${n + 1}.</span> ${esc(it.q)}</p>` +
+    (it.img ? `<img src="img/ccna/${it.img}" alt="Exhibit for question ${n + 1}" class="mb-3 max-w-full rounded-lg bg-white">` : '') +
+    (it.rows
+      ? `<div class="grid gap-2">${it.rows.map(([p], r) => `<label class="${TILE} flex-col !items-stretch"><span>${esc(p)}</span><select name="q${n}-${r}" class="w-full min-w-0"><option value="">Choose…</option>${it.pool.map((a, i) => `<option value="${i}">${esc(a)}</option>`).join('')}</select></label>`).join('')}</div></fieldset>`
+      : `<div class="grid gap-2">${it.opts.map((o, i) => `<label class="${TILE}"><input type="${it.multi ? 'checkbox' : 'radio'}" name="q${n}" value="${i}" class="shrink-0 accent-[color:var(--accent)]"><span>${esc(o.text)}</span></label>`).join('')}</div></fieldset>`);
+}
+
+// a question counts only when the ticked options are exactly the correct ones
+function ccnaGrade(it, data, n) {
+  if (it.rows) { // picked[r] = the answer text chosen for row r ('' if left blank)
+    const picked = it.rows.map((_, r) => it.pool[data.get(`q${n}-${r}`)] ?? '');
+    return {it, picked, right: it.rows.every(([, a], r) => picked[r] === a)};
+  }
+  const picked = data.getAll('q' + n).map(Number);
+  return {it, picked, right: it.opts.every((o, i) => o.ok === picked.includes(i))};
+}
+
+// the correct answers, marking what was picked (picked = null: nothing picked, e.g. when browsing)
+function ccnaAnswerHtml(it, picked) {
+  return `<ul class="m-0 grid list-none gap-1 p-0 text-sm">${it.rows ? it.rows.map(([p, a], r) => !picked || picked[r] === a
+    ? `<li class="text-[color:var(--success)]">${esc(p)} → ${esc(a)} ✓ correct</li>`
+    : `<li class="text-[color:var(--bad)]">${esc(p)} → ${esc(a)} ✓ correct <span class="text-[color:var(--muted)]">(your answer: ${esc(picked[r] || 'none')})</span></li>`).join('') : it.opts.map((o, i) => {
+    const mine = picked?.includes(i);
+    const tag = o.ok ? ' ✓ correct' : mine ? ' ✗ your answer' : '';
+    return `<li class="${o.ok ? 'text-[color:var(--success)]' : mine ? 'text-[color:var(--bad)]' : 'text-[color:var(--muted)]'}">${esc(o.text)}${tag}</li>`;
+  }).join('')}</ul>`;
 }
 
 function ccnaStart(id) {
   const exam = CCNA_EXAMS.find(e => e.id === id);
-  const items = shuffled(exam.questions).slice(0, exam.count).map(([q, opts, ok, img]) => ({
-    q, img, multi: ok.length > 1, opts: shuffled(opts.map((text, i) => ({text, ok: ok.includes(i)}))),
-  }));
-  ccnaRun = {exam, items};
+  const items = shuffled(exam.questions).slice(0, exam.count).map(ccnaItem);
+  ccnaRun = {exam, items, mode: 'exam'};
   ccnaCard.innerHTML = '<form id="ccna-form" class="grid gap-4">' +
     `<p class="note !m-0">${esc(exam.title)}. Tick the correct answer(s) for every question.</p>` +
-    items.map((it, n) => `<fieldset class="${BOX} min-w-0"${it.multi ? ` data-max="${it.opts.filter(o => o.ok).length}"` : ''}><legend class="sr-only">Question ${n + 1}</legend>` +
-      `<p class="mb-3 mt-0 font-semibold"><span class="font-mono text-[color:var(--success)]">${n + 1}.</span> ${esc(it.q)}</p>` +
-      (it.img ? `<img src="img/ccna/${it.img}" alt="Exhibit for question ${n + 1}" class="mb-3 max-w-full rounded-lg bg-white">` : '') +
-      `<div class="grid gap-2">${it.opts.map((o, i) => `<label class="${TILE}"><input type="${it.multi ? 'checkbox' : 'radio'}" name="q${n}" value="${i}" class="shrink-0 accent-[color:var(--accent)]"><span>${esc(o.text)}</span></label>`).join('')}</div></fieldset>`).join('') +
+    items.map(ccnaQuestionHtml).join('') +
     '<div class="flex justify-end"><button type="submit" class="!px-6">Finish exam</button></div></form>';
   window.scrollTo(0, 0);
 }
 
-// a question counts only when the ticked options are exactly the correct ones
 function ccnaFinish(form) {
   const data = new FormData(form);
-  const marks = ccnaRun.items.map((it, n) => {
-    const picked = data.getAll('q' + n).map(Number);
-    return {it, picked, right: it.opts.every((o, i) => o.ok === picked.includes(i))};
-  });
+  const marks = ccnaRun.items.map((it, n) => ccnaGrade(it, data, n));
   const right = marks.filter(m => m.right).length, total = marks.length;
   const pass = right * 100 >= EXAM_PASS * total; // exact compare, like the mock exam: 79.6% is not a pass
   const wrong = marks.map((m, n) => ({...m, n})).filter(m => !m.right);
@@ -125,11 +169,59 @@ function ccnaFinish(form) {
     (wrong.length ? `<p class="note !m-0">Missed questions, with the correct answers:</p>` : '') +
     wrong.map(m => `<div class="${BOX}"><p class="mb-2 mt-0 font-semibold"><span class="font-mono">${m.n + 1}.</span> ${esc(m.it.q)}</p>` +
       (m.it.img ? `<img src="img/ccna/${m.it.img}" alt="Exhibit" class="mb-3 max-w-full rounded-lg bg-white">` : '') +
-      `<ul class="m-0 grid list-none gap-1 p-0 text-sm">${m.it.opts.map((o, i) => {
-        const tag = o.ok ? ' ✓ correct' : m.picked.includes(i) ? ' ✗ your answer' : '';
-        return `<li class="${o.ok ? 'text-[color:var(--success)]' : m.picked.includes(i) ? 'text-[color:var(--bad)]' : 'text-[color:var(--muted)]'}">${esc(o.text)}${tag}</li>`;
-      }).join('')}</ul></div>`).join('') +
+      ccnaAnswerHtml(m.it, m.picked) + '</div>').join('') +
     '<div class="flex gap-3"><button id="ccna-again">Retake</button><button id="ccna-back" class="ghost">All exams</button></div></div>';
+  window.scrollTo(0, 0);
+}
+
+// Practice: every question of the exam, one at a time; Check shows the answer, Next moves on
+function ccnaPractice(id) {
+  const exam = CCNA_EXAMS.find(e => e.id === id);
+  ccnaRun = {exam, items: shuffled(exam.questions).map(ccnaItem), mode: 'practice', i: 0, right: 0, checked: false};
+  ccnaShowPractice();
+}
+
+function ccnaShowPractice() {
+  const {exam, items, i, right} = ccnaRun;
+  ccnaRun.checked = false;
+  ccnaCard.innerHTML = '<form id="ccna-form" class="grid gap-4">' +
+    `<p class="note !m-0">${esc(exam.title)} · practice · question ${i + 1} of ${items.length} · ${right} right so far</p>` +
+    ccnaQuestionHtml(items[i], i) + '<div id="ccna-feedback"></div>' +
+    '<div class="flex gap-3"><button type="submit" id="ccna-check">Check</button><button type="button" id="ccna-back" class="ghost">Quit</button></div></form>';
+  window.scrollTo(0, 0);
+}
+
+function ccnaCheck(form) {
+  const m = ccnaGrade(ccnaRun.items[ccnaRun.i], new FormData(form), ccnaRun.i);
+  ccnaRun.checked = true;
+  if (m.right) ccnaRun.right++;
+  const last = ccnaRun.i === ccnaRun.items.length - 1;
+  form.querySelector('fieldset').disabled = true;
+  $('ccna-feedback').innerHTML = `<div class="${BOX}"><p class="mb-2 mt-0 font-semibold ${m.right ? 'text-[color:var(--success)]' : 'text-[color:var(--bad)]'}">${m.right ? '✓ Correct' : '✗ Not quite'}</p>${ccnaAnswerHtml(m.it, m.picked)}</div>`;
+  $('ccna-check').outerHTML = `<button type="button" id="ccna-next">${last ? 'Finish' : 'Next →'}</button>`;
+}
+
+function ccnaPracticeNext() {
+  if (++ccnaRun.i < ccnaRun.items.length) return ccnaShowPractice();
+  const {exam, items, right} = ccnaRun;
+  ccnaCard.innerHTML = `<div class="grid gap-4"><div class="${BOX}"><p class="m-0 text-[13px] text-[color:var(--muted)]">${esc(exam.title)} · practice</p>` +
+    `<p class="m-0 text-4xl font-semibold">${right}/${items.length} <span class="font-mono text-base font-normal text-[color:var(--muted)]">right</span></p></div>` +
+    `<div class="flex gap-3"><button data-ccna-practice="${exam.id}">Practice again</button><button id="ccna-back" class="ghost">All exams</button></div></div>`;
+  window.scrollTo(0, 0);
+}
+
+// See questions: the whole pool in file order with the right answers
+function ccnaBrowse(id) {
+  const exam = CCNA_EXAMS.find(e => e.id === id);
+  ccnaRun = null;
+  ccnaCard.innerHTML = '<div class="grid gap-4">' +
+    `<div class="flex flex-wrap items-center justify-between gap-3"><p class="note !m-0">${esc(exam.title)} · ${exam.questions.length} questions with correct answers</p><button id="ccna-back" class="ghost">← All exams</button></div>` +
+    exam.questions.map((x, n) => {
+      const it = ccnaItem(x);
+      return `<div class="${BOX}"><p class="mb-2 mt-0 font-semibold"><span class="font-mono">${n + 1}.</span> ${esc(it.q)}</p>` +
+        (it.img ? `<img src="img/ccna/${it.img}" alt="Exhibit for question ${n + 1}" class="mb-3 max-w-full rounded-lg bg-white">` : '') +
+        ccnaAnswerHtml(it, null) + '</div>';
+    }).join('') + '</div>';
   window.scrollTo(0, 0);
 }
 
@@ -139,7 +231,11 @@ function ccnaHome() {
 }
 
 ccnaCard.addEventListener('click', e => {
-  if (e.target.dataset.ccnaStart) ccnaStart(e.target.dataset.ccnaStart);
+  const d = e.target.dataset;
+  if (d.ccnaStart) ccnaStart(d.ccnaStart);
+  else if (d.ccnaPractice) ccnaPractice(d.ccnaPractice);
+  else if (d.ccnaBrowse) ccnaBrowse(d.ccnaBrowse);
+  else if (e.target.id === 'ccna-next') ccnaPracticeNext();
   else if (e.target.id === 'ccna-again') ccnaStart(ccnaRun.exam.id);
   else if (e.target.id === 'ccna-back') ccnaHome();
 });
@@ -152,7 +248,8 @@ ccnaCard.addEventListener('change', e => {
 });
 ccnaCard.addEventListener('submit', e => {
   e.preventDefault();
-  ccnaFinish(e.target);
+  if (ccnaRun.mode !== 'practice') ccnaFinish(e.target);
+  else if (!ccnaRun.checked) ccnaCheck(e.target);
 });
 $('nav-ccna').addEventListener('click', () => {
   show('ccna');
