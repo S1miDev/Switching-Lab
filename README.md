@@ -8,7 +8,9 @@ Webové virtuální prostředí na switching a routing ve stylu Cisco labů. Vyb
 
 ## 🧪 Labs
 Procvičování switchingu a routingu podle osnovy CCNA: **38 témat** ve **4 obtížnostech** (Beginner, Intermediate, Advanced, Expert).
-
+- **Nápovědy** – u každého požadavku až 3: první navede k zařízení a režimu, druhá ukáže syntaxi, třetí zbývající příkazy. Nápovědy reagují na to, co jsi už zadal
+- **Cena nápovědy** – každá použitá nápověda sníží výsledek o 2 / 4 / 6 / 8 procentních bodů podle obtížnosti
+- **Check** – ukáže skóre, čas, počet nápověd, stav každého požadavku a referenční řešení
 ## 🛠️ Troubleshooting
 Najdeš tu rozbité sítě, které musíš opravit. Témat je **5** a každé je ve **4 obtížnostech**:
 - Trunk troubleshooting
@@ -34,12 +36,14 @@ Volné prostředí, kde si sestavíš vlastní topologii a nastavíš ji z konzo
 ## 📝 Mock exam *(beta)*
 Test sestavený z náhodných labů (alespoň jeden lab z každého zvoleného tématu): podle obtížnosti, nebo vlastní (počet úloh, obtížnost, témata nebo mix).
 - **Časový limit** je volitelný: 5, 8, 12 nebo 15 minut na lab podle obtížnosti (Beginner až Expert)
+- **Bez pomoci** – v testu nejsou nápovědy, seznam příkazů ani řešení
 - **Hodnocení:** test je splněný od 80 %
 ## 🎓 CCNA
-Testy s výběrovými otázkami podle oficiálních CCNA kurzů.
-- Aktuálně **CCNA 2 v7 (SRWE) Modules 1-4 Checkpoint Exam**: 33 otázek náhodně z banku 68 otázek
-- Některé otázky mají více správných odpovědí (zaškrtni všechny) a některé obsahují obrázek
-- **Hodnocení:** test je splněný od 80 %
+Testy s výběrovými otázkami podle oficiálních CCNA kurzů. Aktuálně **CCNA 2 v7 (SRWE) Modules 1-4 Checkpoint Exam** s bankem 75 otázek:
+- **Start exam** – 33 náhodných otázek, test je splněný od 80 %
+- **Practice** – všech 75 otázek po jedné, po **Check** uvidíš správnou odpověď a pokračuješ dál
+- **See questions** – projdeš všechny otázky se správnými odpověďmi
+- **Typy otázek** – výběr jedné nebo více odpovědí a přiřazování nebo řazení přes rozbalovací nabídky; některé otázky mají obrázek
 ## 📖 Reference
 Nevíš si rady s labem? Najdeš tu **CCNA command reference**: příkazy, v jakém módu se zadávají, k čemu slouží, trochu teorie a nejčastější chyby. Témata jsou seřazená podle oblastí CCNA a příkazy jdou prohledat v jednom seznamu. Součástí je i téma Structured troubleshooting, tedy postupy hledání závad.
  
@@ -54,3 +58,4 @@ Aktuální to-do list, opravy a QOL změny najdeš na [Milanote boardu](https://
  
 ## 💬 Zpětná vazba
 Našel jsi chybu, máš nápad na úlohu nebo zlepšení? Napiš mi na discord!
+ 
