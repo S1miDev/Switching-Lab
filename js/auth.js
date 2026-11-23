@@ -64,7 +64,7 @@ authForm.addEventListener('submit', async e => {
 // logged in: the button opens the profile page, which has Log out
 authBtn.addEventListener('click', async () => {
   const { data } = await sb.auth.getSession();
-  if (data.session) { location.href = 'profile.html'; return; }
+  if (data.session) { show('profile'); return; }
   authMode(false);
   authDlg.showModal();
 });

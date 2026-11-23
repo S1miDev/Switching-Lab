@@ -31,6 +31,7 @@ function moveSeg(seg) {
   if (!active || !active.offsetWidth) return;
   seg.style.setProperty('--x', active.offsetLeft + 'px');
   seg.style.setProperty('--w', active.offsetWidth + 'px');
+  seg.style.setProperty('--h', active.offsetHeight + 'px'); // only the navbar highlight uses it
   requestAnimationFrame(() => seg.classList.add('ready')); // animate from the second move on
 }
 
@@ -65,8 +66,32 @@ const VIEWS = {
   exam: {page: 'exam-view', nav: 'nav-exam'},
   ccna: {page: 'ccna-view', nav: 'nav-ccna'},
   ref: {page: 'ref', nav: 'nav-ref'},
+  profile: {page: 'profile', nav: 'nav-auth'},
   lab: {page: 'lab'},
 };
+
+// navbar highlight; to Profile it slides left and shrinks away, then grows in from the right;
+// from Profile it slides right and shrinks away, then grows in from the left. It never passes behind the brand.
+let onProfile = false, navMove = 0;
+function moveNav(toProfile) {
+  const nav = document.querySelector('.side');
+  const wrap = toProfile !== onProfile && nav.classList.contains('ready')
+    && !matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const from = onProfile;
+  onProfile = toProfile;
+  const id = ++navMove;
+  if (!wrap) return moveSeg(nav);
+  const first = $('nav-labs').offsetLeft, auth = $('nav-auth');
+  nav.style.setProperty('--x', (from ? auth.offsetLeft + auth.offsetWidth : first) + 'px');
+  nav.style.setProperty('--w', '0px');
+  setTimeout(() => {
+    if (id !== navMove) return; // a newer move took over
+    nav.classList.remove('ready'); // jump to the opposite edge without animating
+    nav.style.setProperty('--x', (from ? first : nav.scrollWidth) + 'px');
+    nav.offsetWidth; // force reflow
+    moveSeg(nav);
+  }, 300);
+}
 
 function show(view) {
   const lit = view === 'lab' ? labFrom : view;
@@ -75,6 +100,7 @@ function show(view) {
     if (v.nav) $(v.nav).classList.toggle('active', name === lit);
   }
   if (VIEWS[view].seg) moveSeg($(VIEWS[view].seg));
+  moveNav(view === 'profile');
   if (view === 'ref') refHome();
   window.scrollTo(0, 0);
   if (view === 'lab') $('cmd').focus();
@@ -118,7 +144,9 @@ $('new-net').addEventListener('click', () => newLab());
 
 window.addEventListener('resize', () => {
   for (const v of Object.values(VIEWS)) if (v.seg) moveSeg($(v.seg));
+  moveSeg(document.querySelector('.side'));
 });
+window.addEventListener('load', () => moveSeg(document.querySelector('.side'))); // after fonts, so widths are final
 
 // ---- start ----
 renderDashboard('dash-domains', false);

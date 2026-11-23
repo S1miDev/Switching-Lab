@@ -153,7 +153,39 @@ button:disabled {
   background: var(--accent);
 }
 
+/* moveSeg() slides this highlight under the active nav item */
+.side {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+}
+
+.side::before {
+  content: "";
+  position: absolute;
+  top: calc(50% - var(--h, 0px) / 2);
+  left: 0;
+  width: var(--w, 0);
+  height: var(--h, 0);
+  transform: translateX(var(--x, 0));
+  background: var(--accent-tint);
+  border-radius: 8px;
+}
+
+.side.ready::before {
+  transition: transform .3s cubic-bezier(.4, 0, .2, 1), width .3s cubic-bezier(.4, 0, .2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .side.ready::before {
+    transition: none;
+  }
+}
+
 .nav-item {
+  position: relative;
+  z-index: 1;
+  transition: color .3s;
   flex: none;
   font-weight: 500;
   color: var(--muted);
@@ -170,7 +202,6 @@ button:disabled {
 }
 
 .nav-item.active {
-  background: var(--accent-tint);
   color: var(--accent);
 }
 
@@ -365,7 +396,7 @@ button:disabled {
   min-height: 1.2em;
 }
 
-/* ---- profile page (profile.html) ---- */
+/* ---- profile page (the #profile view in index.html) ---- */
 a.brand,
 a.nav-item {
   text-decoration: none;

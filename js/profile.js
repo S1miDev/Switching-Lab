@@ -119,5 +119,5 @@ $('pf-pass-form').addEventListener('submit', async e => {
 
 $('pf-logout').addEventListener('click', async () => {
   await sb.auth.signOut();
-  location.href = 'index.html';
+  show('dash');
 });

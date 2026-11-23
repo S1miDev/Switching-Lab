@@ -15,3 +15,9 @@
   from = "/sandbox"
   to = "/sandbox.html"
   status = 200
+
+# the profile is now a view of index.html
+[[redirects]]
+  from = "/profile.html"
+  to = "/"
+  status = 301
