@@ -1706,7 +1706,6 @@ function addressingLab(T, cfg, x) {
 const solutionOf = (home, cmds, then = []) => [...(cmds?.length ? [[home, ['enable', 'conf t', ...cmds, 'end']]] : []), ...then];
 
 // how each kind of lab builds level cfg of topic T for the network x; a level's fields may be values or functions of x
-const atNet = (v, x) => (typeof v === 'function' ? v(x) : v);
 const fixedLab = topo => (T, cfg, x) => ({...topo, reqs: atNet(cfg.reqs, x), steps: cfg.steps,
   setup: cfg.setup && atNet(cfg.setup, x), solution: solutionOf(topo.home, atNet(cfg.cmds, x), cfg.then && atNet(cfg.then, x))});
 const LAB_KINDS = {

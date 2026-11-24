@@ -29,12 +29,17 @@
 //   routes()                   whether it routes between its interfaces
 //   pools()                    the DHCP pools it serves
 //   discoverable               whether CDP and LLDP neighbours see it
+// and the parts the console and the lab page ask about (the defaults are the Cisco behaviour):
+//   questionHelp               the console shows help as soon as "?" is pressed, IOS style (false: "?" is typed like any key)
+//   asksPassword()             the console hides what is typed (the prompt is a password prompt)
+//   hints                      null for IOS hints, or {nudge(cmd), syntax(cmd), recheck} for the lab page's hint texts
 const DEVICE_TYPES = {}; // node type -> factory(node, session) returning a device
 
 function defineDevice(props) {
   const device = {
     state: null, configurable: false, discoverable: false,
     ports: () => [], gateway: () => null, routes: () => false, pools: () => [],
+    questionHelp: true, asksPassword: () => device.prompt() === 'Password:', hints: null,
     banner: () => device.configurable
       ? [`Connected to ${device.name} — type ? or help for available commands.`, 'Press Tab to complete, Up/Down for history.']
       : [`Connected to ${device.name} — this device is not configurable in this lab.`],

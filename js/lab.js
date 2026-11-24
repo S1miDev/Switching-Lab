@@ -44,6 +44,16 @@ const labPage = (() => {
       const txt = el('span', 'rtext');
       txt.append(el('b', '', r.text));
       li.append(txt);
+      if (r.answer) { // an answer requirement: the student types what they found in the console
+        const box = el('input', 'ml-auto w-32 rounded-md border border-border bg-bg px-2 py-1 font-mono text-[13px] text-text');
+        box.dataset.answer = i;
+        box.setAttribute('aria-label', 'Answer');
+        box.autocomplete = 'off';
+        box.spellcheck = false;
+        box.value = shown.answers[i] || '';
+        box.disabled = !!stoppedAt;
+        li.append(box);
+      }
       const used = reqHints[i] || 0;
       if (res !== true && !given[i] && used < 3 && !exam) {
         const b = el('button', 'ghost rhint-btn', `Hint (${3 - used} left)`);
@@ -62,10 +72,10 @@ const labPage = (() => {
     return [failed ? {text: `[lab] ${failed} requirement(s) not met.`, cls: 'ln-err'} : {text: '[lab] All requirements met.', cls: 'ln-ok'}];
   }
 
-  // After every command: tick what is already met (the rest stays neutral, without hints),
+  // After every command or typed answer: tick what is already met (the rest stays neutral, without hints),
   // and run the full check once, automatically, when the last requirement is met. Returns the lines for the console.
-  function afterCommand() {
-    commandCount++;
+  const afterCommand = () => { commandCount++; return afterChange(); };
+  function afterChange() {
     const judged = shown.judge();
     renderReqs(judged, true);
     const all = judged.includes(true) && !judged.includes(false); // at least one scored requirement met, so a lab is never solved for free
@@ -81,13 +91,17 @@ const labPage = (() => {
   // Hints follow what was typed on the requirement's device: they talk about the first step (mode entry, then commands) not typed yet.
   // Hint 1 nudges (device or mode), hint 2 shows that step's syntax, hint 3 gives the exact remaining steps.
   const norm = c => c.toLowerCase().replace(/\s+/g, ' ').replace(/^int /, 'interface ').replace(/^conf t$/, 'configure terminal');
+  // A device with its own hints (a Linux host) words hints 1 and 2 and the "typed all" line itself.
   function hintLines(r, k) {
     const {cmds, port, dev} = r.hint, home = dev || shown.home;
     const typed = new Set((shown.typed[home] || []).map(norm));
     const steps = [...(port ? ['interface ' + port] : []), ...cmds];
     const left = steps.filter(c => !typed.has(norm(c)));
     const on = dev ? ` (on ${dev})` : '';
-    if (!left.length) return 'You typed all the commands, so check the values, the interface and the device: use show running-config.';
+    const own = shown.devices[home].hints;
+    if (!left.length) return own ? own.recheck : 'You typed all the commands, so check the values, the interface and the device: use show running-config.';
+    if (own && k === 0) return own.nudge(left[0]) + on;
+    if (own && k === 1) return 'Syntax: ' + left.map(own.syntax).join(' → ') + on;
     if (k === 0) {
       if (labConsole.current() !== home) return `Open the ${home} console first.`;
       const pr = shown.devices[home].prompt(), cfg = /\(([^)]+)\)/.exec(pr);
@@ -115,7 +129,9 @@ const labPage = (() => {
   // only the commands the open lab uses
   function renderCmds() {
     const used = shown.solution.length ? shown.solution.flatMap(([, lines]) => lines) : shown.reqs.flatMap(r => r.hint.cmds);
-    const list = ['enable', 'configure terminal', ...used.map(cmdSyntax).filter(c => c && c !== 'enable'), 'show running-config', 'exit', 'end'];
+    const own = shown.devices[shown.home].hints;
+    const list = own ? used.map(own.syntax)
+      : ['enable', 'configure terminal', ...used.map(cmdSyntax).filter(c => c && c !== 'enable'), 'show running-config', 'exit', 'end'];
     $('cmds').replaceChildren(...[...new Set(list)].map(c => el('code', 'cmd', c)));
   }
 
@@ -164,7 +180,8 @@ const labPage = (() => {
     $('lab-sub').textContent = session.sub;
     $('scenario-lead').textContent = session.lead;
     $('steps').replaceChildren(...session.steps.map(step => el('li', '', step)));
-    $('topo').innerHTML = drawTopo(session.nodes, session.links, session.height);
+    const topo = $('topo'); // a page without a Topology card (linux.html) has none
+    if (topo) topo.innerHTML = drawTopo(session.nodes, session.links, session.height);
     renderCmds();
     $('lab-bar').replaceChildren(...(exam && bar ? [bar] : []));
     for (const id of ['back', 'cmds-card', 'check-row', 'new-net', 'lab-timer']) $(id).hidden = exam;
@@ -222,8 +239,11 @@ const labPage = (() => {
     tiles.append(tile('REQUIREMENTS', `${done}/${total}`), tile('TIME', `${Math.floor(secs / 60)}m ${secs % 60}s`), tile('HINTS', cost ? `${hints} (−${cost}%)` : String(hints)));
     const cards = shown.reqs.map((r, i) => resultCard(r, results[i]));
     const sol = shown.solution.length ? shown.solution : [['', [...new Set(shown.reqs.map(r => hintCmds(r.hint)))]]];
+    const box = solutionBox(sol);
+    const answers = shown.reqs.filter(r => r.answer).map(r => `${r.text} → ${[].concat(r.answer(shown)).join(', ')}`);
+    if (answers.length) box.append(el('div', 'res-dev', 'Answers'), el('pre', 'solution', answers.join('\n')));
     resultBody.replaceChildren(head, tiles, el('p', 'note', `${commandCount} command${commandCount === 1 ? '' : 's'} entered`),
-      ...cards, solutionBox(sol), resultClose);
+      ...cards, box, resultClose);
     resultDlg.showModal();
   }
 
@@ -231,6 +251,7 @@ const labPage = (() => {
     tick();
     stoppedAt ||= Date.now();
     $('cmd').disabled = true;
+    document.querySelectorAll('#reqs [data-answer]').forEach(b => { b.disabled = true; });
     const results = shown.judge();
     check(results);
     showResult(results);
@@ -238,6 +259,13 @@ const labPage = (() => {
   document.getElementById('reset').addEventListener('click', () => {
     shown.reset();
     clearPage();
+  });
+  // a typed answer counts once it is entered (Enter or leaving the box), not on every key
+  document.getElementById('reqs').addEventListener('change', e => {
+    const box = e.target.closest('[data-answer]');
+    if (!box) return;
+    shown.answers[Number(box.dataset.answer)] = box.value;
+    afterChange();
   });
   document.getElementById('reqs').addEventListener('click', e => {
     const b = e.target.closest('.rhint-btn');

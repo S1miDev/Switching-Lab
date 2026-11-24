@@ -29,7 +29,7 @@ const labConsole = (() => {
     term.scrollTop = term.scrollHeight;
   }
 
-  const asksPassword = () => active().prompt() === 'Password:';
+  const asksPassword = () => active().asksPassword();
   const renderPrompt = () => {
     promptEl.textContent = active().prompt();
     input.type = asksPassword() ? 'password' : 'text';
@@ -94,7 +94,7 @@ const labConsole = (() => {
   }
 
   input.addEventListener('keydown', e => {
-    if (e.key === '?' && active().configurable) { // like IOS: show the options at once and keep what was typed
+    if (e.key === '?' && active().configurable && active().questionHelp) { // like IOS: show the options at once and keep what was typed
       e.preventDefault();
       const typed = input.value;
       echo(typed + '?');

@@ -1,5 +1,8 @@
-// Reference page: what to know about each CCNA topic, its commands, and a link to its lab if it has one.
-// The rows and topic pages are built from CATALOGUE (js/topics.js), looked up by id.
+// Reference page: what to know about each topic of the page's track, its commands, and a link to its lab if it has one.
+// The rows and topic pages are built from the track's CATALOGUE, looked up by id; the labels come from its REF_TEXT.
+
+// the text the search boxes (here and on the Labs page) match: id, name and keywords, in lower case
+const searchText = id => [id, CATALOGUE[id].name, ...CATALOGUE[id].keywords].join(' ').toLowerCase();
 
 // One group per refGroup, in REF_GROUPS order; the first group starts open
 function renderReference() {
@@ -32,8 +35,8 @@ function showRef(card) {
     '</span>' +
     `<p class="ref-eyebrow">${esc(topic.refGroup)}</p><h2>${esc(topic.name)}</h2><p class="ref-intro">${esc(info.intro)}</p>` +
     `<h3 class="ref-h">What you need to know</h3><ul class="ref-list">${items(info.know)}</ul>` +
-    '<h3 class="ref-h">Configuration commands</h3>' +
-    '<table class="ref-table"><thead><tr><th>Command</th><th>Mode</th><th>Purpose</th></tr></thead>' +
+    `<h3 class="ref-h">${esc(REF_TEXT.commands)}</h3>` +
+    `<table class="ref-table"><thead><tr><th>Command</th><th>${esc(REF_TEXT.mode)}</th><th>Purpose</th></tr></thead>` +
       `<tbody>${commandRows.join('')}</tbody>` +
     '</table>' +
     '<div class="ref-two">' +
@@ -42,7 +45,7 @@ function showRef(card) {
     '</div>' +
     (topic.labLevels.length
       ? '<div class="ref-cta">' +
-          `<div><strong>${esc(info.cta)}</strong><p>Generated labs, graded against the simulated network state.</p></div>` +
+          `<div><strong>${esc(info.cta)}</strong><p>${esc(REF_TEXT.graded)}</p></div>` +
           `<button data-start="${esc(id)}">Start lab →</button>` +
         '</div>'
       : '<p class="note">No lab for this topic yet.</p>');
@@ -104,7 +107,7 @@ function commandIndex() {
   Object.keys(CATALOGUE).forEach(id => {
     const topic = CATALOGUE[id];
     topic.ref.commands.forEach(([cmd, mode, purpose]) => rows.push({id, cmd, mode, purpose, topic: topic.name}));
-    topic.ref.verify.forEach(cmd => rows.push({id, cmd, mode: 'privileged exec', purpose: 'Verify the configuration.', topic: topic.name}));
+    topic.ref.verify.forEach(cmd => rows.push({id, cmd, mode: REF_TEXT.verifyMode, purpose: REF_TEXT.verifyPurpose, topic: topic.name}));
   });
   return rows.sort((a, b) => modeRank(a.mode) - modeRank(b.mode));
 }

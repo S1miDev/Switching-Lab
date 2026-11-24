@@ -12,6 +12,12 @@ const DOMAINS = {
 // the Reference page groups, in page order
 const REF_GROUPS = ['Core', 'IP & routing', 'Switching', 'Services', 'Security', 'Wireless', 'Management', 'Troubleshooting'];
 
+// the Reference page labels for this track (js/reference.js)
+const REF_TEXT = {
+  commands: 'Configuration commands', mode: 'Mode', verifyMode: 'privileged exec', verifyPurpose: 'Verify the configuration.',
+  graded: 'Generated labs, graded against the simulated network state.',
+};
+
 const CATALOGUE = {
   harden: {
     name: 'Device Hardening (Best Practices)',
@@ -2264,6 +2270,3 @@ const CATALOGUE = {
     },
   },
 };
-
-// the text the search boxes match: id, name and keywords, in lower case
-const searchText = id => [id, CATALOGUE[id].name, ...CATALOGUE[id].keywords].join(' ').toLowerCase();
