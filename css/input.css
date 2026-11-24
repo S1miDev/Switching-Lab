@@ -812,78 +812,7 @@
   }
 
   /* ---- lab page ---- */
-  .crumb {
-    margin: 0 0 10px;
-    font: 12px var(--font-mono);
-    color: var(--color-muted);
-  }
 
-  .lab-top {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
-    margin-bottom: 28px;
-  }
-
-  .title-row {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 12px;
-  }
-
-  #lab-title {
-    font-size: 28px;
-  }
-
-  #lab-sub {
-    margin: 6px 0 0;
-    color: var(--color-muted);
-  }
-
-  #back {
-    flex: none;
-    padding: 8px 14px;
-  }
-
-  .lab-grid,
-  .topo-grid {
-    display: grid;
-    grid-template-columns: 400px minmax(0, 1fr);
-    gap: 24px;
-    align-items: start;
-  }
-
-  @media (max-width: 980px) {
-    .lab-grid,
-    .topo-grid {
-      grid-template-columns: minmax(0, 1fr);
-    }
-  }
-
-  .lab-col {
-    display: grid;
-    gap: 24px;
-    min-width: 0;
-    align-content: start;
-  }
-
-  .req-head,
-  .panel-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 8px 12px;
-    margin-bottom: 12px;
-  }
-
-  .req-head h2,
-  .panel-head h2,
-  .panel-head .note {
-    margin: 0;
-  }
 
   /* progress bar */
   .bar {
@@ -1035,20 +964,6 @@
     font: 13px var(--font-mono);
     white-space: pre-wrap;
     overflow-wrap: anywhere;
-  }
-
-  .actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  .actions button {
-    flex: 1;
-  }
-
-  #check-row {
-    margin-bottom: 8px;
   }
 
   button.wide {
@@ -1648,10 +1563,6 @@
     #ref-detail .ref-nav {
       position: static;
       margin-bottom: 12px;
-    }
-  
-    .lab-top {
-      flex-direction: column-reverse;
     }
   }
 

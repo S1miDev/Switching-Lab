@@ -88,36 +88,50 @@
 
   <!-- One lab: filled in by labPage.open() in js/lab.js -->
   <section id="lab" class="page" hidden>
-    <header>
-      <p class="crumb" id="crumb"></p>
-      <div class="lab-top">
-        <div>
-          <div class="title-row"><h1 id="lab-title"></h1><span class="pill" id="lab-level"></span></div>
-          <p id="lab-sub"></p>
+    <!-- header: title on the left; Back, timer, requirement count and the lab actions on the right (they wrap under the title on narrow screens).
+         lab.js finds every control by id and hides back, cmds-card, check-row, new-net and lab-timer in the mock exam -->
+    <header class="mb-7">
+      <p class="mt-0 mx-0 mb-2.5 font-mono text-[12px] leading-[normal] text-muted" id="crumb"></p>
+      <div class="flex flex-wrap items-start justify-between gap-4">
+        <div class="min-w-0">
+          <div class="flex flex-wrap items-center gap-3"><h1 id="lab-title" class="text-[28px]"></h1><span class="pill" id="lab-level"></span></div>
+          <p id="lab-sub" class="mt-1.5 mb-0 text-muted"></p>
         </div>
-        <button class="ghost" id="back">Back to labs</button>
+        <div class="flex flex-wrap items-center gap-2 [&_button]:px-3.5 [&_button]:py-2">
+          <button class="ghost" id="back">Back to labs</button>
+          <span class="pill" id="lab-timer"></span>
+          <span class="count" id="req-count">0/0</span>
+          <button class="ghost" id="new-net">New network</button>
+          <button class="ghost" id="reset">Reset</button>
+          <div class="flex" id="check-row"><button id="check">Check</button></div>
+        </div>
       </div>
     </header>
     <!-- the mock exam puts its progress bar here (js/exam.js) -->
     <div id="lab-bar"></div>
-    <main class="lab-grid">
-      <div class="lab-col">
+    <!-- the console comes first: scenario and console on the left, requirements, commands and topology in a narrow right column -->
+    <main class="grid grid-cols-[minmax(0,1fr)_400px] items-start gap-6 max-[980px]:grid-cols-1">
+      <div class="grid min-w-0 content-start gap-6">
         <section class="card">
-          <div class="req-head"><h2>Scenario</h2><span class="pill" id="lab-timer"></span></div>
+          <h2>Scenario</h2>
           <p id="scenario-lead"></p>
           <ol class="steps" id="steps"></ol>
         </section>
+        <section class="card console">
+          <div class="console-head">
+            <span class="console-label">Console</span>
+            <div class="tabs"></div>
+          </div>
+          <div class="term min-h-[60vh]" id="term">
+            <div class="line"><span id="prompt"></span><input id="cmd" aria-label="CLI input" spellcheck="false" autocomplete="off"></div>
+          </div>
+        </section>
+      </div>
+      <div class="grid min-w-0 content-start gap-6">
         <section class="card">
-          <div class="req-head"><h2>Requirements</h2><span class="count" id="req-count">0/0</span></div>
+          <h2>Requirements</h2>
           <div class="bar"><span id="req-bar"></span></div>
-          <ul class="reqs" id="reqs"></ul>
-          <div class="actions" id="check-row">
-            <button id="check">Check</button>
-          </div>
-          <div class="actions">
-            <button class="ghost" id="reset">Reset</button>
-            <button class="ghost" id="new-net">New network</button>
-          </div>
+          <ul class="reqs mb-0" id="reqs"></ul>
         </section>
         <details class="card" id="cmds-card">
           <summary>Commands you'll need</summary>
@@ -126,20 +140,9 @@
             <p class="note">Short forms work: en, conf t, int g0/0, sh ip int br, no sh.</p>
           </div>
         </details>
-      </div>
-      <div class="lab-col">
         <section class="card">
-          <div class="panel-head"><h2>Topology</h2><p class="note">Click a device to open its console.</p></div>
+          <div class="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2"><h2 class="m-0">Topology</h2><p class="note m-0">Click a device to open its console.</p></div>
           <div id="topo"></div>
-        </section>
-        <section class="card console">
-          <div class="console-head">
-            <span class="console-label">Console</span>
-            <div class="tabs"></div>
-          </div>
-          <div class="term" id="term">
-            <div class="line"><span id="prompt"></span><input id="cmd" aria-label="CLI input" spellcheck="false" autocomplete="off"></div>
-          </div>
         </section>
       </div>
     </main>
@@ -162,13 +165,13 @@
         <button class="ghost" id="topo-next">New task</button>
       </div>
     </header>
-    <div class="topo-grid">
+    <div class="grid grid-cols-[400px_minmax(0,1fr)] items-start gap-6 max-[980px]:grid-cols-1">
       <section class="card">
-        <div class="req-head"><h2 id="topo-title">Task</h2><span class="count" id="topo-count">0/0</span></div>
+        <div class="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2"><h2 id="topo-title" class="m-0">Task</h2><span class="count" id="topo-count">0/0</span></div>
         <div class="bar"><span id="topo-bar"></span></div>
         <p class="note">Drag the devices you need from the bar onto the canvas, then cable them.</p>
         <ul class="reqs" id="topo-reqs"></ul>
-        <div class="actions">
+        <div class="flex flex-wrap gap-2 [&>button]:flex-1">
           <button class="ghost" id="topo-remove">Remove selected</button>
           <button class="ghost" id="topo-clear">Clear all</button>
         </div>
