@@ -17,9 +17,9 @@ const examCard = document.getElementById('exam-card');
 // the progress bar shown above the open lab: which lab, the time left and the way on
 const examBar = document.createElement('div');
 examBar.innerHTML = `
-  <div class="my-3 flex items-center justify-between gap-4 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-4 py-2">
+  <div class="my-3 flex items-center justify-between gap-4 rounded-lg border border-border bg-surface px-4 py-2">
     <span class="font-semibold">Mock exam: lab <span data-pos></span></span>
-    <span data-time class="font-mono text-[color:var(--muted)]"></span>
+    <span data-time class="font-mono text-muted"></span>
     <button data-next>Next lab</button>
   </div>`;
 const examPosEl = examBar.querySelector('[data-pos]'), examTimeEl = examBar.querySelector('[data-time]'), examNext = examBar.querySelector('[data-next]');
@@ -94,25 +94,25 @@ function examRender() {
 }
 
 // look shared by the setup choices: a tile that lights up in the accent colour when its input is checked
-const TILE = 'flex cursor-pointer items-center gap-2 rounded-[10px] border border-[color:var(--border)] bg-[color:var(--surface-2)] px-3.5 py-2.5 ' +
-  'transition-colors hover:border-[color:var(--accent)] has-[:checked]:border-[color:var(--accent)] has-[:checked]:bg-[color:var(--accent-tint)]';
-const BOX = 'rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] p-5';
+const TILE = 'flex cursor-pointer items-center gap-2 rounded-[10px] border border-border bg-surface-2 px-3.5 py-2.5 ' +
+  'transition-colors hover:border-accent has-[:checked]:border-accent has-[:checked]:bg-accent-tint';
+const BOX = 'rounded-2xl border border-border bg-surface p-5';
 
 // a numbered section of the setup form, like the domains on the Labs page
 const section = (n, title, body, extra = '') =>
   `<fieldset class="${BOX} min-w-0"><legend class="sr-only">${title}</legend>` +
-  `<div class="mb-4 flex items-center gap-3"><span class="font-mono text-[13px] text-[color:var(--success)]">${n}</span>` +
+  `<div class="mb-4 flex items-center gap-3"><span class="font-mono text-[13px] text-success">${n}</span>` +
   `<span class="text-lg font-semibold">${title}</span>${extra}</div>${body}</fieldset>`;
 
 function setupHtml() {
   const levels = Object.keys(EXAM_MIN_PER_LAB).map(l =>
     `<label class="${TILE} flex-col !items-start gap-0.5"><span class="flex items-center gap-2 font-medium">` +
-    `<input type="radio" name="level" value="${l}" class="accent-[color:var(--accent)]"${l === level ? ' checked' : ''}>${cap(l)}</span>` +
-    `<span class="pl-6 text-xs text-[color:var(--muted)]">${EXAM_MIN_PER_LAB[l]} min per lab</span></label>`);
+    `<input type="radio" name="level" value="${l}" class="accent-accent"${l === level ? ' checked' : ''}>${cap(l)}</span>` +
+    `<span class="pl-6 text-xs text-muted">${EXAM_MIN_PER_LAB[l]} min per lab</span></label>`);
   const topics = Object.entries(CATALOGUE).filter(([, t]) => t.labLevels.length).map(([k, t]) =>
-    `<label class="${TILE} text-sm"><input type="checkbox" name="topic" value="${k}" class="shrink-0 accent-[color:var(--accent)]"><span>${esc(t.name)}</span></label>`);
+    `<label class="${TILE} text-sm"><input type="checkbox" name="topic" value="${k}" class="shrink-0 accent-accent"><span>${esc(t.name)}</span></label>`);
   const timed = (v, text, on) =>
-    `<label class="${TILE}"><input type="radio" name="timed" value="${v}" class="accent-[color:var(--accent)]"${on ? ' checked' : ''}>${text}</label>`;
+    `<label class="${TILE}"><input type="radio" name="timed" value="${v}" class="accent-accent"${on ? ' checked' : ''}>${text}</label>`;
   const allNone = '<span class="ml-auto flex gap-2"><button type="button" class="ghost !px-3 !py-1.5 !text-xs" data-all="1">All</button>' +
     '<button type="button" class="ghost !px-3 !py-1.5 !text-xs" data-all="0">None</button></span>';
   return '<form id="exam-form" class="grid gap-5">' +
@@ -120,7 +120,7 @@ function setupHtml() {
     section('2', 'Time limit', `<div class="grid gap-2 sm:grid-cols-2">${timed(1, 'Timed (grows with the difficulty)', true)}${timed(0, 'No time limit', false)}</div>`) +
     section('3', 'Topics', `<div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">${topics.join('')}</div>`, allNone) +
     section('4', 'Number of labs',
-      '<div class="flex flex-wrap items-center gap-3"><input type="number" name="count" id="exam-count" step="1" class="w-24 rounded-[10px] border border-[color:var(--border)] bg-[color:var(--surface-2)] px-3 py-2 font-mono">' +
+      '<div class="flex flex-wrap items-center gap-3"><input type="number" name="count" id="exam-count" step="1" class="w-24 rounded-[10px] border border-border bg-surface-2 px-3 py-2 font-mono">' +
       '<span class="note !m-0" id="exam-range"></span></div>') +
     '<div class="flex flex-wrap items-center justify-between gap-3">' +
     `<p class="note !m-0">Random labs, at least one per topic. Pass mark ${EXAM_PASS}%.</p>` +
@@ -131,14 +131,14 @@ function resultHtml() {
   const met = examLabs.reduce((sum, l) => sum + l.met, 0), total = examLabs.reduce((sum, l) => sum + l.total, 0);
   const pass = total > 0 && met * 100 >= EXAM_PASS * total; // compared exactly, so 79.6% never rounds up to a pass
   const rows = examLabs.map(l =>
-    `<li class="flex items-center justify-between gap-4 rounded-[10px] border border-[color:var(--border)] bg-[color:var(--surface-2)] px-4 py-3">` +
+    `<li class="flex items-center justify-between gap-4 rounded-[10px] border border-border bg-surface-2 px-4 py-3">` +
     `<span class="font-medium">${esc(CATALOGUE[l.topic].name)}</span>` +
-    `<span class="font-mono text-[13px] text-[color:var(--muted)]"><span class="text-[color:var(--text)]">${l.met}/${l.total}</span></span></li>`);
+    `<span class="font-mono text-[13px] text-muted"><span class="text-text">${l.met}/${l.total}</span></span></li>`);
   return '<div class="grid gap-5">' +
     `<div class="${BOX} flex flex-wrap items-center justify-between gap-4">` +
-    `<div><p class="m-0 text-[13px] text-[color:var(--muted)]">${cap(examLevel)} · pass mark ${EXAM_PASS}%</p>` +
-    `<p class="m-0 text-4xl font-semibold">${total ? Math.floor(100 * met / total) : 0}% <span class="font-mono text-base font-normal text-[color:var(--muted)]">${met}/${total} requirements</span></p></div>` +
-    `<span class="rounded-full px-4 py-1.5 text-sm font-semibold ${pass ? 'bg-[color:var(--success)] text-[color:var(--accent-ink)]' : 'bg-[color:var(--bad)] text-[color:var(--accent-ink)]'}">${pass ? 'PASSED' : 'FAILED'}</span></div>` +
+    `<div><p class="m-0 text-[13px] text-muted">${cap(examLevel)} · pass mark ${EXAM_PASS}%</p>` +
+    `<p class="m-0 text-4xl font-semibold">${total ? Math.floor(100 * met / total) : 0}% <span class="font-mono text-base font-normal text-muted">${met}/${total} requirements</span></p></div>` +
+    `<span class="rounded-full px-4 py-1.5 text-sm font-semibold ${pass ? 'bg-success text-accent-ink' : 'bg-bad text-accent-ink'}">${pass ? 'PASSED' : 'FAILED'}</span></div>` +
     `<ul class="m-0 grid list-none gap-2 p-0">${rows.join('')}</ul>` +
     '<div><button id="exam-again">New exam</button></div></div>';
 }

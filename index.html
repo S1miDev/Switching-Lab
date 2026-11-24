@@ -7,7 +7,6 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/output.css">
-  <link rel="stylesheet" href="css/style.css">
 </head>
 
 <body>
@@ -25,13 +24,13 @@
 
   <!-- Labs: the topic rows are built from CATALOGUE in js/topics.js (renderDashboard in js/script.js) -->
   <section id="dash" class="page">
-    <header class="page-head">
+    <header class="flex flex-wrap items-end justify-between gap-x-6 gap-y-4 mb-8">
       <div>
-        <h1>SwitchingLab</h1>
-        <p>Choose a difficulty, then start a lab.</p>
+        <h1 class="text-[34px]">SwitchingLab</h1>
+        <p class="mt-1.5 mb-0 text-muted">Choose a difficulty, then start a lab.</p>
       </div>
-      <div class="dash-bar">
-        <input id="search" type="search" placeholder="Search topics" aria-label="Search topics">
+      <div class="flex flex-wrap items-center gap-3">
+        <input id="search" type="search" placeholder="Search topics" aria-label="Search topics" class="w-60 max-w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-text [font:inherit] placeholder:text-muted">
         <div class="seg" id="dash-seg" role="group" aria-label="Difficulty">
           <button class="seg-btn" data-set="beginner">Beginner</button>
           <button class="seg-btn" data-set="intermediate">Intermediate</button>
@@ -46,10 +45,10 @@
 
   <!-- Sandbox hub: the nav tab lands here; the canvas itself is sandbox.html -->
   <section id="sandbox" class="page" hidden>
-    <header class="page-head">
+    <header class="flex flex-wrap items-end justify-between gap-x-6 gap-y-4 mb-8">
       <div>
         <h1>Sandbox</h1>
-        <p>Build network topologies straight from your browser.</p>
+        <p class="mt-1.5 mb-0 text-muted">Build network topologies straight from your browser.</p>
       </div>
       <div class="seg" id="sandbox-seg" role="group" aria-label="Sandbox sections">
         <button class="seg-btn active" data-sb-tab="mine">My workspace</button>
@@ -70,12 +69,12 @@
 
   <!-- Troubleshooting: the topics with refGroup 'Troubleshooting' (renderDashboard in js/script.js) -->
   <section id="trouble" class="page" hidden>
-    <header class="page-head">
+    <header class="flex flex-wrap items-end justify-between gap-x-6 gap-y-4 mb-8">
       <div>
         <h1>Troubleshooting</h1>
-        <p>Find and fix faults in a broken network.</p>
+        <p class="mt-1.5 mb-0 text-muted">Find and fix faults in a broken network.</p>
       </div>
-      <div class="dash-bar">
+      <div class="flex flex-wrap items-center gap-3">
         <div class="seg" id="trouble-seg" role="group" aria-label="Difficulty">
           <button class="seg-btn" data-set="beginner">Beginner</button>
           <button class="seg-btn" data-set="intermediate">Intermediate</button>
@@ -148,12 +147,12 @@
 
   <!-- Topology: js/topology.js -->
   <section id="topo-view" class="page" hidden>
-    <header class="page-head">
+    <header class="flex flex-wrap items-end justify-between gap-x-6 gap-y-4 mb-8">
       <div>
         <h1>Topology</h1>
-        <p>Cable the devices together to match each task.</p>
+        <p class="mt-1.5 mb-0 text-muted">Cable the devices together to match each task.</p>
       </div>
-      <div class="dash-bar">
+      <div class="flex flex-wrap items-center gap-3">
         <div class="seg" id="topo-seg" role="group" aria-label="Difficulty">
           <button class="seg-btn active" data-topo-level="beginner">Beginner</button>
           <button class="seg-btn" data-topo-level="intermediate">Intermediate</button>
@@ -175,8 +174,8 @@
         </div>
       </section>
       <section class="card">
-        <div class="topo-palette">
-          <span class="tool-label">Drag onto the canvas:</span>
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-2 mt-0 mx-0 mb-3.5">
+          <span class="text-[13px] font-semibold">Drag onto the canvas:</span>
           <!-- each button gets its icon from TOPO_ICONS -->
           <button class="topo-chip" data-type="router">Router</button>
           <button class="topo-chip" data-type="switch">Switch</button>
@@ -188,8 +187,8 @@
           <button class="topo-chip" data-type="ap">Access point</button>
           <button class="topo-chip" data-type="wlc">WLC</button>
         </div>
-        <div class="topo-palette">
-          <span class="tool-label">Cable:</span>
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-2 mt-0 mx-0 mb-3.5">
+          <span class="text-[13px] font-semibold">Cable:</span>
           <div class="seg seg-static">
             <button class="cable-btn on" data-cable="straight">Straight-through</button>
             <button class="cable-btn" data-cable="cross">Crossover</button>
@@ -198,11 +197,11 @@
             <button class="cable-btn" data-cable="console">Console</button>
             <button class="cable-btn" data-cable="coax">Coaxial</button>
           </div>
-          <span class="note">Straight-through for unlike devices · Crossover for like devices · Fiber for long links · Serial for WAN · Console for management · Coaxial for cable broadband</span>
+          <span class="note m-0 text-[12px]">Straight-through for unlike devices · Crossover for like devices · Fiber for long links · Serial for WAN · Console for management · Coaxial for cable broadband</span>
         </div>
         <p class="note">Drag a device to move it. Click one device, then another, to cable them.</p>
         <div id="topo-canvas"></div>
-        <div class="statusbar"><span class="dot" aria-hidden="true"></span><span id="topo-msg" role="status"></span><span id="topo-ncables"></span></div>
+        <div class="mt-3 flex items-center gap-2.5 rounded-[10px] border border-border bg-surface-2 px-3.5 py-2.5 font-mono text-[12px] leading-[normal] text-muted"><span class="size-2 flex-none rounded-full bg-success" aria-hidden="true"></span><span id="topo-msg" role="status" class="min-w-0 flex-1"></span><span id="topo-ncables" class="flex-none"></span></div>
         <ul class="cables" id="topo-cables"></ul>
       </section>
     </div>
@@ -211,32 +210,32 @@
 
   <!-- Mock exam: js/exam.js -->
   <section id="exam-view" class="page" hidden>
-    <header class="page-head">
+    <header class="flex flex-wrap items-end justify-center gap-x-6 gap-y-4 mb-8">
       <div>
         <h1>Mock exam</h1>
-        <p>A set of labs at one difficulty, with or without a time limit. Pass mark 80%.</p>
+        <p class="mt-1.5 mb-0 text-muted">A set of labs at one difficulty, with or without a time limit. Pass mark 80%.</p>
       </div>
     </header>
-    <div class="exam-wrap"><div id="exam-card"></div></div>
+    <div class="max-w-[820px] mx-auto"><div id="exam-card"></div></div>
   </section>
 
   <!-- CCNA question exams: js/ccna.js -->
   <section id="ccna-view" class="page" hidden>
-    <header class="page-head">
+    <header class="flex flex-wrap items-end justify-between gap-x-6 gap-y-4 mb-8">
       <div>
         <h1>CCNA exams</h1>
-        <p>Choose an exam. Questions are drawn at random from its pool.</p>
+        <p class="mt-1.5 mb-0 text-muted">Choose an exam. Questions are drawn at random from its pool.</p>
       </div>
     </header>
-    <div class="exam-wrap"><div id="ccna-card"></div></div>
+    <div class="max-w-[820px] mx-auto"><div id="ccna-card"></div></div>
   </section>
 
   <!-- Reference: the topic rows are built from CATALOGUE in js/topics.js (js/reference.js) -->
   <section id="ref" class="page" hidden>
-    <header class="ref-head">
+    <header class="mb-4">
       <h1>CCNA command reference</h1>
-      <p>Each topic covered by the labs, grouped by CCNA area, plus every console command in one searchable list.</p>
-      <div class="tabs" id="ref-tabs" role="tablist">
+      <p class="mt-2 mb-0 max-w-[640px] text-muted">Each topic covered by the labs, grouped by CCNA area, plus every console command in one searchable list.</p>
+      <div class="tabs mt-4" id="ref-tabs" role="tablist">
         <button class="tab active" role="tab" aria-selected="true" data-reftab="topics">Topics</button>
         <button class="tab" role="tab" aria-selected="false" data-reftab="commands">Commands</button>
       </div>

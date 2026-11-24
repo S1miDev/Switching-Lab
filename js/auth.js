@@ -69,15 +69,15 @@ authBtn.addEventListener('click', async () => {
   authDlg.showModal();
 });
 
-// accent presets for the profile page; all are light enough for the dark --accent-ink text
+// accent presets for the profile page; all are light enough for the dark --color-accent-ink text
 const ACCENTS = { Blue: '#4C8DFF', Green: '#4FA88A', Amber: '#d9a441', Pink: '#f472b6', Purple: '#a78bfa', Teal: '#2dd4bf' };
 
 function applyAccent(color) {
   const s = document.documentElement.style;
   // user_metadata is user-editable, so only known presets are applied
-  if (!Object.values(ACCENTS).includes(color)) { s.removeProperty('--accent'); s.removeProperty('--accent-tint'); return; }
-  s.setProperty('--accent', color);
-  s.setProperty('--accent-tint', `color-mix(in srgb, ${color} 16%, transparent)`);
+  if (!Object.values(ACCENTS).includes(color)) { s.removeProperty('--color-accent'); s.removeProperty('--color-accent-tint'); return; }
+  s.setProperty('--color-accent', color);
+  s.setProperty('--color-accent-tint', `color-mix(in srgb, ${color} 16%, transparent)`);
 }
 
 // called by the lab and topology pages on a solve; nextStreak and dayKey come from streak.js

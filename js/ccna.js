@@ -116,11 +116,11 @@ const ccnaItem = x => Array.isArray(x)
 // one question's fieldset; n is its 0-based number (also the form field name)
 function ccnaQuestionHtml(it, n) {
   return `<fieldset class="${BOX} min-w-0"${it.multi ? ` data-max="${it.opts.filter(o => o.ok).length}"` : ''}><legend class="sr-only">Question ${n + 1}</legend>` +
-    `<p class="mb-3 mt-0 font-semibold"><span class="font-mono text-[color:var(--success)]">${n + 1}.</span> ${esc(it.q)}</p>` +
+    `<p class="mb-3 mt-0 font-semibold"><span class="font-mono text-success">${n + 1}.</span> ${esc(it.q)}</p>` +
     (it.img ? `<img src="img/ccna/${it.img}" alt="Exhibit for question ${n + 1}" class="mb-3 max-w-full rounded-lg bg-white">` : '') +
     (it.rows
       ? `<div class="grid gap-2">${it.rows.map(([p], r) => `<label class="${TILE} flex-col !items-stretch"><span>${esc(p)}</span><select name="q${n}-${r}" class="w-full min-w-0"><option value="">Choose…</option>${it.pool.map((a, i) => `<option value="${i}">${esc(a)}</option>`).join('')}</select></label>`).join('')}</div></fieldset>`
-      : `<div class="grid gap-2">${it.opts.map((o, i) => `<label class="${TILE}"><input type="${it.multi ? 'checkbox' : 'radio'}" name="q${n}" value="${i}" class="shrink-0 accent-[color:var(--accent)]"><span>${esc(o.text)}</span></label>`).join('')}</div></fieldset>`);
+      : `<div class="grid gap-2">${it.opts.map((o, i) => `<label class="${TILE}"><input type="${it.multi ? 'checkbox' : 'radio'}" name="q${n}" value="${i}" class="shrink-0 accent-accent"><span>${esc(o.text)}</span></label>`).join('')}</div></fieldset>`);
 }
 
 // a question counts only when the ticked options are exactly the correct ones
@@ -136,11 +136,11 @@ function ccnaGrade(it, data, n) {
 // the correct answers, marking what was picked (picked = null: nothing picked, e.g. when browsing)
 function ccnaAnswerHtml(it, picked) {
   return `<ul class="m-0 grid list-none gap-1 p-0 text-sm">${it.rows ? it.rows.map(([p, a], r) => !picked || picked[r] === a
-    ? `<li class="text-[color:var(--success)]">${esc(p)} → ${esc(a)} ✓ correct</li>`
-    : `<li class="text-[color:var(--bad)]">${esc(p)} → ${esc(a)} ✓ correct <span class="text-[color:var(--muted)]">(your answer: ${esc(picked[r] || 'none')})</span></li>`).join('') : it.opts.map((o, i) => {
+    ? `<li class="text-success">${esc(p)} → ${esc(a)} ✓ correct</li>`
+    : `<li class="text-bad">${esc(p)} → ${esc(a)} ✓ correct <span class="text-muted">(your answer: ${esc(picked[r] || 'none')})</span></li>`).join('') : it.opts.map((o, i) => {
     const mine = picked?.includes(i);
     const tag = o.ok ? ' ✓ correct' : mine ? ' ✗ your answer' : '';
-    return `<li class="${o.ok ? 'text-[color:var(--success)]' : mine ? 'text-[color:var(--bad)]' : 'text-[color:var(--muted)]'}">${esc(o.text)}${tag}</li>`;
+    return `<li class="${o.ok ? 'text-success' : mine ? 'text-bad' : 'text-muted'}">${esc(o.text)}${tag}</li>`;
   }).join('')}</ul>`;
 }
 
@@ -163,9 +163,9 @@ function ccnaFinish(form) {
   const wrong = marks.map((m, n) => ({...m, n})).filter(m => !m.right);
   ccnaCard.innerHTML = '<div class="grid gap-4">' +
     `<div class="${BOX} flex flex-wrap items-center justify-between gap-4"><div>` +
-    `<p class="m-0 text-[13px] text-[color:var(--muted)]">${esc(ccnaRun.exam.title)} · pass mark ${EXAM_PASS}%</p>` +
-    `<p class="m-0 text-4xl font-semibold">${Math.floor(100 * right / total)}% <span class="font-mono text-base font-normal text-[color:var(--muted)]">${right}/${total} questions</span></p></div>` +
-    `<span class="rounded-full px-4 py-1.5 text-sm font-semibold ${pass ? 'bg-[color:var(--success)]' : 'bg-[color:var(--bad)]'} text-[color:var(--accent-ink)]">${pass ? 'PASSED' : 'FAILED'}</span></div>` +
+    `<p class="m-0 text-[13px] text-muted">${esc(ccnaRun.exam.title)} · pass mark ${EXAM_PASS}%</p>` +
+    `<p class="m-0 text-4xl font-semibold">${Math.floor(100 * right / total)}% <span class="font-mono text-base font-normal text-muted">${right}/${total} questions</span></p></div>` +
+    `<span class="rounded-full px-4 py-1.5 text-sm font-semibold ${pass ? 'bg-success' : 'bg-bad'} text-accent-ink">${pass ? 'PASSED' : 'FAILED'}</span></div>` +
     (wrong.length ? `<p class="note !m-0">Missed questions, with the correct answers:</p>` : '') +
     wrong.map(m => `<div class="${BOX}"><p class="mb-2 mt-0 font-semibold"><span class="font-mono">${m.n + 1}.</span> ${esc(m.it.q)}</p>` +
       (m.it.img ? `<img src="img/ccna/${m.it.img}" alt="Exhibit" class="mb-3 max-w-full rounded-lg bg-white">` : '') +
@@ -197,15 +197,15 @@ function ccnaCheck(form) {
   if (m.right) ccnaRun.right++;
   const last = ccnaRun.i === ccnaRun.items.length - 1;
   form.querySelector('fieldset').disabled = true;
-  $('ccna-feedback').innerHTML = `<div class="${BOX}"><p class="mb-2 mt-0 font-semibold ${m.right ? 'text-[color:var(--success)]' : 'text-[color:var(--bad)]'}">${m.right ? '✓ Correct' : '✗ Not quite'}</p>${ccnaAnswerHtml(m.it, m.picked)}</div>`;
+  $('ccna-feedback').innerHTML = `<div class="${BOX}"><p class="mb-2 mt-0 font-semibold ${m.right ? 'text-success' : 'text-bad'}">${m.right ? '✓ Correct' : '✗ Not quite'}</p>${ccnaAnswerHtml(m.it, m.picked)}</div>`;
   $('ccna-check').outerHTML = `<button type="button" id="ccna-next">${last ? 'Finish' : 'Next →'}</button>`;
 }
 
 function ccnaPracticeNext() {
   if (++ccnaRun.i < ccnaRun.items.length) return ccnaShowPractice();
   const {exam, items, right} = ccnaRun;
-  ccnaCard.innerHTML = `<div class="grid gap-4"><div class="${BOX}"><p class="m-0 text-[13px] text-[color:var(--muted)]">${esc(exam.title)} · practice</p>` +
-    `<p class="m-0 text-4xl font-semibold">${right}/${items.length} <span class="font-mono text-base font-normal text-[color:var(--muted)]">right</span></p></div>` +
+  ccnaCard.innerHTML = `<div class="grid gap-4"><div class="${BOX}"><p class="m-0 text-[13px] text-muted">${esc(exam.title)} · practice</p>` +
+    `<p class="m-0 text-4xl font-semibold">${right}/${items.length} <span class="font-mono text-base font-normal text-muted">right</span></p></div>` +
     `<div class="flex gap-3"><button data-ccna-practice="${exam.id}">Practice again</button><button id="ccna-back" class="ghost">All exams</button></div></div>`;
   window.scrollTo(0, 0);
 }
