@@ -6,25 +6,25 @@
 
 /* colours and fonts; non-inline so utilities read the variables at run time and applyAccent (js/auth.js) can override them */
 @theme {
-  --color-bg: #0A0E1A;
-  --color-surface: #111830;
-  --color-surface-2: #17203D;
-  --color-border: #26325A;
-  --color-canvas: #0C1226;
-  --color-text: #E8EEF7;
-  --color-muted: #8E9BC0;
-  --color-accent: #4C8DFF;
-  --color-accent-ink: #05122E;
-  --color-accent-tint: rgba(76, 141, 255, .16);
+  --color-bg: #090B09;
+  --color-surface: #101310;
+  --color-surface-2: #161A16;
+  --color-border: #1C221C;
+  --color-canvas: #0C0F0C;
+  --color-text: #DCE3DA;
+  --color-muted: #7C877A;
+  --color-accent: #5FD38D;
+  --color-accent-ink: #05210F;
+  --color-accent-tint: rgba(95, 211, 141, .16);
   --color-success: #4FA88A;
   --color-bad: #f87171;
   --color-warn: #d9a441;
   --color-bad-tint: rgba(248, 113, 113, .35);
   --color-grid-line: rgba(255, 255, 255, .04);
-  /* the console stays dark */
-  --color-terminal: #0E1424;
-  --color-terminal-text: #C9D4E3;
-  --color-terminal-accent: #4C8DFF;
+  /* the console is darker than the page so it stands out; its prompt follows the accent */
+  --color-terminal: #060806;
+  --color-terminal-text: #D2DAD0;
+  --color-terminal-accent: var(--color-accent);
   --color-terminal-err: #f7a1a1;
   --color-terminal-ok: #8fd3b6;
   --font-sans: "IBM Plex Sans", system-ui, sans-serif;
@@ -58,7 +58,7 @@
 
   h1,
   h2 {
-    @apply font-semibold;
+    @apply font-mono font-semibold;
   }
 
   h1 {
@@ -151,19 +151,8 @@
   }
 
   .brand {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin: 0 20px 0 0;
-    padding: 0;
-    border: 0;
-    background: none;
-    color: inherit;
-    font-family: inherit;
-    cursor: pointer;
-    font-size: 18px;
-    font-weight: 600;
-    white-space: nowrap;
+    @apply m-0 mr-5 flex cursor-pointer items-center gap-2 border-0 bg-none p-0 font-mono text-[18px] font-semibold whitespace-nowrap text-inherit;
+    background-color: transparent;
   }
 
   .brand-dot {
