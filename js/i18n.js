@@ -145,6 +145,11 @@ const CS = {
   'Security': 'Zabezpečení',
   'Wireless': 'Bezdrátové sítě',
   'Management': 'Správa',
+  // Linux Reference groups (LINUX_REF_GROUPS)
+  'Files and navigation': 'Soubory a navigace',
+  'Text and search': 'Text a hledání',
+  'Permissions and users': 'Oprávnění a uživatelé',
+  'Processes and packages': 'Procesy a balíčky',
   // landing page and Profile
   'Pick what to practise: random labs on a simulated command line, graded as you type.':
     'Vyber si, co chceš procvičit: náhodné laby na simulovaném příkazovém řádku, hodnocené už během psaní.',

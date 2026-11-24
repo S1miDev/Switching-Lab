@@ -1,5 +1,5 @@
 // Every Linux lab builds, and its known-good solution (plus the right answers) meets every requirement, which a fresh
-// lab does not. Mirrors test/labs.test.js for the Switching labs.
+// lab does not, in both languages. Mirrors test/labs.test.js for the Switching labs.
 const test = require('node:test');
 const assert = require('node:assert');
 const get = require('./linux-load');
@@ -39,9 +39,10 @@ test('catalogue and lab builds agree, and every topic has a full reference entry
   for (const id of Object.keys(LABS)) assert.ok(CATALOGUE[id], `${id} has no topic`);
 });
 
-for (const [id, T] of Object.entries(LABS)) {
-  for (const level of Object.keys(T.levels)) {
-    test(`${id} ${level}`, () => {
+for (const lang of ['en', 'cs']) {
+  const createSession = get.load(lang)('createSession');
+  for (const [id, T] of Object.entries(LABS)) for (const level of Object.keys(T.levels)) {
+    test(`${id} ${level} (${lang})`, () => {
       for (const net of NETS) {
         const s = createSession({topic: id, level, net});
         const at = `${id} ${level} x=${net}`;

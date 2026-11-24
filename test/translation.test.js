@@ -7,7 +7,7 @@ const {load} = require('./load.js');
 const en = load('en'), cs = load('cs');
 // texts that are the same in Czech on purpose (product and protocol names)
 const SAME = new Set(['Trunking (802.1Q)', 'Spanning Tree Protocol (STP)', 'EtherChannel', 'IPv6 routing', 'DHCP snooping',
-  'Dynamic ARP inspection', 'Switching', 'Router', 'Switch', 'L3 switch']);
+  'Dynamic ARP inspection', 'Switching', 'Router', 'Switch', 'L3 switch', 'Ubuntu 24.04']);
 const sameOk = t => SAME.has(t) || !/[A-Za-zÀ-ž]{4,}/.test(t.replace(/\b[A-Z0-9][A-Za-z0-9-]*[A-Z0-9][a-z]?\b/g, ''));
 
 // pairs [where, english, czech] that read the same although they should not
@@ -50,6 +50,24 @@ test('every Switching lab is all in Czech', () => {
   const misses = [];
   for (const [id, t] of Object.entries(en('CATALOGUE'))) for (const level of t.labLevels) {
     const a = en('createSession')({topic: id, level, net: 7}), b = cs('createSession')({topic: id, level, net: 7});
+    misses.push(...untranslated(zip(sessionTexts(a), sessionTexts(b))).map(m => `${id} ${level} ${m}`));
+  }
+  assert.deepEqual(misses, []);
+});
+
+const lx = require('./linux-load.js').load, lxEn = lx('en'), lxCs = lx('cs');
+
+test('the Linux catalogue is all in Czech', () => {
+  assert.deepEqual(untranslated(zip(catalogueTexts(lxEn, 'LINUX_CATALOGUE'), catalogueTexts(lxCs, 'LINUX_CATALOGUE'))), []);
+  assert.deepEqual(untranslated(Object.entries(lxEn('LINUX_DOMAINS')).map(([n, e]) => [`domain ${n}`, e, lxCs('LINUX_DOMAINS')[n]])), []);
+  const tr = lxCs('tr');
+  assert.deepEqual(lxEn('LINUX_REF_GROUPS').filter(g => tr(g) === g), []);
+});
+
+test('every Linux lab is all in Czech', () => {
+  const misses = [];
+  for (const [id, t] of Object.entries(lxEn('CATALOGUE'))) for (const level of t.labLevels) {
+    const a = lxEn('createSession')({topic: id, level, net: 7}), b = lxCs('createSession')({topic: id, level, net: 7});
     misses.push(...untranslated(zip(sessionTexts(a), sessionTexts(b))).map(m => `${id} ${level} ${m}`));
   }
   assert.deepEqual(misses, []);
