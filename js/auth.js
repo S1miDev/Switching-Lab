@@ -61,10 +61,10 @@ authForm.addEventListener('submit', async e => {
   authDlg.close();
 });
 
-// logged in: the button opens the profile page, which has Log out
+// logged in: the button opens the Profile view of the landing page, which has Log out (on the landing page only the hash changes)
 authBtn.addEventListener('click', async () => {
   const { data } = await sb.auth.getSession();
-  if (data.session) { location.href = 'profile.html'; return; }
+  if (data.session) { location.href = 'index.html#profile'; return; }
   authMode(false);
   authDlg.showModal();
 });

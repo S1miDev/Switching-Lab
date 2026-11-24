@@ -19,11 +19,17 @@ for (const [name, color] of Object.entries(ACCENTS)) {
   $('pf-accents').append(label);
 }
 
-// one card per exam domain; each topic gets a bar with a segment per difficulty level
+// every track with its catalogue and domains; the Linux one only once js/linux/topics.js is loaded (a const is not on globalThis)
+const TRACKS = [['Switching & Routing', CATALOGUE, DOMAINS]];
+if (typeof LINUX_CATALOGUE !== 'undefined') TRACKS.push(['Linux', LINUX_CATALOGUE, LINUX_DOMAINS]);
+
+// one card per track and domain; each topic gets a bar with a segment per difficulty level
 function renderProgress(done) {
-  const groups = {};
+  // card order: each track's domains in number order, then its Troubleshooting card
+  const groups = Object.fromEntries(TRACKS.flatMap(([track, , domains]) =>
+    [...Object.entries(domains).map(([d, name]) => `${track} · ${d}.0 ${name}`), `${track} · Troubleshooting`].map(t => [t, []])));
   let have = 0, total = 0, segIndex = 0;
-  for (const [id, c] of Object.entries(CATALOGUE)) {
+  for (const [track, catalogue, domains] of TRACKS) for (const [id, c] of Object.entries(catalogue)) {
     if (!c.labLevels?.length) continue; // reference-only topics have an empty list
     const mine = c.labLevels.filter(l => done[id]?.includes(l));
     have += mine.length;
@@ -40,16 +46,17 @@ function renderProgress(done) {
       segs.append(seg);
     }
     row.append(head, segs);
-    (groups[c.refGroup === 'Troubleshooting' ? 'Troubleshooting' : c.domain] ||= []).push(row); // own card after the domains
+    const title = c.refGroup === 'Troubleshooting' ? `${track} · Troubleshooting` : `${track} · ${c.domain}.0 ${domains[c.domain]}`;
+    groups[title].push(row);
   }
   const pct = total ? Math.round(100 * have / total) : 0;
   $('pf-ring').style.setProperty('--pct', pct);
   $('pf-ring').setAttribute('aria-label', `${pct}% complete`);
   $('pf-pct').textContent = pct + '%';
   $('pf-sum-text').textContent = `${have} of ${total} labs solved`;
-  $('pf-progress').replaceChildren(...Object.entries(groups).map(([d, rows]) => {
+  $('pf-progress').replaceChildren(...Object.entries(groups).filter(([, rows]) => rows.length).map(([title, rows]) => {
     const g = el('div', 'pf-domain');
-    g.append(el('h3', '', DOMAINS[d] ? `${d}.0 ${DOMAINS[d]}` : d), ...rows);
+    g.append(el('h3', '', title), ...rows);
     return g;
   }));
 }

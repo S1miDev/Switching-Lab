@@ -1,4 +1,4 @@
-# Switching-Lab
+# ls-labbing
  
 Webové virtuální prostředí na switching a routing ve stylu Cisco labů. Vybereš si obtížnost, spustíš lab a konfiguruješ síť přímo v prohlížeči přes konzoli zařízení.
  

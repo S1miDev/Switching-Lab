@@ -1,4 +1,5 @@
-// App core: lab set-up, the Labs page, navigation and page wiring. Starts the app; only auth.js loads after it.
+// App core shared by the track pages: lab set-up, the Labs page, navigation and page wiring. Starts the app; the page's
+// own wiring (switching.js on switching.html) and auth.js load after it.
 
 // ---- state ----
 // the open lab's devices live in its session (session.js), shown by the lab page (lab.js) and its console (console.js)
@@ -21,12 +22,12 @@ function newLab(lvl = level, t = topic) {
 // highlight the chosen difficulty on the Labs page
 function markLevel() {
   document.querySelectorAll('[data-set]').forEach(b => b.classList.toggle('active', b.dataset.set === level));
-  moveSeg($('dash-seg'));
-  moveSeg($('trouble-seg'));
+  for (const v of Object.values(VIEWS)) if (v.seg) moveSeg($(v.seg));
 }
 
 // slide a segmented control's highlight under its active button (it can only measure while visible)
 function moveSeg(seg) {
+  if (!seg) return;
   const active = seg.querySelector('.active');
   if (!active || !active.offsetWidth) return;
   seg.style.setProperty('--x', active.offsetLeft + 'px');
@@ -56,14 +57,10 @@ function renderDashboard(box, fix) {
 
 // ---- navigation ----
 
-// each view: its section, its nav tab (the lab page has none: it lights the tab of labFrom) and its segmented control
+// each view: its section, its nav tab (the lab page has none: it lights the tab of labFrom) and its segmented control.
+// These are on every track page; a page adds its own views (switching.js).
 const VIEWS = {
   dash: {page: 'dash', nav: 'nav-labs', seg: 'dash-seg'},
-  trouble: {page: 'trouble', nav: 'nav-trouble', seg: 'trouble-seg'},
-  sandbox: {page: 'sandbox', nav: 'nav-sandbox', seg: 'sandbox-seg'},
-  topo: {page: 'topo-view', nav: 'nav-topo', seg: 'topo-seg'},
-  exam: {page: 'exam-view', nav: 'nav-exam'},
-  ccna: {page: 'ccna-view', nav: 'nav-ccna'},
   ref: {page: 'ref', nav: 'nav-ref'},
   lab: {page: 'lab'},
 };
@@ -81,17 +78,7 @@ function show(view) {
 }
 
 $('nav-labs').addEventListener('click', () => show('dash'));
-$('nav-brand').addEventListener('click', () => show('dash'));
-$('nav-sandbox').addEventListener('click', () => show('sandbox'));
-$('sb-go-labs').addEventListener('click', () => show('dash'));
-document.querySelectorAll('[data-sb-tab]').forEach(b => b.addEventListener('click', () => {
-  $('sb-guided').hidden = b.dataset.sbTab !== 'guided';
-  $('sb-mine').hidden = b.dataset.sbTab !== 'mine';
-  document.querySelectorAll('[data-sb-tab]').forEach(x => x.classList.toggle('active', x === b));
-  moveSeg($('sandbox-seg'));
-}));
 $('nav-ref').addEventListener('click', () => show('ref'));
-$('nav-trouble').addEventListener('click', () => show('trouble'));
 $('back').addEventListener('click', () => show(labFrom));
 // every "Start lab" button, on the Labs page and in the Reference
 document.addEventListener('click', e => {
@@ -122,5 +109,4 @@ window.addEventListener('resize', () => {
 
 // ---- start ----
 renderDashboard('dash-domains', false);
-renderDashboard('trouble-domains', true);
 markLevel();

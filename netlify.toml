@@ -15,3 +15,20 @@
   from = "/sandbox"
   to = "/sandbox.html"
   status = 200
+
+# /switching and /linux open the track pages
+[[redirects]]
+  from = "/switching"
+  to = "/switching.html"
+  status = 200
+
+[[redirects]]
+  from = "/linux"
+  to = "/linux.html"
+  status = 200
+
+# Profile is now a view of the landing page
+[[redirects]]
+  from = "/profile.html"
+  to = "/"
+  status = 301

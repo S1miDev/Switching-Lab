@@ -1,4 +1,4 @@
-# SwitchingLab: notes for AI builders
+# ls-labbing: notes for AI builders
 
 Plain HTML, CSS and JS: `<script>` tags and globals, no bundler, no framework. Netlify publishes the repo as is (`publish = "."`).
 
