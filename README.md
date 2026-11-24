@@ -1,63 +1,85 @@
+🇬🇧 English · [🇨🇿 Čeština](README.cs.md)
+
 # ls-labbing
  
-Webové virtuální prostředí na switching a routing ve stylu Cisco labů. Vybereš si obtížnost, spustíš lab a konfiguruješ síť přímo v prohlížeči přes konzoli zařízení.
+A web-based virtual lab for practising the command line. It has two tracks: **Switching & Routing** in the style of Cisco labs, and **Linux** on a simulated Ubuntu terminal. Pick a difficulty, start a lab and work right in your browser. The lab is graded as you type.
  
-🔗 **Živá verze:** https://switching-lab.netlify.app/
+🔗 **Live version:** https://switching-lab.netlify.app/
  
 <img width="1877" height="957" alt="image" src="https://github.com/user-attachments/assets/8a31d814-0a5e-4f49-908d-466597cb847e" />
 
+## 🌐 Language
+The site is in English and Czech. The **CZ / EN** switch is in the top bar of every page. On your first visit the language follows your browser; after that it follows your choice (saved to your account when you are logged in). Device output, commands and the CCNA questions stay in English, as on real devices and in the official courses.
+
+## 🐧 Linux
+The bash command line on a simulated Ubuntu 24.04: **9 topics** at **4 difficulties**.
+- **Topics:** navigation, files and directories, viewing files, searching, pipes and redirection, permissions and ownership, users, groups and sudo, processes, packages (apt)
+- **Terminal:** Tab completes commands and paths, Up/Down walk the history, `help` lists every command the terminal knows
+- Error messages match the real GNU tools and bash
+- Its own **Reference** with the commands and their options
+
 ## 🧪 Labs
-Procvičování switchingu a routingu podle osnovy CCNA: **38 témat** ve **4 obtížnostech** (Beginner, Intermediate, Advanced, Expert).
+Practise switching and routing along the CCNA syllabus: **38 topics** at **4 difficulties** (Beginner, Intermediate, Advanced, Expert).
 
 ## 🛠️ Troubleshooting
-Najdeš tu rozbité sítě, které musíš opravit. Témat je **5** a každé je ve **4 obtížnostech**:
+Broken networks for you to fix. There are **5** topics, each at **4 difficulties**:
 - Trunk troubleshooting
 - Inter-VLAN troubleshooting
 - OSPF troubleshooting
 - DHCP troubleshooting
 - ACL troubleshooting
-Každá úroveň začíná s chybnou konfigurací a tvé příkazy jsou oprava.
+
+Every level starts with a faulty configuration, and your commands are the fix.
  
 ## 🔌 Topology
-Nauč se sestavit síť a správně zvolit kabeláž mezi prvky.
-- **Prvky:** router, switch, multilayer switch, DHCP server, PC, notebook, tiskárna, access point, WLC
-- **Kabely:** straight-through, crossover, některé úlohy vyžadují i fiber, serial nebo console
-- **Úlohy:** ve 4 obtížnostech, každá zadá, co a jak zapojit (např. router se switchem, dva routery sériovým spojem, WLC s access pointy)
-- **Ovládání:** prvky přetáhneš na plochu, přesouvat je můžeš tažením, kabel vytvoříš kliknutím na jedno zařízení a poté na druhé
+Learn to build a network and pick the right cabling between devices.
+- **Devices:** router, switch, multilayer switch, DHCP server, PC, notebook, printer, access point, WLC
+- **Cables:** straight-through, crossover; some tasks also need fiber, serial or console
+- **Tasks:** at 4 difficulties, each says what to connect and how (for example a router to a switch, two routers over a serial link, a WLC with access points)
+- **Controls:** drag devices onto the canvas, drag them to move them, and make a cable by clicking one device and then the other
+
 ## 🧰 Sandbox
-Volné prostředí, kde si sestavíš vlastní topologii a nastavíš ji z konzole.
-- **My workspace** – prázdné plátno: přidáš zařízení (router, switch, multilayer switch, PC, max. 30), propojíš je kabely a každé nastavíš z konzole
-- **Guided labs** – labs z části Labs, otevřené přímo ze Sandboxu
-- **Packet test** – pošle ping mezi zařízeními, ověříš tak funkčnost sítě
-- **Uložení** – až 20 pojmenovaných uložení v prohlížeči, dále **Export** a **Import** do souboru nebo **Copy share link** pro odkaz (u velkých sítí použij Export)
-- Uložení je v tomto prohlížeči, ne v účtu
+A free space where you build your own topology and configure it from the console.
+- **My workspace**: an empty canvas. Add devices (router, switch, multilayer switch, PC, up to 30), cable them, and configure each one from its console
+- **Guided labs**: the labs from the Labs section, opened straight from the Sandbox
+- **Packet test**: sends a ping between devices, so you can check the network works
+- **Saving**: up to 20 named saves in the browser, plus **Export** and **Import** to a file, or **Copy share link** for a link (use Export for big networks)
+- Saves live in this browser, not in your account
+
 ## 📝 Mock exam *(beta)*
-Test sestavený z náhodných labů (alespoň jeden lab z každého zvoleného tématu): podle obtížnosti, nebo vlastní (počet úloh, obtížnost, témata nebo mix).
-- **Časový limit** je volitelný: 5, 8, 12 nebo 15 minut na lab podle obtížnosti (Beginner až Expert)
-- **Hodnocení:** test je splněný od 80 %
+A test made of random labs (at least one lab from each chosen topic): by difficulty, or your own mix (number of labs, difficulty, topics).
+- The **time limit** is optional: 5, 8, 12 or 15 minutes per lab by difficulty (Beginner to Expert)
+- **Grading:** you pass at 80%
+
 ## 🎓 CCNA
-Testy s výběrovými otázkami podle oficiálních CCNA kurzů.
-- Aktuálně **CCNA 2 v7 (SRWE) Modules 1-4 Checkpoint Exam**: 33 otázek náhodně z banku 68 otázek
-- Některé otázky mají více správných odpovědí (zaškrtni všechny) a některé obsahují obrázek
-- **Hodnocení:** test je splněný od 80 %
+Multiple-choice tests following the official CCNA courses.
+- Currently **CCNA 2 v7 (SRWE) Modules 1-4 Checkpoint Exam**: 33 questions drawn at random from a bank of 68
+- Some questions have more than one correct answer (tick them all) and some include a picture
+- **Grading:** you pass at 80%
+
 ## 📖 Reference
-Nevíš si rady s labem? Najdeš tu **CCNA command reference**: příkazy, v jakém módu se zadávají, k čemu slouží, trochu teorie a nejčastější chyby. Témata jsou seřazená podle oblastí CCNA a příkazy jdou prohledat v jednom seznamu. Součástí je i téma Structured troubleshooting, tedy postupy hledání závad.
+Stuck on a lab? The **CCNA command reference** has the commands, the mode each one is typed in, what it does, some theory and the most common mistakes. Topics are grouped by CCNA area, and all commands can be searched in one list. It also covers Structured troubleshooting: how to hunt down faults.
  
-## 👤 Účet
-Po přihlášení si můžeš trackovat svůj progress:
-- **Progress** – přehled splněných úloh po tématech
-- **Day streak** – den se počítá, když v něm vyřešíš 3 labs nebo topology úlohy
-- **Profil** – jméno, barva zvýraznění a změna hesla
-- Postup se ukládá k účtu, takže je po přihlášení dostupný i na jiných zařízeních
-## 🎨 Styly
-Všechny styly jsou v **Tailwind CSS** (v4, CLI). Zdroj je `css/input.css`, stránky načítají jen `css/output.css`.
-- Barvy a fonty jsou theme tokeny v `@theme` (`--color-*`, `--font-*`), takže se píše `bg-surface`, `text-muted`, `border-border`, `text-accent`
-- Statický markup i šablony v JS používají utility třídy
-- `@layer components` v `css/input.css` jen pro kusy, které JS opakuje, nebo co utility neumí (keyframes, `::before`, SVG, `details`)
-- Žádné nové `.css` soubory, žádné `<style>` bloky a žádné inline `style`, kromě hodnot, které JS spočítá za běhu
-- Netlify nic nebuildí, takže po každé změně stylů, markupu nebo tříd v JS spusť `npm run build:css` a commitni i `css/output.css`
-## 📋 Plány a opravy
-Aktuální to-do list, opravy a QOL změny najdeš na [Milanote boardu](https://app.milanote.com/1XlAZz1AkO2qfh?p=MziMUNwVsQF). Dokončené úkoly jsou tam označené jako hotové a na konci dne se smažou. Historii změn najdeš v [commitech](https://github.com/S1miDev/Switching-Lab/commits/main).
+## 👤 Account
+Log in to track your progress:
+- **Progress**: the labs you have solved, by topic
+- **Day streak**: a day counts when you solve 3 labs or topology tasks in it
+- **Profile**: name, accent colour and password change
+- Progress is saved to your account, so it is there on other devices after you log in
+
+## 🎨 Styles
+All styling is **Tailwind CSS** (v4, CLI). The source is `css/input.css`; the pages load only `css/output.css`.
+- Colours and fonts are theme tokens in `@theme` (`--color-*`, `--font-*`), so you write `bg-surface`, `text-muted`, `border-border`, `text-accent`
+- Static markup and JS templates both use utility classes
+- `@layer components` in `css/input.css` is only for pieces JS builds over and over, or things utilities can't do (keyframes, `::before`, SVG, `details`)
+- No new `.css` files, no `<style>` blocks and no inline `style`, except values JS computes at run time
+- Netlify builds nothing, so after any change to styles, markup or classes in JS, run `npm run build:css` and commit `css/output.css` too
+
+## 🌍 Translations
+Each text sits next to its Czech version: `L('English', 'Česky')` in JS and data files, and `data-i18n` on markup with the Czech in `CS` in `js/i18n.js`. Missing Czech falls back to English. `npm test` checks that every page text has its Czech and that every lab passes in both languages.
+
+## 📋 Plans and fixes
+The current to-do list, fixes and QOL changes are on the [Milanote board](https://app.milanote.com/1XlAZz1AkO2qfh?p=MziMUNwVsQF). Finished items are marked done there and deleted at the end of the day. The change history is in the [commits](https://github.com/S1miDev/Switching-Lab/commits/main).
  
-## 💬 Zpětná vazba
-Našel jsi chybu, máš nápad na úlohu nebo zlepšení? Napiš mi na discord!
+## 💬 Feedback
+Found a bug, have an idea for a task or an improvement? Message me on Discord!
