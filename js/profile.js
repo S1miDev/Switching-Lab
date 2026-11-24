@@ -93,7 +93,7 @@ sb.auth.onAuthStateChange((_event, session) => {
   showReset(meta);
   renderProgress(meta.done || {});
   pfName.value = meta.display_name || '';
-  const accent = Object.values(ACCENTS).includes(meta.accent) ? meta.accent : ACCENTS.Blue;
+  const accent = Object.values(ACCENTS).includes(meta.accent) ? meta.accent : ACCENTS.Green;
   pfForm.querySelector(`input[value="${accent}"]`).checked = true;
 });
 

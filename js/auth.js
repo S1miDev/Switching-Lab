@@ -70,7 +70,7 @@ authBtn.addEventListener('click', async () => {
 });
 
 // accent presets for the profile page; all are light enough for the dark --color-accent-ink text
-const ACCENTS = { Blue: '#4C8DFF', Green: '#4FA88A', Amber: '#d9a441', Pink: '#f472b6', Purple: '#a78bfa', Teal: '#2dd4bf' };
+const ACCENTS = { Blue: '#4C8DFF', Green: '#5FD38D', Amber: '#d9a441', Pink: '#f472b6', Purple: '#a78bfa', Teal: '#2dd4bf' };
 
 function applyAccent(color) {
   const s = document.documentElement.style;
