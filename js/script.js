@@ -45,7 +45,7 @@ function renderDashboard(box, fix) {
   $(box).innerHTML = domains.map(([n, title], d) => {
     const rows = ids.filter(id => CATALOGUE[id].domain === Number(n));
     return `<details class="domain"${d && !fix ? '' : ' open'}>` +
-      `<summary><span class="dom-num">${n}.0</span><span class="dom-title">${esc(title)}</span><span class="dom-meta">${topicCount(rows.length)}</span></summary>` +
+      `<summary><span class="dom-num">${n}.0</span><span class="dom-title">${esc(title)}</span></summary>` +
       '<div class="rows">' +
       rows.map(id => `<div class="row" data-search="${esc(searchText(id))}">` +
         `<div class="row-title">${esc(CATALOGUE[id].name)}</div><div class="row-desc">${esc(CATALOGUE[id].desc)}</div>` +

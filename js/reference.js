@@ -6,7 +6,7 @@ function renderReference() {
   document.getElementById('ref-groups').innerHTML = REF_GROUPS.map((group, g) => {
     const ids = Object.keys(CATALOGUE).filter(id => CATALOGUE[id].refGroup === group);
     return `<details class="domain"${g ? '' : ' open'}>` +
-      `<summary><span class="dom-title">${esc(group)}</span><span class="dom-meta">${topicCount(ids.length)}</span></summary>` +
+      `<summary><span class="dom-title">${esc(group)}</span></summary>` +
       '<div class="rows">' +
       ids.map(id => `<div class="row ref-item" role="button" tabindex="0" data-topic="${id}">` +
         `<div class="row-title">${esc(CATALOGUE[id].name)}</div><div class="row-desc">${esc(CATALOGUE[id].ref.summary)}</div></div>`).join('') +

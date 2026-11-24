@@ -139,15 +139,9 @@
   }
 
   /* ---- top navigation ---- */
+  /* the page background, so the bottom border is the only divider */
   .side {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    height: 64px;
-    padding: 0 32px;
-    background: var(--color-surface);
-    border-bottom: 1px solid var(--color-border);
-    overflow-x: auto;
+    @apply flex h-16 items-center gap-1 overflow-x-auto border-b border-border bg-bg px-8;
   }
 
   .brand {
@@ -578,11 +572,14 @@
   }
 
   .card {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 16px;
-    padding: 18px 20px;
-    min-width: 0;
+    @apply min-w-0 rounded-2xl border border-border bg-surface px-5 py-[18px];
+  }
+
+  /* card section labels (SCENARIO, REQUIREMENTS, CONSOLE ...), the same in every card */
+  .card h2,
+  details.card > summary:not(.pf-sum),
+  .console-label {
+    @apply font-mono text-[11px] font-medium tracking-[.14em] text-muted uppercase;
   }
 
   .pill,
@@ -613,14 +610,9 @@
   }
 
   /* ---- segmented control: moveSeg() in script.js slides the ::before highlight under the active button ---- */
+  /* no outline: the dim sliding highlight alone marks the active button */
   .seg {
-    position: relative;
-    display: flex;
-    gap: 2px;
-    padding: 4px;
-    background: var(--color-bg);
-    border: 1px solid var(--color-border);
-    border-radius: 10px;
+    @apply relative flex gap-0.5 rounded-[10px] p-1;
   }
 
   .seg::before {
@@ -721,23 +713,13 @@
   }
 
   .dom-num {
-    font: 13px var(--font-mono);
-    color: var(--color-success);
+    @apply font-mono text-[13px] leading-[normal] text-muted;
   }
 
   .dom-title {
     font-size: 14px;
     font-weight: 600;
     color: var(--color-text);
-  }
-
-  .dom-meta {
-    padding: 2px 10px;
-    border-radius: 999px;
-    background: var(--color-surface-2);
-    border: 1px solid var(--color-border);
-    color: var(--color-muted);
-    font-size: 12px;
   }
 
   .rows {
@@ -758,17 +740,9 @@
     }
   }
 
+  /* no outline at rest; the accent border shows on hover */
   .row {
-    position: relative;
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 14px;
-    padding: 18px 20px;
-    transition: border-color .15s;
-  }
-
-  .row:hover {
-    border-color: var(--color-accent);
+    @apply relative rounded-[14px] border border-transparent bg-surface px-5 py-[18px] transition-[border-color] duration-150 hover:border-accent;
   }
 
   .row-title {
@@ -816,7 +790,7 @@
     display: block;
     margin-bottom: 4px;
     font: 12px/20px var(--font-mono);
-    color: var(--color-success);
+    color: var(--color-muted);
   }
 
   /* "Start lab" sits in the card's top-right corner, level with the number */
@@ -827,7 +801,7 @@
     padding: 0 4px;
     border: 0;
     background: none;
-    color: var(--color-success);
+    color: var(--color-accent);
     font-size: 13px;
     font-weight: 500;
     line-height: 20px;
@@ -1085,8 +1059,6 @@
   /* ---- Commands card ---- */
   details.card summary {
     cursor: pointer;
-    font-size: 16px;
-    font-weight: 600;
   }
 
   .cmds {
@@ -1292,13 +1264,6 @@
     padding: 10px 14px;
     background: var(--color-surface-2);
     border-bottom: 1px solid var(--color-border);
-  }
-
-  .console-label {
-    font: 11px var(--font-mono);
-    letter-spacing: .14em;
-    text-transform: uppercase;
-    color: var(--color-muted);
   }
 
   .tabs {

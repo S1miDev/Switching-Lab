@@ -2267,5 +2267,3 @@ const CATALOGUE = {
 
 // the text the search boxes match: id, name and keywords, in lower case
 const searchText = id => [id, CATALOGUE[id].name, ...CATALOGUE[id].keywords].join(' ').toLowerCase();
-// "1 topic", "6 topics"
-const topicCount = n => `${n} topic${n === 1 ? '' : 's'}`;
