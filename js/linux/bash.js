@@ -10,7 +10,12 @@ const LINUX_CMDS = {};
 const LX_NOT_SIMULATED = new Set(('man nano vi vim ssh scp ping ip ifconfig systemctl service curl wget tar gzip gunzip zip unzip ln ' +
   'df du free history alias export source sed awk tr tee diff file stat which whereis locate more nl xargs crontab journalctl ' +
   'dmesg mount umount uname hostname date clear shutdown reboot pkill killall nohup bg fg apt-get dpkg snap userdel groupdel ' +
-  'deluser adduser visudo chpasswd gpasswd watch bash sh env printenv touch2 lsblk lscpu').split(' '));
+  'deluser adduser visudo chpasswd gpasswd watch bash sh env printenv lsblk lscpu ll la l printf seq basename dirname tac rev ' +
+  'who w uptime pgrep pidof nice renice python3 perl type test getent chsh chfn newgrp dd cmp comm join paste split shuf ' +
+  'readlink realpath mktemp sync tty yes expr factor md5sum sha256sum base64 od hexdump strings column fold fmt expand ' +
+  'unexpand pr ss netstat lsof last lastlog logger timedatectl hostnamectl loginctl systemd-analyze lsmod modprobe ' +
+  'fdisk mkfs ufw iptables nslookup dig host traceroute tracepath rsync sftp ftp telnet nc screen read set unset ' +
+  'declare local return shift trap wait disown suspend times ulimit history fc pushd popd dirs shopt hash compgen').split(' '));
 const lxNotAvailable = name => `${name}: not available in this lab (type help for the commands you can use)`;
 
 // file names sort like GNU ls and sort in an en_US locale

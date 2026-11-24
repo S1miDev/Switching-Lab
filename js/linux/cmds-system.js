@@ -315,7 +315,9 @@ LINUX_CMDS.sleep = {
 
 // ---- packages ----
 
-const LX_APT_READ = ['Reading package lists... Done', 'Building dependency tree... Done', 'Reading state information... Done'];
+// the Essential: yes packages apt refuses to remove (nano, cron, openssh-server and the like are ordinary packages)
+const LX_ESSENTIAL = ['bash', 'coreutils', 'grep', 'findutils'];
+const LX_APT_READ =['Reading package lists... Done', 'Building dependency tree... Done', 'Reading state information... Done'];
 const lxKb = pkg => 20 + (pkg.length * 37) % 400; // a believable download size in kB
 
 LINUX_CMDS.apt = {
@@ -384,7 +386,7 @@ LINUX_CMDS.apt = {
       return 0;
     }
     // remove / purge: asks first, like apt, unless -y
-    if (pkgs.some(n => LX_BASE.includes(n))) {
+    if (pkgs.some(n => LX_ESSENTIAL.includes(n))) {
       ctx.err('W: Removing essential system-critical packages is not permitted. This might break the system.');
       return lxErr(ctx, 'E: Removing essential system-critical packages is not permitted. This might break the system.') * 100;
     }

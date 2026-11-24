@@ -83,6 +83,18 @@ test('Tab completes commands and paths, escaping spaces', () => {
   assert.equal(dev.complete('ls tm').value, 'ls tmp/');
 });
 
+test('review fixes: no Tab at a password prompt, real commands are never "not found", ordinary packages can be removed', () => {
+  const {dev, st, run} = host();
+  run('sudo ls');
+  assert.deepEqual(dev.complete('pw'), {value: 'pw'}, 'Tab must not complete a hidden password');
+  run('student');
+  assert.deepEqual(run('ll'), ['ERR ll: not available in this lab (type help for the commands you can use)']);
+  assert.deepEqual(run('printf hi'), ['ERR printf: not available in this lab (type help for the commands you can use)']);
+  run('sudo apt remove -y nano');
+  assert.equal(st.packages.nano, undefined);
+  assert.match(run('sudo apt remove -y coreutils').join('\n'), /essential/);
+});
+
 test('sudo -i opens a root shell and exit goes back', () => {
   const {dev, run} = host();
   run('sudo -i');

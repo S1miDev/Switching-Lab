@@ -36,6 +36,7 @@ function createLinux(node, session) {
 
   // Tab: the first word against the commands, later words against the paths (shown with \ before a space, like bash)
   function complete(line) {
+    if (st.askPw) return {value: line}; // never complete (or reveal) a hidden password
     const m = /^(.*?)((?:\\.|[^\s\\])*)$/.exec(line), before = m[1], typed = m[2].replace(/\\(.)/g, '$1');
     const first = !before.trim() || /(?:[|;&]|&&|\|\|)\s*$/.test(before) || /^\s*sudo\s+$/.test(before);
     let hits;
