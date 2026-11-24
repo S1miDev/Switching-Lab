@@ -138,6 +138,13 @@ const CS = {
   'Presets and saved sandboxes': 'Předvolby a uložené sandboxy',
   'Search presets': 'Hledat předvolby',
   'Saved sandboxes': 'Uložené sandboxy',
+  // Reference groups (REF_GROUPS in js/topics.js; Troubleshooting and Switching are above or read the same)
+  'Core': 'Základ',
+  'IP & routing': 'IP a routing',
+  'Services': 'Služby',
+  'Security': 'Zabezpečení',
+  'Wireless': 'Bezdrátové sítě',
+  'Management': 'Správa',
   // landing page and Profile
   'Pick what to practise: random labs on a simulated command line, graded as you type.':
     'Vyber si, co chceš procvičit: náhodné laby na simulovaném příkazovém řádku, hodnocené už během psaní.',
