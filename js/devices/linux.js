@@ -79,9 +79,11 @@ function createLinux(node, session) {
         const first = cmd.split(/\s+/)[0], root = first === 'sudo' && st.user !== 'root';
         return `You are ${st.user} in ${where()}. The command starts with "${first}"${root ? ' and needs root: put sudo in front' : ''}`;
       },
-      syntax: cmd => {
-        const name = cmd.replace(/^sudo\s+/, '').split(/\s+/)[0];
-        return LINUX_CMDS[name]?.synopsis || LX_SYNOPSIS[name] || name;
+      // the synopsis of every command in the line (a pipeline shows each one), or null for a line that is no command
+      syntax(cmd) {
+        const p = lxParse(cmd), text = w => w?.map(s => s.text).join('');
+        const names = p.error ? [] : p.list.flatMap(i => i.pipeline.map(c => (text(c.words[0]) === 'sudo' ? text(c.words[1]) : text(c.words[0]))));
+        return [...new Set(names)].map(n => LINUX_CMDS[n]?.synopsis || LX_SYNOPSIS[n]).filter(Boolean).join(' | ') || null;
       },
       recheck: 'You typed all the commands, so check names, paths and values: use ls -l, cat and id.',
     },

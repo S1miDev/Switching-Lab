@@ -44,21 +44,22 @@ const labPage = (() => {
       const txt = el('span', 'rtext');
       txt.append(el('b', '', r.text));
       li.append(txt);
-      if (r.answer) { // an answer requirement: the student types what they found in the console
-        const box = el('input', 'ml-auto w-32 rounded-md border border-border bg-bg px-2 py-1 font-mono text-[13px] text-text');
-        box.dataset.answer = i;
-        box.setAttribute('aria-label', 'Answer');
-        box.autocomplete = 'off';
-        box.spellcheck = false;
-        box.value = shown.answers[i] || '';
-        box.disabled = !!stoppedAt;
-        li.append(box);
-      }
       const used = reqHints[i] || 0;
       if (res !== true && !given[i] && used < 3 && !exam) {
         const b = el('button', 'ghost rhint-btn', `Hint (${3 - used} left)`);
         b.dataset.i = i;
         li.append(b);
+      }
+      if (r.answer) { // an answer requirement: the student types what they found in the console, on its own line
+        const box = el('input', 'ml-9 w-[calc(100%-36px)] rounded-md border border-border bg-bg px-2 py-1 font-mono text-[13px] text-text placeholder:text-muted');
+        box.dataset.answer = i;
+        box.setAttribute('aria-label', `Answer: ${r.text}`);
+        box.placeholder = 'Type your answer, then Enter';
+        box.autocomplete = 'off';
+        box.spellcheck = false;
+        box.value = shown.answers[i] || '';
+        box.disabled = !!stoppedAt;
+        li.append(box);
       }
       for (let k = 0; k < used; k++) li.append(el('div', 'rhint', `Hint ${k + 1}/3: ` + hintLines(r, k)));
       return li;
@@ -101,7 +102,7 @@ const labPage = (() => {
     const own = shown.devices[home].hints;
     if (!left.length) return own ? own.recheck : 'You typed all the commands, so check the values, the interface and the device: use show running-config.';
     if (own && k === 0) return own.nudge(left[0]) + on;
-    if (own && k === 1) return 'Syntax: ' + left.map(own.syntax).join(' → ') + on;
+    if (own && k === 1) return 'Syntax: ' + (left.map(own.syntax).filter(Boolean).join(' → ') || left[0]) + on;
     if (k === 0) {
       if (labConsole.current() !== home) return `Open the ${home} console first.`;
       const pr = shown.devices[home].prompt(), cfg = /\(([^)]+)\)/.exec(pr);
@@ -130,7 +131,7 @@ const labPage = (() => {
   function renderCmds() {
     const used = shown.solution.length ? shown.solution.flatMap(([, lines]) => lines) : shown.reqs.flatMap(r => r.hint.cmds);
     const own = shown.devices[shown.home].hints;
-    const list = own ? used.map(own.syntax)
+    const list = own ? used.map(own.syntax).filter(Boolean)
       : ['enable', 'configure terminal', ...used.map(cmdSyntax).filter(c => c && c !== 'enable'), 'show running-config', 'exit', 'end'];
     $('cmds').replaceChildren(...[...new Set(list)].map(c => el('code', 'cmd', c)));
   }

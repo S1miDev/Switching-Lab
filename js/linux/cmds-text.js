@@ -190,7 +190,7 @@ function lxCutList(list) {
 }
 
 LINUX_CMDS.cut = {
-  synopsis: 'cut -d SEP -f FIELDS [FILE]... | cut -c CHARS [FILE]...',
+  synopsis: 'cut -d SEP -f FIELDS [FILE]...  (or -c CHARS)',
   run(ctx) {
     const p = lxOpts(ctx, ctx.args, 's', 'dfc', {delimiter: 'd', fields: 'f', characters: 'c'});
     if (!p) return 1;

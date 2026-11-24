@@ -107,6 +107,8 @@ test('the device has hints and a banner, and no ports yet', () => {
   assert.match(dev.hints.nudge('sudo useradd -m bob'), /You are student in ~.*"sudo".*needs root/);
   assert.match(dev.hints.syntax('kill 640'), /^kill \[/);
   assert.match(dev.hints.syntax('sudo kill 640'), /^kill \[/);
+  assert.match(dev.hints.syntax("cut -d' ' -f1 log | sort | uniq -c > top.txt"), /^cut .* \| sort .* \| uniq /, 'a pipeline shows every command');
+  assert.equal(dev.hints.syntax('Spring72!'), null, 'a line that is not a command (a typed password) has no syntax');
   assert.match(dev.banner()[0], /^Welcome to Ubuntu 24\.04/);
   assert.deepEqual(dev.ports(), []);
 });
