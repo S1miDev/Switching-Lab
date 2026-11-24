@@ -46,22 +46,22 @@ const labPage = (() => {
       li.append(txt);
       const used = reqHints[i] || 0;
       if (res !== true && !given[i] && used < 3 && !exam) {
-        const b = el('button', 'ghost rhint-btn', `Hint (${3 - used} left)`);
+        const b = el('button', 'ghost rhint-btn', L(`Hint (${3 - used} left)`, `Nápověda (zbývá ${3 - used})`));
         b.dataset.i = i;
         li.append(b);
       }
       if (r.answer) { // an answer requirement: the student types what they found in the console, on its own line
         const box = el('input', 'ml-9 w-[calc(100%-36px)] rounded-md border border-border bg-bg px-2 py-1 font-mono text-[13px] text-text placeholder:text-muted');
         box.dataset.answer = i;
-        box.setAttribute('aria-label', `Answer: ${r.text}`);
-        box.placeholder = 'Type your answer, then Enter';
+        box.setAttribute('aria-label', L('Answer: ', 'Odpověď: ') + r.text);
+        box.placeholder = L('Type your answer, then Enter', 'Napiš odpověď a stiskni Enter');
         box.autocomplete = 'off';
         box.spellcheck = false;
         box.value = shown.answers[i] || '';
         box.disabled = !!stoppedAt;
         li.append(box);
       }
-      for (let k = 0; k < used; k++) li.append(el('div', 'rhint', `Hint ${k + 1}/3: ` + hintLines(r, k)));
+      for (let k = 0; k < used; k++) li.append(el('div', 'rhint', L(`Hint ${k + 1}/3: `, `Nápověda ${k + 1}/3: `) + hintLines(r, k)));
       return li;
     }));
   }
@@ -87,7 +87,7 @@ const labPage = (() => {
   }
 
   // a requirement's exact commands: on its interface (if any), on its device (if named)
-  const hintCmds = ({cmds, port, dev}) => [...(port ? ['interface ' + port] : []), ...cmds].join(' → ') + (dev ? ` (on ${dev})` : '');
+  const hintCmds = ({cmds, port, dev}) => [...(port ? ['interface ' + port] : []), ...cmds].join(' → ') + (dev ? L(` (on ${dev})`, ` (na ${dev})`) : '');
 
   // Hints follow what was typed on the requirement's device: they talk about the first step (mode entry, then commands) not typed yet.
   // Hint 1 nudges (device or mode), hint 2 shows that step's syntax, hint 3 gives the exact remaining steps.
@@ -98,20 +98,23 @@ const labPage = (() => {
     const typed = new Set((shown.typed[home] || []).map(norm));
     const steps = [...(port ? ['interface ' + port] : []), ...cmds];
     const left = steps.filter(c => !typed.has(norm(c)));
-    const on = dev ? ` (on ${dev})` : '';
+    const on = dev ? L(` (on ${dev})`, ` (na ${dev})`) : '';
     const own = shown.devices[home].hints;
-    if (!left.length && r.answer) return 'You typed all the commands: read the answer in the console and type it into the box, then press Enter.';
-    if (!left.length) return own ? own.recheck : 'You typed all the commands, so check the values, the interface and the device: use show running-config.';
+    if (!left.length && r.answer) return L('You typed all the commands: read the answer in the console and type it into the box, then press Enter.',
+      'Všechny příkazy máš zadané: přečti odpověď v konzoli, napiš ji do políčka a stiskni Enter.');
+    if (!left.length) return own ? own.recheck : L('You typed all the commands, so check the values, the interface and the device: use show running-config.',
+      'Všechny příkazy máš zadané, tak zkontroluj hodnoty, rozhraní a zařízení: použij show running-config.');
     if (own && k === 0) return own.nudge(left[0]) + on;
-    if (own && k === 1) return 'Syntax: ' + (left.map(own.syntax).filter(Boolean).join(' → ') || left[0]) + on;
+    if (own && k === 1) return L('Syntax: ', 'Syntaxe: ') + (left.map(own.syntax).filter(Boolean).join(' → ') || left[0]) + on;
     if (k === 0) {
-      if (labConsole.current() !== home) return `Open the ${home} console first.`;
+      if (labConsole.current() !== home) return L(`Open the ${home} console first.`, `Nejdřív otevři konzoli ${home}.`);
       const pr = shown.devices[home].prompt(), cfg = /\(([^)]+)\)/.exec(pr);
-      const mode = cfg ? cfg[1] + ' mode' : pr.endsWith('>') ? 'user mode' : 'privileged mode';
-      return `You are in ${mode}. Think about which mode the command "${cmdSyntax(left[0]).split(' ').slice(0, 2).join(' ')} ..." needs${on}`;
+      const mode = cfg ? L(cfg[1] + ' mode', 'režimu ' + cfg[1]) : pr.endsWith('>') ? L('user mode', 'uživatelském režimu') : L('privileged mode', 'privilegovaném režimu');
+      const cmd = cmdSyntax(left[0]).split(' ').slice(0, 2).join(' ');
+      return L(`You are in ${mode}. Think about which mode the command "${cmd} ..." needs${on}`, `Jsi v ${mode}. Rozmysli si, jaký režim potřebuje příkaz "${cmd} ..."${on}`);
     }
-    if (k === 1) return 'Syntax: ' + left.map(cmdSyntax).join(' → ') + on;
-    return 'Commands: ' + left.join(' → ') + on;
+    if (k === 1) return L('Syntax: ', 'Syntaxe: ') + left.map(cmdSyntax).join(' → ') + on;
+    return L('Commands: ', 'Příkazy: ') + left.join(' → ') + on;
   }
 
   // a command with its values replaced by placeholders, so the card does not give the answers away
@@ -140,7 +143,7 @@ const labPage = (() => {
   // devices are 150x52 boxes; each link runs from the right edge of one box to the left edge of the other
   function drawTopo(nodes, links, height) {
     const at = id => nodes.find(n => n.id === id);
-    let svg = `<svg viewBox="0 0 528 ${height}" role="img" aria-label="Lab topology. Click a device to open its console.">`;
+    let svg = `<svg viewBox="0 0 528 ${height}" role="img" aria-label="${L('Lab topology. Click a device to open its console.', 'Topologie labu. Kliknutím na zařízení otevřeš jeho konzoli.')}">`;
     for (const l of links) {
       const a = at(l.a), b = at(l.b);
       const x1 = a.x + 150, y1 = a.y + 26, x2 = b.x, y2 = b.y + 26;
@@ -176,9 +179,9 @@ const labPage = (() => {
     shown = session;
     exam = mode === 'exam';
     const C = CATALOGUE[session.topic];
-    $('crumb').textContent = crumb || `Labs / ${C.domain}.0 ${DOMAINS[C.domain]} / ${C.name}`;
+    $('crumb').textContent = crumb || `${L('Labs', 'Laby')} / ${C.domain}.0 ${DOMAINS[C.domain]} / ${C.name}`;
     $('lab-title').textContent = C.name;
-    $('lab-level').textContent = session.level;
+    $('lab-level').textContent = tr(session.level[0].toUpperCase() + session.level.slice(1)).toLowerCase();
     $('lab-sub').textContent = session.sub;
     $('scenario-lead').textContent = session.lead;
     $('steps').replaceChildren(...session.steps.map(step => el('li', '', step)));
@@ -193,7 +196,7 @@ const labPage = (() => {
   // Check shows the result in a popup (styled like the login one) on top of marking the requirements
   const resultDlg = el('dialog', 'auth-dlg result-dlg');
   const resultBody = el('div', 'result-body');
-  const resultClose = el('button', 'ghost', 'Close');
+  const resultClose = el('button', 'ghost', L('Close', 'Zavřít'));
   resultDlg.append(resultBody);
   document.body.append(resultDlg);
   resultClose.addEventListener('click', () => resultDlg.close());
@@ -201,8 +204,8 @@ const labPage = (() => {
   // the reference solution: one block per device, or the requirements' commands for a lab with no known-good config
   function solutionBox(devices) {
     const box = el('details', 'res-sol');
-    box.append(el('summary', '', `Show reference solution`));
-    box.firstChild.append(el('span', 'note', `${devices.length} device${devices.length === 1 ? '' : 's'}`));
+    box.append(el('summary', '', L('Show reference solution', 'Ukázat vzorové řešení')));
+    box.firstChild.append(el('span', 'note', L(`${devices.length} device${devices.length === 1 ? '' : 's'}`, `${devices.length} ${cz(devices.length, 'zařízení', 'zařízení', 'zařízení')}`)));
     for (const [dev, lines] of devices) {
       if (dev) box.append(el('div', 'res-dev', dev));
       box.append(el('pre', 'solution', lines.join('\n')));
@@ -220,7 +223,7 @@ const labPage = (() => {
       RES_ICON[kind] + '</svg>';
     const txt = el('div', 'res-txt');
     txt.append(el('b', '', r.text));
-    if (kind === 'pre') txt.append(el('span', 'note', 'Already in place at the start, not scored'));
+    if (kind === 'pre') txt.append(el('span', 'note', L('Already in place at the start, not scored', 'Hotové už od začátku, nehodnotí se')));
     else if (kind === 'bad') txt.append(el('span', 'note', hintCmds(r.hint)));
     c.append(icon, txt);
     return c;
@@ -236,15 +239,15 @@ const labPage = (() => {
     const tile = (label, value) => { const d = el('div', 'res-stat'); d.append(el('span', 'note', label), el('b', '', value)); return d; };
     const head = el('div', 'res-head');
     const complete = total > 0 && done === total;
-    head.append(el('span', 'res-badge ' + (complete ? 'ok' : 'bad'), complete ? 'COMPLETE' : 'INCOMPLETE'), el('b', 'res-pct', pct + '%'));
+    head.append(el('span', 'res-badge ' + (complete ? 'ok' : 'bad'), complete ? L('COMPLETE', 'HOTOVO') : L('INCOMPLETE', 'NEHOTOVO')), el('b', 'res-pct', pct + '%'));
     const tiles = el('div', 'res-tiles');
-    tiles.append(tile('REQUIREMENTS', `${done}/${total}`), tile('TIME', `${Math.floor(secs / 60)}m ${secs % 60}s`), tile('HINTS', cost ? `${hints} (−${cost}%)` : String(hints)));
+    tiles.append(tile(L('REQUIREMENTS', 'POŽADAVKY'), `${done}/${total}`), tile(L('TIME', 'ČAS'), `${Math.floor(secs / 60)}m ${secs % 60}s`), tile(L('HINTS', 'NÁPOVĚDY'), cost ? `${hints} (−${cost}%)` : String(hints)));
     const cards = shown.reqs.map((r, i) => resultCard(r, results[i]));
     const sol = shown.solution.length ? shown.solution : [['', [...new Set(shown.reqs.map(r => hintCmds(r.hint)))]]];
     const box = solutionBox(sol);
     const answers = shown.reqs.filter(r => r.answer).map(r => `${r.text} → ${[].concat(r.answer(shown)).join(', ')}`);
-    if (answers.length) box.append(el('div', 'res-dev', 'Answers'), el('pre', 'solution', answers.join('\n')));
-    resultBody.replaceChildren(head, tiles, el('p', 'note', `${commandCount} command${commandCount === 1 ? '' : 's'} entered`),
+    if (answers.length) box.append(el('div', 'res-dev', L('Answers', 'Odpovědi')), el('pre', 'solution', answers.join('\n')));
+    resultBody.replaceChildren(head, tiles, el('p', 'note', L(`${commandCount} command${commandCount === 1 ? '' : 's'} entered`, `${cz(commandCount, 'Zadán', 'Zadány', 'Zadáno')} ${commandCount} ${cz(commandCount, 'příkaz', 'příkazy', 'příkazů')}`)),
       ...cards, box, resultClose);
     resultDlg.showModal();
   }

@@ -18,14 +18,14 @@ const examCard = document.getElementById('exam-card');
 const examBar = document.createElement('div');
 examBar.innerHTML = `
   <div class="my-3 flex items-center justify-between gap-4 rounded-lg border border-border bg-surface px-4 py-2">
-    <span class="font-semibold">Mock exam: lab <span data-pos></span></span>
+    <span class="font-semibold">${L('Mock exam: lab', 'Cvičný test: lab')} <span data-pos></span></span>
     <span data-time class="font-mono text-muted"></span>
-    <button data-next>Next lab</button>
+    <button data-next>${L('Next lab', 'Další lab')}</button>
   </div>`;
 const examPosEl = examBar.querySelector('[data-pos]'), examTimeEl = examBar.querySelector('[data-time]'), examNext = examBar.querySelector('[data-next]');
 
 const secondsLeft = () => Math.max(0, Math.round((examEnd - Date.now()) / 1000));
-const cap = s => s[0].toUpperCase() + s.slice(1);
+const cap = s => tr(s[0].toUpperCase() + s.slice(1)); // a level key as its shown name
 
 // keep the open lab's result before moving on
 function examSave() {
@@ -37,13 +37,13 @@ function examSave() {
 
 // an exam is plain: the lab page leaves out the command list, hints and solution, and the way back to the Labs page
 function examMount() {
-  labPage.open(examSession, {mode: 'exam', crumb: 'Mock exam / ' + CATALOGUE[examSession.topic].name, bar: examBar});
+  labPage.open(examSession, {mode: 'exam', crumb: tr('Mock exam') + ' / ' + CATALOGUE[examSession.topic].name, bar: examBar});
 }
 
 function examOpen() {
   examSession = createSession({topic: examLabs[examPos].topic, level: examLevel, net: randomNet(examSession?.net)});
   examPosEl.textContent = `${examPos + 1}/${examLabs.length}`;
-  examNext.textContent = examPos === examLabs.length - 1 ? 'Finish exam' : 'Next lab';
+  examNext.textContent = examPos === examLabs.length - 1 ? L('Finish exam', 'Dokončit test') : L('Next lab', 'Další lab');
   examMount();
   examShowLab();
 }
@@ -75,7 +75,7 @@ function examStart(form) {
 }
 
 function examTick() {
-  examTimeEl.textContent = examEnd ? 'Time left ' + clock(secondsLeft()) : 'No time limit';
+  examTimeEl.textContent = examEnd ? L('Time left ', 'Zbývá ') + clock(secondsLeft()) : L('No time limit', 'Bez časového limitu');
   if (examEnd && !secondsLeft()) examFinish();
 }
 
@@ -108,23 +108,23 @@ function setupHtml() {
   const levels = Object.keys(EXAM_MIN_PER_LAB).map(l =>
     `<label class="${TILE} flex-col !items-start gap-0.5"><span class="flex items-center gap-2 font-medium">` +
     `<input type="radio" name="level" value="${l}" class="accent-accent"${l === level ? ' checked' : ''}>${cap(l)}</span>` +
-    `<span class="pl-6 text-xs text-muted">${EXAM_MIN_PER_LAB[l]} min per lab</span></label>`);
+    `<span class="pl-6 text-xs text-muted">${EXAM_MIN_PER_LAB[l]} ${L('min per lab', 'min na lab')}</span></label>`);
   const topics = Object.entries(CATALOGUE).filter(([, t]) => t.labLevels.length).map(([k, t]) =>
     `<label class="${TILE} text-sm"><input type="checkbox" name="topic" value="${k}" class="shrink-0 accent-accent"><span>${esc(t.name)}</span></label>`);
   const timed = (v, text, on) =>
     `<label class="${TILE}"><input type="radio" name="timed" value="${v}" class="accent-accent"${on ? ' checked' : ''}>${text}</label>`;
-  const allNone = '<span class="ml-auto flex gap-2"><button type="button" class="ghost !px-3 !py-1.5 !text-xs" data-all="1">All</button>' +
-    '<button type="button" class="ghost !px-3 !py-1.5 !text-xs" data-all="0">None</button></span>';
+  const allNone = '<span class="ml-auto flex gap-2"><button type="button" class="ghost !px-3 !py-1.5 !text-xs" data-all="1">' + L('All', 'Vše') + '</button>' +
+    '<button type="button" class="ghost !px-3 !py-1.5 !text-xs" data-all="0">' + L('None', 'Nic') + '</button></span>';
   return '<form id="exam-form" class="grid gap-5">' +
-    section('1', 'Difficulty', `<div class="grid grid-cols-2 gap-2 sm:grid-cols-4">${levels.join('')}</div>`) +
-    section('2', 'Time limit', `<div class="grid gap-2 sm:grid-cols-2">${timed(1, 'Timed (grows with the difficulty)', true)}${timed(0, 'No time limit', false)}</div>`) +
-    section('3', 'Topics', `<div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">${topics.join('')}</div>`, allNone) +
-    section('4', 'Number of labs',
+    section('1', L('Difficulty', 'Obtížnost'), `<div class="grid grid-cols-2 gap-2 sm:grid-cols-4">${levels.join('')}</div>`) +
+    section('2', L('Time limit', 'Časový limit'), `<div class="grid gap-2 sm:grid-cols-2">${timed(1, L('Timed (grows with the difficulty)', 'S limitem (roste s obtížností)'), true)}${timed(0, L('No time limit', 'Bez časového limitu'), false)}</div>`) +
+    section('3', L('Topics', 'Témata'), `<div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">${topics.join('')}</div>`, allNone) +
+    section('4', L('Number of labs', 'Počet labů'),
       '<div class="flex flex-wrap items-center gap-3"><input type="number" name="count" id="exam-count" step="1" class="w-24 rounded-[10px] border border-border bg-surface-2 px-3 py-2 font-mono">' +
       '<span class="note !m-0" id="exam-range"></span></div>') +
     '<div class="flex flex-wrap items-center justify-between gap-3">' +
-    `<p class="note !m-0">Random labs, at least one per topic. Pass mark ${EXAM_PASS}%.</p>` +
-    '<button type="submit" id="exam-go" class="!px-6" disabled>Start exam →</button></div></form>';
+    `<p class="note !m-0">${L(`Random labs, at least one per topic. Pass mark ${EXAM_PASS}%.`, `Náhodné laby, z každého tématu aspoň jeden. Na úspěch je potřeba ${EXAM_PASS} %.`)}</p>` +
+    `<button type="submit" id="exam-go" class="!px-6" disabled>${L('Start exam →', 'Spustit test →')}</button></div></form>`;
 }
 
 function resultHtml() {
@@ -136,11 +136,11 @@ function resultHtml() {
     `<span class="font-mono text-[13px] text-muted"><span class="text-text">${l.met}/${l.total}</span></span></li>`);
   return '<div class="grid gap-5">' +
     `<div class="${BOX} flex flex-wrap items-center justify-between gap-4">` +
-    `<div><p class="m-0 text-[13px] text-muted">${cap(examLevel)} · pass mark ${EXAM_PASS}%</p>` +
-    `<p class="m-0 text-4xl font-semibold">${total ? Math.floor(100 * met / total) : 0}% <span class="font-mono text-base font-normal text-muted">${met}/${total} requirements</span></p></div>` +
-    `<span class="rounded-full px-4 py-1.5 text-sm font-semibold ${pass ? 'bg-success text-accent-ink' : 'bg-bad text-accent-ink'}">${pass ? 'PASSED' : 'FAILED'}</span></div>` +
+    `<div><p class="m-0 text-[13px] text-muted">${cap(examLevel)} · ${L(`pass mark ${EXAM_PASS}%`, `hranice úspěchu ${EXAM_PASS} %`)}</p>` +
+    `<p class="m-0 text-4xl font-semibold">${total ? Math.floor(100 * met / total) : 0}% <span class="font-mono text-base font-normal text-muted">${met}/${total} ${L('requirements', 'požadavků')}</span></p></div>` +
+    `<span class="rounded-full px-4 py-1.5 text-sm font-semibold ${pass ? 'bg-success text-accent-ink' : 'bg-bad text-accent-ink'}">${pass ? L('PASSED', 'USPĚL') : L('FAILED', 'NEUSPĚL')}</span></div>` +
     `<ul class="m-0 grid list-none gap-2 p-0">${rows.join('')}</ul>` +
-    '<div><button id="exam-again">New exam</button></div></div>';
+    `<div><button id="exam-again">${L('New exam', 'Nový test')}</button></div></div>`;
 }
 
 examCard.addEventListener('submit', e => {
@@ -163,7 +163,7 @@ function examSync() {
   box.min = min;
   box.max = max;
   box.value = Math.min(max, Math.max(min, Number(box.value) || 5));
-  examCard.querySelector('#exam-range').textContent = `Between ${min} and ${max}`;
+  examCard.querySelector('#exam-range').textContent = L(`Between ${min} and ${max}`, `Od ${min} do ${max}`);
   examCard.querySelector('#exam-go').disabled = !n;
 }
 examCard.addEventListener('change', e => {

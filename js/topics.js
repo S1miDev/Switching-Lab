@@ -14,8 +14,9 @@ const REF_GROUPS = ['Core', 'IP & routing', 'Switching', 'Services', 'Security',
 
 // the Reference page labels for this track (js/reference.js)
 const REF_TEXT = {
-  commands: 'Configuration commands', mode: 'Mode', verifyMode: 'privileged exec', verifyPurpose: 'Verify the configuration.',
-  graded: 'Generated labs, graded against the simulated network state.',
+  commands: L('Configuration commands', 'Konfigurační příkazy'), mode: L('Mode', 'Režim'), verifyMode: 'privileged exec',
+  verifyPurpose: L('Verify the configuration.', 'Ověření konfigurace.'),
+  graded: L('Generated labs, graded against the simulated network state.', 'Generované laby, hodnocené podle stavu simulované sítě.'),
 };
 
 const CATALOGUE = {

@@ -45,7 +45,7 @@ test('cz picks the Czech plural form', () => {
 // Every word of page text in the markup is marked data-i18n and has its Czech in CS. Text that reads the same in Czech is listed.
 const SAME = new Set(['ls-labbing', 'Linux', 'CCNA', 'Expert', 'PC', 'WLC', 'DHCP server', 'Router', 'Switch', 'Serial', 'Console',
   '0/0', '%', '→', '←', '·']);
-const PAGES = ['index.html'];
+const PAGES = ['index.html', 'switching.html'];
 const decode = s => s.replace(/&amp;/g, '&').replace(/&larr;/g, '←').replace(/&rarr;/g, '→').replace(/\s+/g, ' ').trim();
 
 test('every page text is marked data-i18n and has a Czech entry', () => {
@@ -57,7 +57,7 @@ test('every page text is marked data-i18n and has a Czech entry', () => {
     const html = fs.readFileSync(path.join(__dirname, '..', page), 'utf8')
       .replace(/<!--[\s\S]*?-->/g, '').replace(/<script[\s\S]*?<\/script>/g, '').replace(/<head>[\s\S]*?<\/head>/, '');
     // each piece of text with the tag just before it
-    for (const m of html.matchAll(/<(\/?)([a-z0-9]+)([^>]*)>([^<]*)/gi)) {
+    for (const m of html.matchAll(/<(\/?)([a-z0-9]+)((?:"[^"]*"|[^>"])*)>([^<]*)/gi)) {
       const [, closing, , attrs, raw] = m, marked = /\sdata-i18n\b/.test(attrs);
       const texts = [];
       const text = decode(raw);

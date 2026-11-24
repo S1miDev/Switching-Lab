@@ -16,7 +16,7 @@ function newLab(lvl = level, t = topic) {
   topic = t;
   markLevel();
   lastNet = randomNet(lastNet);
-  labPage.open(createSession({topic, level, net: lastNet}), {crumb: isFix(topic) ? `Troubleshooting / ${CATALOGUE[topic].name}` : undefined});
+  labPage.open(createSession({topic, level, net: lastNet}), {crumb: isFix(topic) ? `${tr('Troubleshooting')} / ${CATALOGUE[topic].name}` : undefined});
 }
 
 // highlight the chosen difficulty on the Labs page
@@ -50,7 +50,7 @@ function renderDashboard(box, fix) {
       '<div class="rows">' +
       rows.map(id => `<div class="row" data-search="${esc(searchText(id))}">` +
         `<div class="row-title">${esc(CATALOGUE[id].name)}</div><div class="row-desc">${esc(CATALOGUE[id].desc)}</div>` +
-        `<button class="start" data-start="${id}">Start lab →</button></div>`).join('') +
+        `<button class="start" data-start="${id}">${L('Start lab →', 'Spustit lab →')}</button></div>`).join('') +
       '</div></details>';
   }).join('');
 }

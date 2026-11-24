@@ -20,9 +20,9 @@ const TOPO_TYPES = {
   mls: {prefix: 'MLS', label: 'multilayer switch', sub: 'L3 switch', ports: ['Gi1/0/1', 'Gi1/0/2', 'Gi1/0/3', 'Gi1/0/4', 'Gi1/0/5', 'Gi1/0/6']},
   dhcp: {prefix: 'DHCP', label: 'DHCP server', sub: 'server', ports: ['NIC']},
   notebook: {prefix: 'NB', label: 'notebook', sub: 'notebook', ports: ['NIC']},
-  printer: {prefix: 'PRN', label: 'printer', sub: 'printer', ports: ['NIC']},
-  ap: {prefix: 'AP', label: 'access point', sub: 'access point', ports: ['Gi0']},
-  wlc: {prefix: 'WLC', label: 'wireless LAN controller', sub: 'WLC', ports: ['Gi0/0', 'Gi0/1', 'Gi0/2', 'Gi0/3']},
+  printer: {prefix: 'PRN', label: L('printer', 'tiskárna'), sub: L('printer', 'tiskárna'), ports: ['NIC']},
+  ap: {prefix: 'AP', label: L('access point', 'přístupový bod'), sub: L('access point', 'přístupový bod'), ports: ['Gi0']},
+  wlc: {prefix: 'WLC', label: L('wireless LAN controller', 'WLAN controller'), sub: 'WLC', ports: ['Gi0/0', 'Gi0/1', 'Gi0/2', 'Gi0/3']},
 };
 // device names are a type prefix plus a number (R1, MLS2), so the name tells the type
 const typeOf = name => Object.keys(TOPO_TYPES).find(type => TOPO_TYPES[type].prefix === name.replace(/\d+$/, ''));

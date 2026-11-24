@@ -10,31 +10,31 @@
 </head>
 
 <body>
-  <nav class="side" aria-label="Main">
+  <nav class="side" aria-label="Main" data-i18n>
     <a class="brand" href="index.html"><span class="brand-dot" aria-hidden="true"></span>ls-labbing</a>
-    <button class="nav-item active" id="nav-labs">Labs</button>
-    <button class="nav-item" id="nav-trouble">Troubleshooting</button>
-    <button class="nav-item" id="nav-topo">Topology</button>
-    <button class="nav-item" id="nav-sandbox">Sandbox</button>
-    <button class="nav-item" id="nav-exam">Mock exam</button>
+    <button class="nav-item active" id="nav-labs" data-i18n>Labs</button>
+    <button class="nav-item" id="nav-trouble" data-i18n>Troubleshooting</button>
+    <button class="nav-item" id="nav-topo" data-i18n>Topology</button>
+    <button class="nav-item" id="nav-sandbox" data-i18n>Sandbox</button>
+    <button class="nav-item" id="nav-exam" data-i18n>Mock exam</button>
     <button class="nav-item" id="nav-ccna">CCNA</button>
-    <button class="nav-item" id="nav-ref">Reference</button>
-    <button class="nav-item" id="nav-auth">Log in</button>
+    <button class="nav-item" id="nav-ref" data-i18n>Reference</button>
+    <button class="nav-item" id="nav-auth" data-i18n>Log in</button>
   </nav>
 
   <!-- Labs: the topic rows are built from CATALOGUE in js/topics.js (renderDashboard in js/script.js) -->
   <section id="dash" class="page">
     <header class="flex flex-wrap items-end justify-between gap-x-6 gap-y-4 mb-8">
       <div>
-        <h1 class="text-[34px]">Switching &amp; Routing</h1>
-        <p class="mt-1.5 mb-0 text-muted">Choose a difficulty, then start a lab.</p>
+        <h1 class="text-[34px]" data-i18n>Switching &amp; Routing</h1>
+        <p class="mt-1.5 mb-0 text-muted" data-i18n>Choose a difficulty, then start a lab.</p>
       </div>
       <div class="flex flex-wrap items-center gap-3">
-        <input id="search" type="search" placeholder="Search topics" aria-label="Search topics" class="w-60 max-w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-text [font:inherit] placeholder:text-muted">
-        <div class="seg" id="dash-seg" role="group" aria-label="Difficulty">
-          <button class="seg-btn" data-set="beginner">Beginner</button>
-          <button class="seg-btn" data-set="intermediate">Intermediate</button>
-          <button class="seg-btn" data-set="advanced">Advanced</button>
+        <input id="search" type="search" placeholder="Search topics" aria-label="Search topics" class="w-60 max-w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-text [font:inherit] placeholder:text-muted" data-i18n>
+        <div class="seg" id="dash-seg" role="group" aria-label="Difficulty" data-i18n>
+          <button class="seg-btn" data-set="beginner" data-i18n>Beginner</button>
+          <button class="seg-btn" data-set="intermediate" data-i18n>Intermediate</button>
+          <button class="seg-btn" data-set="advanced" data-i18n>Advanced</button>
           <button class="seg-btn" data-set="expert">Expert</button>
         </div>
       </div>
@@ -47,23 +47,23 @@
   <section id="sandbox" class="page" hidden>
     <header class="flex flex-wrap items-end justify-between gap-x-6 gap-y-4 mb-8">
       <div>
-        <h1>Sandbox</h1>
-        <p class="mt-1.5 mb-0 text-muted">Build network topologies straight from your browser.</p>
+        <h1 data-i18n>Sandbox</h1>
+        <p class="mt-1.5 mb-0 text-muted" data-i18n>Build network topologies straight from your browser.</p>
       </div>
-      <div class="seg" id="sandbox-seg" role="group" aria-label="Sandbox sections">
-        <button class="seg-btn active" data-sb-tab="mine">My workspace</button>
-        <button class="seg-btn" data-sb-tab="guided">Guided labs</button>
+      <div class="seg" id="sandbox-seg" role="group" aria-label="Sandbox sections" data-i18n>
+        <button class="seg-btn active" data-sb-tab="mine" data-i18n>My workspace</button>
+        <button class="seg-btn" data-sb-tab="guided" data-i18n>Guided labs</button>
       </div>
     </header>
     <div class="card" id="sb-mine">
-      <h2>Build and share from your browser</h2>
-      <p class="note">An empty canvas: add devices, cable them, and configure each one from its console. Your work is saved in this browser.</p>
-      <a href="sandbox.html"><button>Open my workspace →</button></a>
+      <h2 data-i18n>Build and share from your browser</h2>
+      <p class="note" data-i18n>An empty canvas: add devices, cable them, and configure each one from its console. Your work is saved in this browser.</p>
+      <a href="sandbox.html"><button data-i18n>Open my workspace →</button></a>
     </div>
     <div class="card" id="sb-guided" hidden>
-      <h2>Practise guided labs</h2>
-      <p class="note">Pick a topic and difficulty, follow the lab, and configure each device from its console.</p>
-      <button id="sb-go-labs">Browse labs →</button>
+      <h2 data-i18n>Practise guided labs</h2>
+      <p class="note" data-i18n>Pick a topic and difficulty, follow the lab, and configure each device from its console.</p>
+      <button id="sb-go-labs" data-i18n>Browse labs →</button>
     </div>
   </section>
 
@@ -71,14 +71,14 @@
   <section id="trouble" class="page" hidden>
     <header class="flex flex-wrap items-end justify-between gap-x-6 gap-y-4 mb-8">
       <div>
-        <h1>Troubleshooting</h1>
-        <p class="mt-1.5 mb-0 text-muted">Find and fix faults in a broken network.</p>
+        <h1 data-i18n>Troubleshooting</h1>
+        <p class="mt-1.5 mb-0 text-muted" data-i18n>Find and fix faults in a broken network.</p>
       </div>
       <div class="flex flex-wrap items-center gap-3">
-        <div class="seg" id="trouble-seg" role="group" aria-label="Difficulty">
-          <button class="seg-btn" data-set="beginner">Beginner</button>
-          <button class="seg-btn" data-set="intermediate">Intermediate</button>
-          <button class="seg-btn" data-set="advanced">Advanced</button>
+        <div class="seg" id="trouble-seg" role="group" aria-label="Difficulty" data-i18n>
+          <button class="seg-btn" data-set="beginner" data-i18n>Beginner</button>
+          <button class="seg-btn" data-set="intermediate" data-i18n>Intermediate</button>
+          <button class="seg-btn" data-set="advanced" data-i18n>Advanced</button>
           <button class="seg-btn" data-set="expert">Expert</button>
         </div>
       </div>
@@ -98,12 +98,12 @@
           <p id="lab-sub" class="mt-1.5 mb-0 text-muted"></p>
         </div>
         <div class="flex flex-wrap items-center gap-2 [&_button]:px-3.5 [&_button]:py-2">
-          <button class="ghost" id="back">Back to labs</button>
+          <button class="ghost" id="back" data-i18n>Back to labs</button>
           <span class="pill" id="lab-timer"></span>
           <span class="count" id="req-count">0/0</span>
-          <button class="ghost" id="new-net">New network</button>
-          <button class="ghost" id="reset">Reset</button>
-          <div class="flex" id="check-row"><button id="check">Check</button></div>
+          <button class="ghost" id="new-net" data-i18n>New network</button>
+          <button class="ghost" id="reset" data-i18n>Reset</button>
+          <div class="flex" id="check-row"><button id="check" data-i18n>Check</button></div>
         </div>
       </div>
     </header>
@@ -113,7 +113,7 @@
     <main class="grid grid-cols-[minmax(0,1fr)_400px] items-start gap-6 max-[980px]:grid-cols-1">
       <div class="grid min-w-0 content-start gap-6">
         <section class="card">
-          <h2>Scenario</h2>
+          <h2 data-i18n>Scenario</h2>
           <p id="scenario-lead"></p>
           <ol class="steps" id="steps"></ol>
         </section>
@@ -123,25 +123,25 @@
             <div class="tabs"></div>
           </div>
           <div class="term min-h-[60vh]" id="term">
-            <div class="line"><span id="prompt"></span><input id="cmd" aria-label="CLI input" spellcheck="false" autocomplete="off"></div>
+            <div class="line"><span id="prompt"></span><input id="cmd" aria-label="CLI input" spellcheck="false" autocomplete="off" data-i18n></div>
           </div>
         </section>
       </div>
       <div class="grid min-w-0 content-start gap-6">
         <section class="card">
-          <h2>Requirements</h2>
+          <h2 data-i18n>Requirements</h2>
           <div class="bar"><span id="req-bar"></span></div>
           <ul class="reqs mb-0" id="reqs"></ul>
         </section>
         <details class="card" id="cmds-card">
-          <summary>Commands you'll need</summary>
+          <summary data-i18n>Commands you'll need</summary>
           <div class="dbody">
             <div class="cmds" id="cmds"></div>
-            <p class="note">Short forms work: en, conf t, int g0/0, sh ip int br, no sh.</p>
+            <p class="note" data-i18n>Short forms work: en, conf t, int g0/0, sh ip int br, no sh.</p>
           </div>
         </details>
         <section class="card">
-          <div class="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2"><h2 class="m-0">Topology</h2><p class="note m-0">Click a device to open its console.</p></div>
+          <div class="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2"><h2 class="m-0" data-i18n>Topology</h2><p class="note m-0" data-i18n>Click a device to open its console.</p></div>
           <div id="topo"></div>
         </section>
       </div>
@@ -152,57 +152,57 @@
   <section id="topo-view" class="page" hidden>
     <header class="flex flex-wrap items-end justify-between gap-x-6 gap-y-4 mb-8">
       <div>
-        <h1>Topology</h1>
-        <p class="mt-1.5 mb-0 text-muted">Cable the devices together to match each task.</p>
+        <h1 data-i18n>Topology</h1>
+        <p class="mt-1.5 mb-0 text-muted" data-i18n>Cable the devices together to match each task.</p>
       </div>
       <div class="flex flex-wrap items-center gap-3">
-        <div class="seg" id="topo-seg" role="group" aria-label="Difficulty">
-          <button class="seg-btn active" data-topo-level="beginner">Beginner</button>
-          <button class="seg-btn" data-topo-level="intermediate">Intermediate</button>
-          <button class="seg-btn" data-topo-level="advanced">Advanced</button>
+        <div class="seg" id="topo-seg" role="group" aria-label="Difficulty" data-i18n>
+          <button class="seg-btn active" data-topo-level="beginner" data-i18n>Beginner</button>
+          <button class="seg-btn" data-topo-level="intermediate" data-i18n>Intermediate</button>
+          <button class="seg-btn" data-topo-level="advanced" data-i18n>Advanced</button>
           <button class="seg-btn" data-topo-level="expert">Expert</button>
         </div>
-        <button class="ghost" id="topo-next">New task</button>
+        <button class="ghost" id="topo-next" data-i18n>New task</button>
       </div>
     </header>
     <div class="grid grid-cols-[400px_minmax(0,1fr)] items-start gap-6 max-[980px]:grid-cols-1">
       <section class="card">
-        <div class="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2"><h2 id="topo-title" class="m-0">Task</h2><span class="count" id="topo-count">0/0</span></div>
+        <div class="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2"><h2 id="topo-title" class="m-0" data-i18n>Task</h2><span class="count" id="topo-count">0/0</span></div>
         <div class="bar"><span id="topo-bar"></span></div>
-        <p class="note">Drag the devices you need from the bar onto the canvas, then cable them.</p>
+        <p class="note" data-i18n>Drag the devices you need from the bar onto the canvas, then cable them.</p>
         <ul class="reqs" id="topo-reqs"></ul>
         <div class="flex flex-wrap gap-2 [&>button]:flex-1">
-          <button class="ghost" id="topo-remove">Remove selected</button>
-          <button class="ghost" id="topo-clear">Clear all</button>
+          <button class="ghost" id="topo-remove" data-i18n>Remove selected</button>
+          <button class="ghost" id="topo-clear" data-i18n>Clear all</button>
         </div>
       </section>
       <section class="card">
         <div class="flex flex-wrap items-center gap-x-3 gap-y-2 mt-0 mx-0 mb-3.5">
-          <span class="text-[13px] font-semibold">Drag onto the canvas:</span>
+          <span class="text-[13px] font-semibold" data-i18n>Drag onto the canvas:</span>
           <!-- each button gets its icon from TOPO_ICONS -->
           <button class="topo-chip" data-type="router">Router</button>
           <button class="topo-chip" data-type="switch">Switch</button>
-          <button class="topo-chip" data-type="mls">Multilayer switch</button>
+          <button class="topo-chip" data-type="mls" data-i18n>Multilayer switch</button>
           <button class="topo-chip" data-type="dhcp">DHCP server</button>
           <button class="topo-chip" data-type="pc">PC</button>
-          <button class="topo-chip" data-type="notebook">Notebook</button>
-          <button class="topo-chip" data-type="printer">Printer</button>
-          <button class="topo-chip" data-type="ap">Access point</button>
+          <button class="topo-chip" data-type="notebook" data-i18n>Notebook</button>
+          <button class="topo-chip" data-type="printer" data-i18n>Printer</button>
+          <button class="topo-chip" data-type="ap" data-i18n>Access point</button>
           <button class="topo-chip" data-type="wlc">WLC</button>
         </div>
         <div class="flex flex-wrap items-center gap-x-3 gap-y-2 mt-0 mx-0 mb-3.5">
-          <span class="text-[13px] font-semibold">Cable:</span>
+          <span class="text-[13px] font-semibold" data-i18n>Cable:</span>
           <div class="seg seg-static">
-            <button class="cable-btn on" data-cable="straight">Straight-through</button>
-            <button class="cable-btn" data-cable="cross">Crossover</button>
-            <button class="cable-btn" data-cable="fiber">Fiber</button>
+            <button class="cable-btn on" data-cable="straight" data-i18n>Straight-through</button>
+            <button class="cable-btn" data-cable="cross" data-i18n>Crossover</button>
+            <button class="cable-btn" data-cable="fiber" data-i18n>Fiber</button>
             <button class="cable-btn" data-cable="serial">Serial</button>
             <button class="cable-btn" data-cable="console">Console</button>
-            <button class="cable-btn" data-cable="coax">Coaxial</button>
+            <button class="cable-btn" data-cable="coax" data-i18n>Coaxial</button>
           </div>
-          <span class="note m-0 text-[12px]">Straight-through for unlike devices · Crossover for like devices · Fiber for long links · Serial for WAN · Console for management · Coaxial for cable broadband</span>
+          <span class="note m-0 text-[12px]" data-i18n>Straight-through for unlike devices · Crossover for like devices · Fiber for long links · Serial for WAN · Console for management · Coaxial for cable broadband</span>
         </div>
-        <p class="note">Drag a device to move it. Click one device, then another, to cable them.</p>
+        <p class="note" data-i18n>Drag a device to move it. Click one device, then another, to cable them.</p>
         <div id="topo-canvas"></div>
         <div class="mt-3 flex items-center gap-2.5 rounded-[10px] border border-border bg-surface-2 px-3.5 py-2.5 font-mono text-[12px] leading-[normal] text-muted"><span class="size-2 flex-none rounded-full bg-success" aria-hidden="true"></span><span id="topo-msg" role="status" class="min-w-0 flex-1"></span><span id="topo-ncables" class="flex-none"></span></div>
         <ul class="cables" id="topo-cables"></ul>
@@ -215,8 +215,8 @@
   <section id="exam-view" class="page" hidden>
     <header class="flex flex-wrap items-end justify-center gap-x-6 gap-y-4 mb-8">
       <div>
-        <h1>Mock exam</h1>
-        <p class="mt-1.5 mb-0 text-muted">A set of labs at one difficulty, with or without a time limit. Pass mark 80%.</p>
+        <h1 data-i18n>Mock exam</h1>
+        <p class="mt-1.5 mb-0 text-muted" data-i18n>A set of labs at one difficulty, with or without a time limit. Pass mark 80%.</p>
       </div>
     </header>
     <div class="max-w-[820px] mx-auto"><div id="exam-card"></div></div>
@@ -226,8 +226,8 @@
   <section id="ccna-view" class="page" hidden>
     <header class="flex flex-wrap items-end justify-between gap-x-6 gap-y-4 mb-8">
       <div>
-        <h1>CCNA exams</h1>
-        <p class="mt-1.5 mb-0 text-muted">Choose an exam. Questions are drawn at random from its pool.</p>
+        <h1 data-i18n>CCNA exams</h1>
+        <p class="mt-1.5 mb-0 text-muted" data-i18n>Choose an exam. Questions are drawn at random from its pool.</p>
       </div>
     </header>
     <div class="max-w-[820px] mx-auto"><div id="ccna-card"></div></div>
@@ -236,25 +236,25 @@
   <!-- Reference: the topic rows are built from CATALOGUE in js/topics.js (js/reference.js) -->
   <section id="ref" class="page" hidden>
     <header class="mb-4">
-      <h1>CCNA command reference</h1>
-      <p class="mt-2 mb-0 max-w-[640px] text-muted">Each topic covered by the labs, grouped by CCNA area, plus every console command in one searchable list.</p>
+      <h1 data-i18n>CCNA command reference</h1>
+      <p class="mt-2 mb-0 max-w-[640px] text-muted" data-i18n>Each topic covered by the labs, grouped by CCNA area, plus every console command in one searchable list.</p>
       <div class="tabs mt-4" id="ref-tabs" role="tablist">
-        <button class="tab active" role="tab" aria-selected="true" data-reftab="topics">Topics</button>
-        <button class="tab" role="tab" aria-selected="false" data-reftab="commands">Commands</button>
+        <button class="tab active" role="tab" aria-selected="true" data-reftab="topics" data-i18n>Topics</button>
+        <button class="tab" role="tab" aria-selected="false" data-reftab="commands" data-i18n>Commands</button>
       </div>
     </header>
     <div id="ref-topics">
-      <input type="search" id="ref-search" placeholder="Search topics and commands" aria-label="Search the topics" autocomplete="off">
-      <p id="ref-empty" class="note" hidden>No topics match.</p>
+      <input type="search" id="ref-search" placeholder="Search topics and commands" aria-label="Search the topics" autocomplete="off" data-i18n>
+      <p id="ref-empty" class="note" hidden data-i18n>No topics match.</p>
       <div id="ref-detail" hidden></div>
       <div class="domains" id="ref-groups"></div>
     </div>
     <div id="ref-commands" hidden>
-      <input type="search" id="cmd-search" placeholder="Search commands, e.g. vlan, ospf, show ip" aria-label="Search console commands" autocomplete="off">
+      <input type="search" id="cmd-search" placeholder="Search commands, e.g. vlan, ospf, show ip" aria-label="Search console commands" autocomplete="off" data-i18n>
       <p id="cmd-count" class="note"></p>
-      <p id="cmd-empty" class="note" hidden>No commands match.</p>
+      <p id="cmd-empty" class="note" hidden data-i18n>No commands match.</p>
       <table class="ref-table" id="cmd-table">
-        <thead><tr><th>Command</th><th>Mode</th><th>Purpose</th><th>Topic</th></tr></thead>
+        <thead><tr><th data-i18n>Command</th><th data-i18n>Mode</th><th data-i18n>Purpose</th><th data-i18n>Topic</th></tr></thead>
         <tbody id="cmd-rows"></tbody>
       </table>
     </div>

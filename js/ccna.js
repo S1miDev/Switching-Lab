@@ -5,7 +5,7 @@
 const CCNA_EXAMS = [{
   id: 'srwe-1-4',
   title: 'CCNA 2 v7 (SRWE) Modules 1-4 Checkpoint Exam',
-  desc: 'Switching concepts, VLANs and inter-VLAN routing.',
+  desc: L('Switching concepts, VLANs and inter-VLAN routing.', 'Principy switchingu, VLANy a routing mezi VLANy.'),
   count: 33,
   questions: [
     ['Which tasks can be accomplished by using the command history feature? (Choose two.)', ['View a list of commands entered in a previous session.', 'Recall up to 15 command lines by default.', 'Set the command history buffer size.', 'Recall previously entered commands.', 'Save command lines in a log file for future reference.'], [2, 3]],
@@ -102,10 +102,10 @@ function ccnaListHtml() {
   return '<div class="grid gap-3">' + CCNA_EXAMS.map(e =>
     `<div class="${BOX} flex flex-wrap items-center justify-between gap-4"><div>` +
     `<p class="m-0 text-lg font-semibold">${esc(e.title)}</p>` +
-    `<p class="note !m-0">${esc(e.desc)} ${Math.min(e.count, e.questions.length)} questions, pass mark ${EXAM_PASS}%. Practice and See questions use all ${e.questions.length}.</p></div>` +
-    `<div class="flex flex-wrap gap-3"><button data-ccna-start="${e.id}">Start exam →</button>` +
-    `<button class="ghost" data-ccna-practice="${e.id}">Practice</button>` +
-    `<button class="ghost" data-ccna-browse="${e.id}">See questions</button></div></div>`).join('') + '</div>';
+    `<p class="note !m-0">${esc(e.desc)} ${L(`${Math.min(e.count, e.questions.length)} questions, pass mark ${EXAM_PASS}%. Practice and See questions use all ${e.questions.length}.`, `${Math.min(e.count, e.questions.length)} otázek, na úspěch je potřeba ${EXAM_PASS} %. Procvičování a Zobrazit otázky používají všech ${e.questions.length}.`)}</p></div>` +
+    `<div class="flex flex-wrap gap-3"><button data-ccna-start="${e.id}">${L('Start exam →', 'Spustit test →')}</button>` +
+    `<button class="ghost" data-ccna-practice="${e.id}">${L('Practice', 'Procvičovat')}</button>` +
+    `<button class="ghost" data-ccna-browse="${e.id}">${L('See questions', 'Zobrazit otázky')}</button></div></div>`).join('') + '</div>';
 }
 
 // raw question -> {q, img, multi, opts} or {q, img, rows, pool}
@@ -115,11 +115,11 @@ const ccnaItem = x => Array.isArray(x)
 
 // one question's fieldset; n is its 0-based number (also the form field name)
 function ccnaQuestionHtml(it, n) {
-  return `<fieldset class="${BOX} min-w-0"${it.multi ? ` data-max="${it.opts.filter(o => o.ok).length}"` : ''}><legend class="sr-only">Question ${n + 1}</legend>` +
+  return `<fieldset class="${BOX} min-w-0"${it.multi ? ` data-max="${it.opts.filter(o => o.ok).length}"` : ''}><legend class="sr-only">${L('Question', 'Otázka')} ${n + 1}</legend>` +
     `<p class="mb-3 mt-0 font-semibold"><span class="font-mono text-success">${n + 1}.</span> ${esc(it.q)}</p>` +
-    (it.img ? `<img src="img/ccna/${it.img}" alt="Exhibit for question ${n + 1}" class="mb-3 max-w-full rounded-lg bg-white">` : '') +
+    (it.img ? `<img src="img/ccna/${it.img}" alt="${L('Exhibit for question', 'Příloha k otázce')} ${n + 1}" class="mb-3 max-w-full rounded-lg bg-white">` : '') +
     (it.rows
-      ? `<div class="grid gap-2">${it.rows.map(([p], r) => `<label class="${TILE} flex-col !items-stretch"><span>${esc(p)}</span><select name="q${n}-${r}" class="w-full min-w-0"><option value="">Choose…</option>${it.pool.map((a, i) => `<option value="${i}">${esc(a)}</option>`).join('')}</select></label>`).join('')}</div></fieldset>`
+      ? `<div class="grid gap-2">${it.rows.map(([p], r) => `<label class="${TILE} flex-col !items-stretch"><span>${esc(p)}</span><select name="q${n}-${r}" class="w-full min-w-0"><option value="">${L('Choose…', 'Vyber…')}</option>${it.pool.map((a, i) => `<option value="${i}">${esc(a)}</option>`).join('')}</select></label>`).join('')}</div></fieldset>`
       : `<div class="grid gap-2">${it.opts.map((o, i) => `<label class="${TILE}"><input type="${it.multi ? 'checkbox' : 'radio'}" name="q${n}" value="${i}" class="shrink-0 accent-accent"><span>${esc(o.text)}</span></label>`).join('')}</div></fieldset>`);
 }
 
@@ -136,10 +136,10 @@ function ccnaGrade(it, data, n) {
 // the correct answers, marking what was picked (picked = null: nothing picked, e.g. when browsing)
 function ccnaAnswerHtml(it, picked) {
   return `<ul class="m-0 grid list-none gap-1 p-0 text-sm">${it.rows ? it.rows.map(([p, a], r) => !picked || picked[r] === a
-    ? `<li class="text-success">${esc(p)} → ${esc(a)} ✓ correct</li>`
-    : `<li class="text-bad">${esc(p)} → ${esc(a)} ✓ correct <span class="text-muted">(your answer: ${esc(picked[r] || 'none')})</span></li>`).join('') : it.opts.map((o, i) => {
+    ? `<li class="text-success">${esc(p)} → ${esc(a)} ✓ ${L('correct', 'správně')}</li>`
+    : `<li class="text-bad">${esc(p)} → ${esc(a)} ✓ ${L('correct', 'správně')} <span class="text-muted">(${L('your answer', 'tvoje odpověď')}: ${esc(picked[r] || L('none', 'žádná'))})</span></li>`).join('') : it.opts.map((o, i) => {
     const mine = picked?.includes(i);
-    const tag = o.ok ? ' ✓ correct' : mine ? ' ✗ your answer' : '';
+    const tag = o.ok ? L(' ✓ correct', ' ✓ správně') : mine ? L(' ✗ your answer', ' ✗ tvoje odpověď') : '';
     return `<li class="${o.ok ? 'text-success' : mine ? 'text-bad' : 'text-muted'}">${esc(o.text)}${tag}</li>`;
   }).join('')}</ul>`;
 }
@@ -149,9 +149,9 @@ function ccnaStart(id) {
   const items = shuffled(exam.questions).slice(0, exam.count).map(ccnaItem);
   ccnaRun = {exam, items, mode: 'exam'};
   ccnaCard.innerHTML = '<form id="ccna-form" class="grid gap-4">' +
-    `<p class="note !m-0">${esc(exam.title)}. Tick the correct answer(s) for every question.</p>` +
+    `<p class="note !m-0">${esc(exam.title)}. ${L('Tick the correct answer(s) for every question.', 'U každé otázky zaškrtni správné odpovědi.')}</p>` +
     items.map(ccnaQuestionHtml).join('') +
-    '<div class="flex justify-end"><button type="submit" class="!px-6">Finish exam</button></div></form>';
+    `<div class="flex justify-end"><button type="submit" class="!px-6">${L('Finish exam', 'Dokončit test')}</button></div></form>`;
   window.scrollTo(0, 0);
 }
 
@@ -163,14 +163,14 @@ function ccnaFinish(form) {
   const wrong = marks.map((m, n) => ({...m, n})).filter(m => !m.right);
   ccnaCard.innerHTML = '<div class="grid gap-4">' +
     `<div class="${BOX} flex flex-wrap items-center justify-between gap-4"><div>` +
-    `<p class="m-0 text-[13px] text-muted">${esc(ccnaRun.exam.title)} · pass mark ${EXAM_PASS}%</p>` +
-    `<p class="m-0 text-4xl font-semibold">${Math.floor(100 * right / total)}% <span class="font-mono text-base font-normal text-muted">${right}/${total} questions</span></p></div>` +
-    `<span class="rounded-full px-4 py-1.5 text-sm font-semibold ${pass ? 'bg-success' : 'bg-bad'} text-accent-ink">${pass ? 'PASSED' : 'FAILED'}</span></div>` +
-    (wrong.length ? `<p class="note !m-0">Missed questions, with the correct answers:</p>` : '') +
+    `<p class="m-0 text-[13px] text-muted">${esc(ccnaRun.exam.title)} · ${L(`pass mark ${EXAM_PASS}%`, `hranice úspěchu ${EXAM_PASS} %`)}</p>` +
+    `<p class="m-0 text-4xl font-semibold">${Math.floor(100 * right / total)}% <span class="font-mono text-base font-normal text-muted">${right}/${total} ${L('questions', 'otázek')}</span></p></div>` +
+    `<span class="rounded-full px-4 py-1.5 text-sm font-semibold ${pass ? 'bg-success' : 'bg-bad'} text-accent-ink">${pass ? L('PASSED', 'USPĚL') : L('FAILED', 'NEUSPĚL')}</span></div>` +
+    (wrong.length ? `<p class="note !m-0">${L('Missed questions, with the correct answers:', 'Chybné otázky se správnými odpověďmi:')}</p>` : '') +
     wrong.map(m => `<div class="${BOX}"><p class="mb-2 mt-0 font-semibold"><span class="font-mono">${m.n + 1}.</span> ${esc(m.it.q)}</p>` +
-      (m.it.img ? `<img src="img/ccna/${m.it.img}" alt="Exhibit" class="mb-3 max-w-full rounded-lg bg-white">` : '') +
+      (m.it.img ? `<img src="img/ccna/${m.it.img}" alt="${L('Exhibit', 'Příloha')}" class="mb-3 max-w-full rounded-lg bg-white">` : '') +
       ccnaAnswerHtml(m.it, m.picked) + '</div>').join('') +
-    '<div class="flex gap-3"><button id="ccna-again">Retake</button><button id="ccna-back" class="ghost">All exams</button></div></div>';
+    `<div class="flex gap-3"><button id="ccna-again">${L('Retake', 'Zkusit znovu')}</button><button id="ccna-back" class="ghost">${L('All exams', 'Všechny testy')}</button></div></div>`;
   window.scrollTo(0, 0);
 }
 
@@ -185,9 +185,9 @@ function ccnaShowPractice() {
   const {exam, items, i, right} = ccnaRun;
   ccnaRun.checked = false;
   ccnaCard.innerHTML = '<form id="ccna-form" class="grid gap-4">' +
-    `<p class="note !m-0">${esc(exam.title)} · practice · question ${i + 1} of ${items.length} · ${right} right so far</p>` +
+    `<p class="note !m-0">${esc(exam.title)} · ${L(`practice · question ${i + 1} of ${items.length} · ${right} right so far`, `procvičování · otázka ${i + 1} z ${items.length} · zatím správně ${right}`)}</p>` +
     ccnaQuestionHtml(items[i], i) + '<div id="ccna-feedback"></div>' +
-    '<div class="flex gap-3"><button type="submit" id="ccna-check">Check</button><button type="button" id="ccna-back" class="ghost">Quit</button></div></form>';
+    `<div class="flex gap-3"><button type="submit" id="ccna-check">${L('Check', 'Zkontrolovat')}</button><button type="button" id="ccna-back" class="ghost">${L('Quit', 'Ukončit')}</button></div></form>`;
   window.scrollTo(0, 0);
 }
 
@@ -197,16 +197,16 @@ function ccnaCheck(form) {
   if (m.right) ccnaRun.right++;
   const last = ccnaRun.i === ccnaRun.items.length - 1;
   form.querySelector('fieldset').disabled = true;
-  $('ccna-feedback').innerHTML = `<div class="${BOX}"><p class="mb-2 mt-0 font-semibold ${m.right ? 'text-success' : 'text-bad'}">${m.right ? '✓ Correct' : '✗ Not quite'}</p>${ccnaAnswerHtml(m.it, m.picked)}</div>`;
-  $('ccna-check').outerHTML = `<button type="button" id="ccna-next">${last ? 'Finish' : 'Next →'}</button>`;
+  $('ccna-feedback').innerHTML = `<div class="${BOX}"><p class="mb-2 mt-0 font-semibold ${m.right ? 'text-success' : 'text-bad'}">${m.right ? L('✓ Correct', '✓ Správně') : L('✗ Not quite', '✗ Ne tak úplně')}</p>${ccnaAnswerHtml(m.it, m.picked)}</div>`;
+  $('ccna-check').outerHTML = `<button type="button" id="ccna-next">${last ? L('Finish', 'Dokončit') : L('Next →', 'Další →')}</button>`;
 }
 
 function ccnaPracticeNext() {
   if (++ccnaRun.i < ccnaRun.items.length) return ccnaShowPractice();
   const {exam, items, right} = ccnaRun;
-  ccnaCard.innerHTML = `<div class="grid gap-4"><div class="${BOX}"><p class="m-0 text-[13px] text-muted">${esc(exam.title)} · practice</p>` +
-    `<p class="m-0 text-4xl font-semibold">${right}/${items.length} <span class="font-mono text-base font-normal text-muted">right</span></p></div>` +
-    `<div class="flex gap-3"><button data-ccna-practice="${exam.id}">Practice again</button><button id="ccna-back" class="ghost">All exams</button></div></div>`;
+  ccnaCard.innerHTML = `<div class="grid gap-4"><div class="${BOX}"><p class="m-0 text-[13px] text-muted">${esc(exam.title)} · ${L('practice', 'procvičování')}</p>` +
+    `<p class="m-0 text-4xl font-semibold">${right}/${items.length} <span class="font-mono text-base font-normal text-muted">${L('right', 'správně')}</span></p></div>` +
+    `<div class="flex gap-3"><button data-ccna-practice="${exam.id}">${L('Practice again', 'Procvičovat znovu')}</button><button id="ccna-back" class="ghost">${L('All exams', 'Všechny testy')}</button></div></div>`;
   window.scrollTo(0, 0);
 }
 
@@ -215,11 +215,11 @@ function ccnaBrowse(id) {
   const exam = CCNA_EXAMS.find(e => e.id === id);
   ccnaRun = null;
   ccnaCard.innerHTML = '<div class="grid gap-4">' +
-    `<div class="flex flex-wrap items-center justify-between gap-3"><p class="note !m-0">${esc(exam.title)} · ${exam.questions.length} questions with correct answers</p><button id="ccna-back" class="ghost">← All exams</button></div>` +
+    `<div class="flex flex-wrap items-center justify-between gap-3"><p class="note !m-0">${esc(exam.title)} · ${L(`${exam.questions.length} questions with correct answers`, `${exam.questions.length} otázek se správnými odpověďmi`)}</p><button id="ccna-back" class="ghost">${L('← All exams', '← Všechny testy')}</button></div>` +
     exam.questions.map((x, n) => {
       const it = ccnaItem(x);
       return `<div class="${BOX}"><p class="mb-2 mt-0 font-semibold"><span class="font-mono">${n + 1}.</span> ${esc(it.q)}</p>` +
-        (it.img ? `<img src="img/ccna/${it.img}" alt="Exhibit for question ${n + 1}" class="mb-3 max-w-full rounded-lg bg-white">` : '') +
+        (it.img ? `<img src="img/ccna/${it.img}" alt="${L('Exhibit for question', 'Příloha k otázce')} ${n + 1}" class="mb-3 max-w-full rounded-lg bg-white">` : '') +
         ccnaAnswerHtml(it, null) + '</div>';
     }).join('') + '</div>';
   window.scrollTo(0, 0);
