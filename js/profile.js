@@ -3,7 +3,7 @@
 const pfForm = $('pf-form');
 const pfName = $('pf-name');
 const pfMsg = $('pf-msg');
-const pfDate = iso => iso ? new Date(iso).toLocaleString() : '—';
+const pfDate = iso => iso ? new Date(iso).toLocaleString(LANG) : '—';
 
 for (const [name, color] of Object.entries(ACCENTS)) {
   const label = el('label', 'pf-swatch');

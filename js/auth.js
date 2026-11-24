@@ -94,4 +94,8 @@ sb.auth.onAuthStateChange((_event, session) => {
   const streak = liveStreak(meta, dayKey());
   authBtn.textContent = session ? (meta.display_name || session.user.email) + (streak ? ` · 🔥 ${streak}` : '') : 'Log in';
   applyAccent(meta.accent);
+  if (!session) return;
+  const sync = langSync(meta, localStorage.getItem('langPending'));
+  if (sync === 'push') sb.auth.updateUser({data: {lang: LANG}}).then(({error}) => { if (!error) localStorage.removeItem('langPending'); });
+  if (sync === 'pull') { localStorage.setItem('lang', meta.lang); location.reload(); }
 });
