@@ -135,11 +135,11 @@ function lxPut(st, abs, node) {
   return node;
 }
 
-// put a node, making its missing parent directories (root-owned) first
+// put a node, making its missing parent directories first (owned like the node, as if its owner had made them)
 function lxPutDeep(st, abs, node) {
   const parts = abs.split('/').filter(Boolean);
   let dir = st.root;
-  for (const p of parts.slice(0, -1)) dir = dir.children[p] ||= lxDir();
+  for (const p of parts.slice(0, -1)) dir = dir.children[p] ||= lxDir(node.owner === 'root' ? 0o755 : 0o775, node.owner, node.group, node.mtime);
   dir.children[parts.at(-1)] = node;
   return node;
 }

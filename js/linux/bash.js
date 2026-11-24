@@ -295,19 +295,25 @@ function lxPipeline(st, pipeline, print) {
   pipeline.forEach((cmd, i) => {
     const last = i === pipeline.length - 1, io = lxRedirects(st, cmd.redirects, print);
     if (!io) { code = 1; stdin = ''; return; } // bash does not run a command whose redirect failed
-    const args = cmd.words.flatMap(w => lxExpand(st, w));
-    let out = '';
+    const args = cmd.words.flatMap(w => lxExpand(st, w)), tty = last && !io.stdout;
+    // output to the terminal is printed line by line as it comes (so it interleaves with errors); else it is kept
+    let out = '', partial = '';
+    const write = text => {
+      if (!tty) { out += text; return; }
+      const parts = (partial + text).split('\n');
+      partial = parts.pop();
+      parts.forEach(l => print(l));
+    };
     const ctx = {
-      st, user: st.user, name: args[0], args: args.slice(1), stdin: io.stdin ?? stdin, tty: last && !io.stdout,
-      write: text => { out += text; },
-      out: line => { out += line + '\n'; },
+      st, user: st.user, name: args[0], args: args.slice(1), stdin: io.stdin ?? stdin, tty, write,
+      out: line => write(line + '\n'),
       // shortcut: 2>&1 sends errors wherever stdout ends up, whatever the order of the redirects
-      err: line => { if (io.stderr === 'out') out += line + '\n'; else if (io.stderr) lxWriteTo(io.stderr, line + '\n'); else print(line, 'ln-err'); },
-      note: line => { if (last && !io.stdout) print(line, 'text-muted'); },
+      err: line => { if (io.stderr === 'out') write(line + '\n'); else if (io.stderr) lxWriteTo(io.stderr, line + '\n'); else print(line, 'ln-err'); },
+      note: line => { if (tty) print(line, 'text-muted'); },
     };
     code = args.length ? lxCall(ctx) : 0;
+    if (partial) print(partial);
     if (io.stdout) lxWriteTo(io.stdout, out);
-    else if (last) lxLines(out).forEach(l => print(l));
     stdin = io.stdout ? '' : out;
   });
   st.status = code;
@@ -464,7 +470,8 @@ const LX_BUILTINS = {
       st.procs = st.procs.filter(p => p !== proc);
       const job = st.jobs.find(j => j.pid === pid);
       if (job) {
-        ctx.out(`[${job.id}]+  ${(sig === 9 ? 'Killed' : 'Terminated').padEnd(24)}${job.cmd}`);
+        const n = st.jobs.indexOf(job), mark = n === st.jobs.length - 1 ? '+' : n === st.jobs.length - 2 ? '-' : ' ';
+        ctx.out(`[${job.id}]${mark}  ${(sig === 9 ? 'Killed' : 'Terminated').padEnd(24)}${job.cmd}`);
         st.jobs = st.jobs.filter(j => j !== job);
       }
     }

@@ -2,9 +2,9 @@
 // Its node carries the lab's set-up as init, so a Reset builds the same system again. Its state is the system itself,
 // which the Linux lab requirements read (js/linux/labs.js).
 //
-// A password prompt (sudo, su, passwd) is st.askPw = {prompt, tries, check(answer), then(print), fail(print), retry}:
-// the next line typed answers it, and the console hides it (asksPassword). sudo asks once per lab, like sudo's
-// credential cache.
+// A prompt (sudo, su, passwd, apt's yes/no) is st.askPw = {prompt, tries, check(answer), then(print, answer), fail(print),
+// retry, hidden}: the next line typed answers it, and the console hides it (asksPassword) unless hidden is false.
+// sudo asks once per lab, like sudo's credential cache.
 
 function createLinux(node, session) {
   const st = lxState(node.init);
@@ -25,7 +25,7 @@ function createLinux(node, session) {
   // the typed line answers the open password prompt
   function answer(line, print) {
     const ask = st.askPw;
-    if (ask.check(line)) { st.askPw = null; return ask.then(print); }
+    if (ask.check(line)) { st.askPw = null; return ask.then(print, line); }
     if (--ask.tries > 0) return print(ask.retry, 'ln-err');
     st.askPw = null;
     ask.fail(print);
@@ -59,7 +59,7 @@ function createLinux(node, session) {
 
   const self = defineDevice({
     name: node.id, type: node.type, configurable: true, state: st, questionHelp: false,
-    asksPassword: () => !!st.askPw,
+    asksPassword: () => !!st.askPw && st.askPw.hidden !== false,
     prompt: () => (st.askPw ? st.askPw.prompt : `${st.user}@${st.host}:${where()}${st.user === 'root' ? '#' : '$'}`),
     run(line, print) {
       if (st.askPw) return answer(line, print);
