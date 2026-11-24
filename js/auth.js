@@ -96,6 +96,11 @@ sb.auth.onAuthStateChange((_event, session) => {
   applyAccent(meta.accent);
   if (!session) return;
   const sync = langSync(meta, localStorage.getItem('langPending'));
-  if (sync === 'push') sb.auth.updateUser({data: {lang: LANG}}).then(({error}) => { if (!error) localStorage.removeItem('langPending'); });
+  // the flag goes first, so the USER_UPDATED event this push fires finds nothing to push; Supabase calls are deferred out of
+  // its own callback; a failed push sets the flag again for the next page
+  if (sync === 'push') {
+    localStorage.removeItem('langPending');
+    setTimeout(() => sb.auth.updateUser({data: {lang: LANG}}).then(({error}) => { if (error) localStorage.setItem('langPending', '1'); }));
+  }
   if (sync === 'pull') { localStorage.setItem('lang', meta.lang); location.reload(); }
 });

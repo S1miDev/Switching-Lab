@@ -203,7 +203,8 @@ if (typeof document !== 'undefined') {
   document.documentElement.lang = LANG;
   // own text nodes only, so a <label>'s <input> survives
   document.querySelectorAll('[data-i18n]').forEach(e => {
-    for (const n of e.childNodes) if (n.nodeType === 3 && n.data.trim()) n.data = n.data.replace(n.data.trim(), tr(n.data.trim()));
+    // looked up with runs of whitespace as one space, as test/i18n.test.js checks the markup
+    for (const n of e.childNodes) if (n.nodeType === 3 && n.data.trim()) n.data = n.data.replace(n.data.trim(), tr(n.data.trim().replace(/\s+/g, ' ')));
     for (const a of ['placeholder', 'aria-label', 'title']) if (e.hasAttribute(a)) e.setAttribute(a, tr(e.getAttribute(a)));
   });
   const other = LANG === 'cs' ? 'en' : 'cs';
