@@ -565,6 +565,118 @@ const LX_USERS_LABS = {
   },
 };
 
+// ---- Processes ----
+
+const LX_PROCS_LABS = {
+  beginner: x => {
+    const r = lxRandom(x), app = r.pick(LX_APPS), pid = r.int(2000, 3999), cmd = `/usr/bin/python3 /opt/${app}/worker.py`;
+    return {
+      sub: `Find the PID of the ${app} worker.`,
+      lead: `A worker of ${app} runs as www-data. You need its process number.`,
+      steps: ['List every process on the system.', `Find the line of ${app}/worker.py and read its PID.`],
+      init: {procs: [{pid, user: 'www-data', cmd, cpu: 1.2, mem: 2.4, tty: '?', stat: 'S', start: '07:45'}]},
+      reqs: [lxAsk(`The PID of the ${app} worker`, () => String(pid), ['ps aux'])],
+      solution: ['ps aux'],
+    };
+  },
+  intermediate: x => {
+    const r = lxRandom(x), app = r.pick(LX_APPS), pid = r.int(2000, 3999), cmd = `python3 ${app}-loop.py`;
+    return {
+      sub: `Stop your own runaway ${app}-loop.py.`,
+      lead: `You started ${app}-loop.py earlier in another terminal and it now takes all the CPU.`,
+      steps: ['Find its PID.', 'Stop it with kill.'],
+      init: {procs: [{pid, user: 'student', cmd, cpu: 98.7, mem: 1.1, tty: 'pts/1', stat: 'R', start: '09:12'}]},
+      reqs: [lxNoProc(`${app}-loop.py`, ['ps aux', `kill ${pid}`])],
+      solution: ['ps aux', `kill ${pid}`],
+    };
+  },
+  advanced: x => {
+    const r = lxRandom(x), [a, b] = r.some([60, 120, 300, 600, 900, 1800], 2);
+    return {
+      sub: 'Run two jobs in the background and stop the first one.',
+      lead: 'sleep N waits N seconds; it stands in for any long task.',
+      steps: [`Start sleep ${a} in the background.`, `Start sleep ${b} in the background.`, 'List the jobs.', 'Stop job 1 by its job number.'],
+      init: {},
+      reqs: [
+        lxJob(`sleep ${b}`, [`sleep ${b} &`]),
+        {text: `Only the sleep ${b} job is left`, ok: s => lxHost(s).jobs.length === 1 && lxHost(s).jobs[0].cmd === `sleep ${b}`, hint: {cmds: [`sleep ${a} &`, 'jobs', 'kill %1']}},
+      ],
+      solution: [`sleep ${a} &`, `sleep ${b} &`, 'jobs', 'kill %1', 'jobs'],
+    };
+  },
+  expert: x => {
+    const r = lxRandom(x), app = r.pick(LX_APPS), owner = r.pick(['www-data', ...LX_PEOPLE.slice(0, 3)]), pid = r.int(2000, 3999), cmd = `/usr/local/bin/${app}-indexer --full`;
+    const people = owner === 'www-data' ? {} : {users: {[owner]: {uid: 1001, gid: 1001, home: `/home/${owner}`}}, groups: {[owner]: {gid: 1001, members: []}}};
+    return {
+      sub: 'Something is eating all the CPU. Find it with top and stop it for good.',
+      lead: 'The machine is slow. The busy process belongs to another user and ignores a normal kill.',
+      steps: ['Find the busiest process with top.', 'Note its owner and PID.', 'Stop it: try a normal kill as root first; if it is still there, force it with -9.'],
+      init: {...people, procs: [{pid, user: owner, cmd, cpu: 96.4, mem: 7.8, tty: '?', stat: 'R', start: '06:30', ignoresTerm: true}]},
+      reqs: [
+        lxNoProc(`${app}-indexer`, ['top', `sudo kill ${pid}`, `sudo kill -9 ${pid}`]),
+        lxAsk('Who owned the busy process?', () => owner, ['top']),
+      ],
+      solution: ['top', `sudo kill ${pid}`, `sudo kill -9 ${pid}`],
+    };
+  },
+};
+
+// ---- Packages ----
+
+const LX_EXTRA_PKGS = ['tree', 'htop', 'curl', 'git', 'jq', 'zip', 'unzip', 'ncdu', 'tmux', 'figlet', 'cowsay', 'sl'];
+
+const LX_APT = {
+  beginner: x => {
+    const r = lxRandom(x), pkg = r.pick(LX_EXTRA_PKGS);
+    return {
+      sub: `Find out which version of ${pkg} is installed.`,
+      lead: `${pkg} was installed on this machine some time ago.`,
+      steps: ['List the installed packages.', `Find ${pkg} and read its version.`],
+      init: {packages: [pkg]},
+      reqs: [lxAsk(`The installed version of ${pkg}`, () => LX_REPO[pkg].version, ['apt list --installed'])],
+      solution: ['apt list --installed'],
+    };
+  },
+  intermediate: x => {
+    const r = lxRandom(x), pkg = r.pick(LX_EXTRA_PKGS);
+    return {
+      sub: `Refresh the package lists and install ${pkg}.`,
+      lead: `You need ${pkg} on this machine.`,
+      steps: ['Update the package lists (with sudo).', `Install ${pkg}.`],
+      init: {},
+      reqs: [{text: 'The package lists are updated', ok: s => lxHost(s).aptUpdated, hint: {cmds: ['sudo apt update']}}, lxPkg(pkg, true, [`sudo apt install ${pkg}`])],
+      solution: ['sudo apt update', `sudo apt install ${pkg}`],
+    };
+  },
+  advanced: x => {
+    const r = lxRandom(x), [a, b, old] = r.some(LX_EXTRA_PKGS, 3);
+    return {
+      sub: `Install ${a} and ${b}, and remove ${old}.`,
+      lead: `${old} is installed but nobody uses it any more.`,
+      steps: [`Install ${a} and ${b} in one command.`, `Remove ${old}.`],
+      init: {packages: [old]},
+      reqs: [lxPkg(a, true, [`sudo apt install ${a} ${b}`]), lxPkg(b, true, [`sudo apt install ${a} ${b}`]), lxPkg(old, false, [`sudo apt remove ${old}`])],
+      solution: [`sudo apt install -y ${a} ${b}`, `sudo apt remove -y ${old}`],
+    };
+  },
+  expert: x => {
+    const r = lxRandom(x), [cmd, pkg] = r.pick([['ifconfig', 'net-tools'], ['htpasswd', 'apache2-utils'], ['mkpasswd', 'whois'], ['htop', 'htop'], ['jq', 'jq']]);
+    const old = r.pick(LX_EXTRA_PKGS.filter(p => p !== pkg));
+    return {
+      sub: `The command ${cmd} is missing. Install the package that provides it, and clean up ${old}.`,
+      lead: `A script needs ${cmd}, but typing it says the command is not found. ${old} is no longer needed.`,
+      steps: [`Type ${cmd} and read which package Ubuntu suggests.`, 'Install that package.', `Remove ${old}.`, 'Check the version you installed.'],
+      init: {packages: [old]},
+      reqs: [
+        lxPkg(pkg, true, [cmd, `sudo apt install ${pkg}`]),
+        lxPkg(old, false, [`sudo apt remove ${old}`]),
+        lxAsk(`The installed version of ${pkg}`, () => LX_REPO[pkg].version, ['apt list --installed']),
+      ],
+      solution: [`sudo apt install -y ${pkg}`, `sudo apt remove -y ${old}`, 'apt list --installed'],
+    };
+  },
+};
+
 const LINUX_LABS = {
   'lx-nav': {levels: LX_NAV},
   'lx-files': {levels: LX_FILES},
@@ -573,6 +685,8 @@ const LINUX_LABS = {
   'lx-pipes': {levels: LX_PIPES},
   'lx-perms': {levels: LX_PERMS},
   'lx-users': {levels: LX_USERS_LABS},
+  'lx-procs': {levels: LX_PROCS_LABS},
+  'lx-apt': {levels: LX_APT},
 };
 
 // a level of a Linux topic built for the random number x, in the shape createSession (js/session.js) expects
