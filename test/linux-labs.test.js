@@ -8,12 +8,12 @@ const switching = require('./load');
 const CATALOGUE = get('LINUX_CATALOGUE'), LABS = get('LINUX_LABS'), createSession = get('createSession');
 const NETS = [0, 37, 101, 200, 255];
 
-// type a line; a password prompt gets student's password, as the student would type it
+// type a line; sudo's password prompt gets student's password, as the student would type it (other prompts, such as
+// passwd's, are answered by the next solution lines)
 function type(s, line) {
   const out = s.run('lab', line);
   const dev = s.devices.lab;
-  if (dev.asksPassword()) out.push(...s.run('lab', 'student'));
-  assert.equal(dev.state.askPw, null, `"${line}" leaves a prompt open: ${dev.prompt()}`);
+  if (dev.asksPassword() && dev.prompt().startsWith('[sudo]')) out.push(...s.run('lab', 'student'));
   return out.filter(l => l.cls === 'ln-err').map(l => l.text);
 }
 const fill = (s, value) => s.reqs.forEach((r, i) => { if (r.answer) s.answers[i] = value(r, i); });
@@ -56,6 +56,7 @@ for (const [id, T] of Object.entries(LABS)) {
         const fresh = JSON.stringify(s.devices.lab.state.root);
         assert.ok(!s.grade().every(Boolean), `${at}: starts out solved`);
         for (const line of s.solution[0][1]) assert.deepEqual(type(s, line), [], `${at}: ${line}`);
+        assert.equal(s.devices.lab.state.askPw, null, `${at}: the solution leaves a prompt open: ${s.devices.lab.prompt()}`);
         fill(s, r => right(s, r));
         assert.deepEqual(s.reqs.filter((r, i) => !s.grade()[i]).map(r => r.text), [], `${at}: unmet after the solution`);
         s.reqs.forEach((r, i) => {

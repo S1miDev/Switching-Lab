@@ -441,12 +441,138 @@ const LX_PIPES = {
   },
 };
 
+// ---- Permissions and ownership ----
+
+const LX_PERMS = {
+  beginner: x => {
+    const r = lxRandom(x), proj = r.pick(LX_PROJECTS), key = `id_${r.pick(['deploy', 'backup', 'github', 'server'])}`, dir = `${LX_HOME}/${proj}`;
+    return {
+      sub: `Lock down the key of ${proj} and make its deploy script runnable, with octal modes.`,
+      lead: `~/${proj} has a private key ${key} that anyone may read, and a deploy.sh nobody may run.`,
+      steps: [`Give ${key} mode 600: only you may read and write it.`, 'Give deploy.sh mode 755: everyone may read and run it, only you may change it.'],
+      init: {files: [[`${dir}/${key}`, '-----BEGIN OPENSSH PRIVATE KEY-----\n', {mode: 0o664}], [`${dir}/deploy.sh`, '#!/bin/bash\necho deploying\n', {mode: 0o664}]]},
+      reqs: [lxModeIs(`${dir}/${key}`, 0o600, [`chmod 600 ${proj}/${key}`]), lxModeIs(`${dir}/deploy.sh`, 0o755, [`chmod 755 ${proj}/deploy.sh`])],
+      solution: [`chmod 600 ${proj}/${key}`, `chmod 755 ${proj}/deploy.sh`],
+    };
+  },
+  intermediate: x => {
+    const r = lxRandom(x), proj = r.pick(LX_PROJECTS), [run, shared, secret] = r.some(['start', 'build', 'notes', 'plan', 'keys', 'tokens', 'test'], 3), dir = `${LX_HOME}/${proj}`;
+    return {
+      sub: 'Fix three files with symbolic chmod modes, one change each.',
+      lead: `In ~/${proj}: ${run}.sh can't be run, the group may change ${shared}.txt, and others may read ${secret}.txt.`,
+      steps: [`Let the owner run ${run}.sh (u+x).`, `Take write away from the group on ${shared}.txt (g-w).`, `Take every permission away from others on ${secret}.txt (o=).`],
+      init: {files: [[`${dir}/${run}.sh`, '#!/bin/bash\n', {mode: 0o644}], [`${dir}/${shared}.txt`, 'shared\n', {mode: 0o664}], [`${dir}/${secret}.txt`, 'secret\n', {mode: 0o664}]]},
+      reqs: [
+        lxModeIs(`${dir}/${run}.sh`, 0o744, [`chmod u+x ${proj}/${run}.sh`]),
+        lxModeIs(`${dir}/${shared}.txt`, 0o644, [`chmod g-w ${proj}/${shared}.txt`]),
+        lxModeIs(`${dir}/${secret}.txt`, 0o660, [`chmod o= ${proj}/${secret}.txt`]),
+      ],
+      solution: [`chmod u+x ${proj}/${run}.sh`, `chmod g-w ${proj}/${shared}.txt`, `chmod o= ${proj}/${secret}.txt`],
+    };
+  },
+  advanced: x => {
+    const r = lxRandom(x), app = r.pick(LX_APPS), user = r.pick(LX_PEOPLE), team = r.pick(LX_TEAMS), word = r.pick(LX_WORDS), db = `/srv/${app}/data.db`;
+    return {
+      sub: `Hand the ${app} database to ${user} and the ${team} team, share your ${word} with the team, and check your umask.`,
+      lead: `${db} still belongs to root. You and ${user} are both in the group ${team}.`,
+      steps: [`Make ${user} the owner and ${team} the group of ${db} (this needs sudo).`, `Give ~/${word}.txt to the group ${team}.`, 'Show your umask.'],
+      init: {
+        users: {[user]: {uid: 1001, gid: 1001, home: `/home/${user}`}}, groups: {[user]: {gid: 1001, members: []}, [team]: {gid: 1010, members: ['student', user]}},
+        dirs: [[`/srv/${app}`, {owner: 'root', mode: 0o755}]], files: [[db, 'SQLite format 3\n', {owner: 'root', mode: 0o640}], [`${LX_HOME}/${word}.txt`, `${word}\n`]],
+      },
+      reqs: [
+        lxOwner(db, user, team, [`sudo chown ${user}:${team} ${db}`]),
+        lxOwner(`${LX_HOME}/${word}.txt`, 'student', team, [`chgrp ${team} ${word}.txt`]),
+        lxAsk('Your umask, as umask prints it', () => '0002', ['umask']),
+      ],
+      solution: [`sudo chown ${user}:${team} ${db}`, `chgrp ${team} ${word}.txt`, 'umask'],
+    };
+  },
+  expert: x => {
+    const r = lxRandom(x), team = r.pick(LX_TEAMS), user = r.pick(LX_PEOPLE), dir = `/srv/${team}`;
+    return {
+      sub: `Set up a shared directory for the ${team} team where every new file belongs to the team.`,
+      lead: `You and ${user} are in the group ${team}. /srv belongs to root.`,
+      steps: [`Create ${dir} (sudo).`, `Make ${team} its group.`, 'Give it mode 2770: the team may do everything, others nothing, and setgid passes the group on.',
+        `Create ${dir}/hello.txt as yourself and check that its group is ${team}.`],
+      init: {users: {[user]: {uid: 1001, gid: 1001, home: `/home/${user}`}}, groups: {[user]: {gid: 1001, members: []}, [team]: {gid: 1010, members: ['student', user]}}},
+      reqs: [
+        lxIsDir(dir, [`sudo mkdir ${dir}`]),
+        lxOwner(dir, 'root', team, [`sudo chgrp ${team} ${dir}`]),
+        lxModeIs(dir, 0o2770, [`sudo chmod 2770 ${dir}`]),
+        lxOwner(`${dir}/hello.txt`, 'student', team, [`touch ${dir}/hello.txt`]),
+      ],
+      solution: [`sudo mkdir ${dir}`, `sudo chgrp ${team} ${dir}`, `sudo chmod 2770 ${dir}`, `touch ${dir}/hello.txt`, `ls -l ${dir}`],
+    };
+  },
+};
+
+// ---- Users, groups and sudo ----
+
+const LX_USERS_LABS = {
+  beginner: x => {
+    const r = lxRandom(x), team = r.pick(LX_TEAMS), gid = r.int(1001, 1099);
+    return {
+      sub: 'Find out who you are on this system: your uid, your groups, and the gid of your team.',
+      lead: `Your account is student. You were also added to the group ${team}.`,
+      steps: ['Show your uid and your groups.', `Find the number (gid) of the group ${team} in /etc/group.`],
+      init: {groups: {[team]: {gid, members: ['student']}}},
+      reqs: [
+        lxAsk('Your uid', () => '1000', ['id']),
+        lxAsk('The names of all your groups', () => ['student', 'sudo', team], ['id -nG']),
+        lxAsk(`The gid of ${team}`, () => String(gid), [`grep ${team} /etc/group`]),
+      ],
+      solution: ['id', 'id -nG', `grep ${team} /etc/group`],
+    };
+  },
+  intermediate: x => {
+    const r = lxRandom(x), user = r.pick(LX_PEOPLE), team = r.pick(LX_TEAMS);
+    return {
+      sub: `Create the account ${user} with a home directory, and the group ${team}.`,
+      lead: `${user} starts work today. Creating accounts needs root, so use sudo.`,
+      steps: [`Create the user ${user} with a home directory.`, `Create the group ${team}.`],
+      init: {},
+      reqs: [lxUser(user, {home: true}, [`sudo useradd -m ${user}`]), lxGroup(team, [`sudo groupadd ${team}`])],
+      solution: [`sudo useradd -m ${user}`, `sudo groupadd ${team}`, `id ${user}`],
+    };
+  },
+  advanced: x => {
+    const r = lxRandom(x), user = r.pick(LX_PEOPLE), team = r.pick(LX_TEAMS), pw = `${r.pick(['Spring', 'River', 'Cloud', 'Maple'])}${r.int(10, 99)}!`;
+    return {
+      sub: `Add ${user} to the ${team} group and give the account a password.`,
+      lead: `${user} has an account but no password, and is not in ${team} yet.`,
+      steps: [`Add ${user} to ${team}, keeping the groups ${user} already has.`, `Set ${user}'s password to ${pw} (passwd asks for it twice).`],
+      init: {users: {[user]: {uid: 1001, gid: 1001, home: `/home/${user}`}}, groups: {[user]: {gid: 1001, members: []}, [team]: {gid: 1010, members: []}},
+        dirs: [[`/home/${user}`, {owner: user, mode: 0o750}]]},
+      reqs: [lxUser(user, {groups: [team]}, [`sudo usermod -aG ${team} ${user}`]), lxUser(user, {pw: true}, [`sudo passwd ${user}`])],
+      solution: [`sudo usermod -aG ${team} ${user}`, `sudo passwd ${user}`, pw, pw],
+    };
+  },
+  expert: x => {
+    const r = lxRandom(x), [a, b, old] = r.some(LX_PEOPLE, 3), shell = r.pick(['/bin/sh', '/usr/sbin/nologin', '/bin/dash', '/bin/bash']);
+    return {
+      sub: `Create ${a} and ${b} with bash as their shell, make ${b} an admin, and check ${old}'s shell.`,
+      lead: `${old} already has an account. ${a} and ${b} need new ones; ${b} will run sudo.`,
+      steps: [`Create ${a} and ${b}, each with a home directory and /bin/bash as the shell.`, `Put ${b} in the group sudo.`, `Find ${old}'s login shell in /etc/passwd.`],
+      init: {users: {[old]: {uid: 1001, gid: 1001, home: `/home/${old}`, shell}}, groups: {[old]: {gid: 1001, members: []}}},
+      reqs: [
+        lxUser(a, {home: true, shell: '/bin/bash'}, [`sudo useradd -m -s /bin/bash ${a}`]),
+        lxUser(b, {home: true, shell: '/bin/bash', groups: ['sudo']}, [`sudo useradd -m -s /bin/bash -G sudo ${b}`]),
+        lxAsk(`${old}'s login shell`, () => shell, [`grep ${old} /etc/passwd`]),
+      ],
+      solution: [`sudo useradd -m -s /bin/bash ${a}`, `sudo useradd -m -s /bin/bash -G sudo ${b}`, `grep ${old} /etc/passwd`],
+    };
+  },
+};
+
 const LINUX_LABS = {
   'lx-nav': {levels: LX_NAV},
   'lx-files': {levels: LX_FILES},
   'lx-view': {levels: LX_VIEW},
   'lx-search': {levels: LX_SEARCH},
   'lx-pipes': {levels: LX_PIPES},
+  'lx-perms': {levels: LX_PERMS},
+  'lx-users': {levels: LX_USERS_LABS},
 };
 
 // a level of a Linux topic built for the random number x, in the shape createSession (js/session.js) expects
