@@ -73,6 +73,24 @@ test('every Linux lab is all in Czech', () => {
   assert.deepEqual(misses, []);
 });
 
+// a text can be different and still half English (a lead with an English start): no English function words may be left
+const ENGLISH = /(?<![\w-])(the|is|are|and|with|from|serves|has|have|into|your|you|this|that|will|should|must|when|which)(?![\w-])/;
+const englishLeft = (get, name) => {
+  const out = new Set();
+  for (const [id, t] of Object.entries(get(name))) {
+    const texts = catalogueTexts(get, name).filter(([at]) => at.startsWith(id + '.')).map(([, x]) => x);
+    for (const level of t.labLevels) texts.push(...sessionTexts(get('createSession')({topic: id, level, net: 7})).map(([, x]) => x));
+    for (const x of texts) if (ENGLISH.test(x)) out.add(`${id}: ${x}`);
+  }
+  return [...out];
+};
+
+test('no Czech text keeps English words', () => {
+  assert.deepEqual(englishLeft(cs, 'CATALOGUE'), []);
+  assert.deepEqual(englishLeft(lxCs, 'LINUX_CATALOGUE'), []);
+  assert.ok(englishLeft(en, 'CATALOGUE').length > 100, 'the check finds English in the English texts');
+});
+
 test('every Reference group has its Czech name', () => {
   const tr = cs('tr');
   assert.deepEqual(en('REF_GROUPS').filter(g => tr(g) === g && !sameOk(g)), []);
