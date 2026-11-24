@@ -372,7 +372,10 @@ const LX_SEARCH = {
       },
       reqs: [
         ...big.map(n => lxGone(`${dir}/${n}.tmp`, [`find ${dir} -type f -size +${limit}k -delete`])),
-        ...small.map(n => lxIsFile(`${dir}/${n}.tmp`, null, [`find ${dir} -type f -size +${limit}k`], 'is kept')),
+        {
+          text: `Only the ${small.length} small files are left in ${dir}`, hint: {cmds: [`find ${dir} -type f -size +${limit}k -delete`]},
+          ok: s => Object.keys(lxNodeAt(s, dir)?.children || {}).sort().join() === small.map(n => `${n}.tmp`).sort().join(),
+        },
         lxAsk(`How many lines of ${conf} are not comments?`, () => String(settings.length), [`grep -vc '^#' ${conf}`]),
       ],
       solution: [`find ${dir} -type f -size +${limit}k`, `find ${dir} -type f -size +${limit}k -delete`, `grep -vc '^#' ${conf}`],

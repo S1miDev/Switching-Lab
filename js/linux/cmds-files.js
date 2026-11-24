@@ -264,6 +264,8 @@ LINUX_CMDS.rm = {
     if (!p.rest.length) return p.o.f ? 0 : lxErr(ctx, 'rm: missing operand');
     let code = 0;
     const fail = text => { code = lxErr(ctx, 'rm: ' + text); };
+    const remove = w => { delete w.parent.children[w.name]; w.parent.mtime = Date.now(); };
+    const ask = []; // write-protected files: rm asks about each when you type at a terminal, unless -f
     for (const f of p.rest) {
       const w = lxAt(ctx, f);
       if (rec && w.abs === '/') { fail("it is dangerous to operate recursively on '/'"); fail('use --no-preserve-root to override this failsafe'); continue; }
@@ -274,10 +276,20 @@ LINUX_CMDS.rm = {
       // shortcut: a subtree with any part the user may not empty is left whole; rm would remove the rest of it
       const stuck = lxStuck(ctx, w.node, f.replace(/\/$/, ''));
       if (stuck) { fail(`cannot remove '${stuck}': ${LX_ERR.EACCES}`); continue; }
-      // shortcut: rm does not ask before removing a write-protected file (real rm asks on a terminal unless -f)
-      delete w.parent.children[w.name];
-      w.parent.mtime = Date.now();
+      if (!p.o.f && ctx.stdin === null && ctx.user !== 'root' && w.node.type === 'file' && !lxMay(st, ctx.user, w.node, 'w')) ask.push({f, w});
+      else remove(w);
     }
+    // one question at a time, each answered on the next line (y or yes removes); shortcut: a write-protected directory is not asked about
+    const next = () => {
+      const q = ask.shift();
+      if (!q) return;
+      const kind = lxContent(st, q.w.node) ? 'regular file' : 'regular empty file';
+      st.askPw = {
+        prompt: `rm: remove write-protected ${kind} '${q.f}'?`, hidden: false, tries: 1, check: () => true, fail: () => {},
+        then: (print, answer) => { if (/^y(es)?$/i.test(answer.trim())) remove(q.w); next(); },
+      };
+    };
+    next();
     return code;
   },
 };
@@ -363,17 +375,23 @@ LINUX_CMDS.wc = {
     const p = lxOpts(ctx, ctx.args, 'lwc', '', {lines: 'l', words: 'w', bytes: 'c'});
     if (!p) return 1;
     const show = p.o.l || p.o.w || p.o.c ? ['l', 'w', 'c'].filter(k => p.o[k]) : ['l', 'w', 'c'];
+    // read everything first (the width depends on all of it), then print in operand order, errors in their place
+    const inputs = lxInputs(ctx, p.rest, () => {});
     let code = 0;
-    const inputs = lxInputs(ctx, p.rest, (f, c) => { code = lxErr(ctx, `wc: ${f}: ${LX_ERR[c]}`); })
-      .map(i => ({...i, dir: i.text === null && lxAt(ctx, i.name).node?.type === 'dir'})).filter(i => i.text !== null || i.dir);
-    const counts = inputs.map(i => {
-      const t = i.text ?? '';
-      return {name: i.name, l: (t.match(/\n/g) || []).length, w: t.split(/\s+/).filter(Boolean).length, c: lxBytes(t)};
+    const counted = inputs.map(i => {
+      const dir = i.text === null && lxAt(ctx, i.name).node?.type === 'dir', t = i.text ?? '';
+      return {name: i.name, ok: i.text !== null || dir, l: (t.match(/\n/g) || []).length, w: t.split(/\s+/).filter(Boolean).length, c: lxBytes(t)};
     });
-    if (counts.length > 1) counts.push(['l', 'w', 'c'].reduce((tot, k) => ({...tot, [k]: counts.reduce((a, x) => a + x[k], 0)}), {name: 'total'}));
-    const width = show.length === 1 && inputs.length === 1 ? 1
-      : inputs.some(i => i.name === '-') ? 7 : String(inputs.reduce((a, i) => a + lxBytes(i.text ?? ''), 0)).length;
-    for (const c of counts) ctx.out(show.map(k => String(c[k]).padStart(width)).join(' ') + (c.name === '-' ? '' : ' ' + c.name));
+    const good = counted.filter(c => c.ok);
+    const width = show.length === 1 && counted.length === 1 ? 1
+      : counted.some(i => i.name === '-') ? 7 : String(good.reduce((a, c) => a + c.c, 0)).length;
+    const line = c => ctx.out(show.map(k => String(c[k]).padStart(width)).join(' ') + (c.name === '-' ? '' : ' ' + c.name));
+    for (const c of counted) {
+      const err = lxAt(ctx, c.name).node?.type === 'dir' ? 'EISDIR' : c.ok ? null : lxAt(ctx, c.name).error || 'EACCES';
+      if (err) code = lxErr(ctx, `wc: ${c.name}: ${LX_ERR[err]}`);
+      if (c.ok) line(c);
+    }
+    if (counted.length > 1) line(['l', 'w', 'c'].reduce((tot, k) => ({...tot, [k]: good.reduce((a, x) => a + x[k], 0)}), {name: 'total'}));
     return code;
   },
 };

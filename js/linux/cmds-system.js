@@ -123,7 +123,8 @@ function lxNeedRoot(ctx, file = '/etc/passwd') {
   ctx.err(`${ctx.name}: cannot lock ${file}; try again later.`);
   return true;
 }
-const lxFreeId = (taken, from = 1000) => { let n = from; while (taken.includes(n)) n++; return n; };
+// a new uid or gid as shadow-utils picks it: one above the highest in use from 1000 up
+const lxFreeId = (taken, from = 1000) => Math.max(from - 1, ...taken.filter(n => n >= from && n < 60000)) + 1;
 
 LINUX_CMDS.useradd = {
   synopsis: 'useradd [-m] [-s SHELL] [-g GROUP] [-G GROUP,...] [-d HOME] [-c COMMENT] USER',

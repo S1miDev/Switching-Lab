@@ -396,9 +396,9 @@ const LX_SIGNALS = {9: 'KILL', 15: 'TERM', 1: 'HUP', 2: 'INT'};
 
 const LX_BUILTINS = {
   cd(ctx) {
-    const {st} = ctx;
-    if (ctx.args.length > 1) return lxErr(ctx, 'bash: cd: too many arguments');
-    let target = ctx.args[0] ?? st.users[st.user].home;
+    const {st} = ctx, args = ctx.args.filter(a => a !== '-P' && a !== '-L'); // logical and physical are the same: no symlinks here
+    if (args.length > 1) return lxErr(ctx, 'bash: cd: too many arguments');
+    let target = args[0] ?? st.users[st.user].home;
     if (target === '-') {
       if (!st.oldpwd) return lxErr(ctx, 'bash: cd: OLDPWD not set');
       target = st.oldpwd;
@@ -453,6 +453,7 @@ const LX_BUILTINS = {
     const {st} = ctx;
     let args = ctx.args, sig = 15;
     if (!args.length) return lxErr(ctx, 'kill: usage: kill [-s sigspec | -n signum | -sigspec] pid | jobspec ... or kill -l [sigspec]');
+    if (['-l', '-L', '-s', '-n'].includes(args[0])) return lxErr(ctx, `kill: option '${args[0]}' is not available in this lab`);
     if (args[0].startsWith('-')) {
       const s = args[0].slice(1).toUpperCase().replace(/^SIG/, '');
       sig = /^\d+$/.test(s) ? +s : +Object.keys(LX_SIGNALS).find(n => LX_SIGNALS[n] === s);
@@ -490,6 +491,7 @@ const LX_BUILTINS = {
     return 0;
   },
   help(ctx) {
+    if (ctx.args.length) return lxErr(ctx, 'bash: help: help for one command is not available in this lab (type help for the list)');
     const names = [...new Set([...Object.keys(LX_BUILTINS), ...Object.keys(LINUX_CMDS)])].filter(n => !['true', 'false'].includes(n)).sort();
     ctx.out('Commands you can use in this lab:');
     for (let i = 0; i < names.length; i += 6) ctx.out(names.slice(i, i + 6).map(n => n.padEnd(12)).join('').trimEnd());

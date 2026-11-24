@@ -100,6 +100,7 @@ const labPage = (() => {
     const left = steps.filter(c => !typed.has(norm(c)));
     const on = dev ? ` (on ${dev})` : '';
     const own = shown.devices[home].hints;
+    if (!left.length && r.answer) return 'You typed all the commands: read the answer in the console and type it into the box, then press Enter.';
     if (!left.length) return own ? own.recheck : 'You typed all the commands, so check the values, the interface and the device: use show running-config.';
     if (own && k === 0) return own.nudge(left[0]) + on;
     if (own && k === 1) return 'Syntax: ' + (left.map(own.syntax).filter(Boolean).join(' → ') || left[0]) + on;
@@ -261,12 +262,18 @@ const labPage = (() => {
     shown.reset();
     clearPage();
   });
-  // a typed answer counts once it is entered (Enter or leaving the box), not on every key
+  // A typed answer counts once it is entered (Enter or leaving the box), not on every key. The list is redrawn after the
+  // focus has moved on (Tab to the next box), and the box that has the focus gets it back.
   document.getElementById('reqs').addEventListener('change', e => {
     const box = e.target.closest('[data-answer]');
     if (!box) return;
     shown.answers[Number(box.dataset.answer)] = box.value;
-    afterChange();
+    setTimeout(() => {
+      const a = document.activeElement, inList = a && $('reqs').contains(a);
+      const sel = !inList ? null : a.dataset.answer !== undefined ? `[data-answer="${a.dataset.answer}"]` : a.dataset.i !== undefined ? `.rhint-btn[data-i="${a.dataset.i}"]` : null;
+      afterChange();
+      if (sel) document.querySelector(`#reqs ${sel}`)?.focus();
+    });
   });
   document.getElementById('reqs').addEventListener('click', e => {
     const b = e.target.closest('.rhint-btn');

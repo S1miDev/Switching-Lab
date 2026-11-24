@@ -11,12 +11,12 @@ function randomNet(avoid) {
 // a lab value that is either fixed or a function of the lab's random number x
 const atNet = (v, x) => (typeof v === 'function' ? v(x) : v);
 
-// Does a typed answer match the expected one? Surrounding whitespace is ignored; a list (expected is an array) is
+// Does a typed answer match the expected one? Surrounding whitespace is ignored and inner runs of spaces count as one; a list (expected is an array) is
 // compared as a set, in any order, separated by spaces, commas or new lines.
 function answerMatches(typed, expected) {
   const text = String(typed ?? '').trim();
   if (!text) return false;
-  if (!Array.isArray(expected)) return text === String(expected);
+  if (!Array.isArray(expected)) return text.replace(/\s+/g, ' ') === String(expected).trim().replace(/\s+/g, ' ');
   const got = new Set(text.split(/[\s,]+/).filter(Boolean)), want = new Set(expected.map(String));
   return got.size === want.size && [...want].every(w => got.has(w));
 }

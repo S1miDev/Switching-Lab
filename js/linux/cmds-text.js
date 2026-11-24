@@ -43,7 +43,8 @@ LINUX_CMDS.grep = {
       else if (w.node.type === 'dir' && !rec) fail(f, 'EISDIR');
       else walk(f, w.node);
     }
-    const many = targets.length > 1 || rec;
+    // file names in front when there are several files, or when -r went into a directory
+    const many = targets.length > 1 || (rec && (!files.length || files.some(f => lxAt(ctx, f).node?.type === 'dir')));
     for (const t of targets) {
       let text = t.text;
       if (text === undefined) {
@@ -133,7 +134,10 @@ LINUX_CMDS.find = {
 // the lines of a filter's inputs (files or standard input), or null when one could not be read
 function lxFilterLines(ctx, files) {
   let failed = false;
-  const inputs = lxInputs(ctx, files, (f, c) => { failed = true; ctx.err(`${ctx.name}: ${f}: ${LX_ERR[c]}`); });
+  const inputs = lxInputs(ctx, files, (f, c) => {
+    failed = true;
+    ctx.err(ctx.name === 'sort' ? `sort: cannot read: ${f}: ${LX_ERR[c]}` : `${ctx.name}: ${f}: ${LX_ERR[c]}`);
+  });
   return {lines: inputs.flatMap(i => (i.text === null ? [] : lxLines(i.text))), failed};
 }
 

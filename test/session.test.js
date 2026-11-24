@@ -18,6 +18,10 @@ test('a list answer is a set: any order, separated by spaces, commas or new line
   assert.equal(answerMatches('a.conf b.conf c.conf', ['a.conf', 'b.conf']), false);
 });
 
+test('a single answer evens out the spaces inside it', () => {
+  assert.equal(answerMatches('2026-11-24  08:00 ok', '2026-11-24 08:00 ok'), true);
+});
+
 test('an empty or missing answer never matches', () => {
   assert.equal(answerMatches('', '0'), false);
   assert.equal(answerMatches(undefined, 'x'), false);

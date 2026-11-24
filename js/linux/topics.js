@@ -18,6 +18,12 @@ const LINUX_REF_TEXT = {
   graded: 'Random tasks, graded against the simulated system state.',
 };
 
+// the lab page's hint texts for a Linux host (js/devices/linux.js)
+const LINUX_HINTS = {
+  nudge: (user, where, first, root) => `You are ${user} in ${where}. The command starts with "${first}"${root ? ' and needs root: put sudo in front' : ''}`,
+  recheck: 'You typed all the commands, so check names, paths and values: use ls -l, cat and id.',
+};
+
 const LX_LEVELS = ['beginner', 'intermediate', 'advanced', 'expert'];
 
 const LINUX_CATALOGUE = {

@@ -111,6 +111,7 @@ function lxBaseTree(st) {
     '/var', '/var/lib', '/var/log', '/var/www', '/mnt', '/media']) lxPut(st, d, lxDir());
   lxPut(st, '/root', lxDir(0o700));
   lxPut(st, '/tmp', lxDir(0o1777));
+  lxPut(st, '/var/tmp', lxDir(0o1777));
   lxPut(st, '/home/student', lxDir(0o750, 'student'));
   for (const [path, content] of Object.entries(LX_BASE_FILES)) {
     const home = path.startsWith('/home/student/');

@@ -71,14 +71,14 @@ function createLinux(node, session) {
     // runOn sends "help", a lone "?" and every line ending in "?" here: in bash "?" is a glob, so only the first two
     // list the commands; any other line runs as bash
     help(line, print) {
-      if (line === '?') lxRun(st, 'help', print);
+      if (line === '?' && !st.askPw) lxRun(st, 'help', print); // at a prompt, ? is an answer like any other
       else self.run(line, print);
     },
     complete,
     hints: {
       nudge(cmd) {
-        const first = cmd.split(/\s+/)[0], root = first === 'sudo' && st.user !== 'root';
-        return `You are ${st.user} in ${where()}. The command starts with "${first}"${root ? ' and needs root: put sudo in front' : ''}`;
+        const first = cmd.split(/\s+/)[0];
+        return LINUX_HINTS.nudge(st.user, where(), first, first === 'sudo' && st.user !== 'root');
       },
       // the synopsis of every command in the line (a pipeline shows each one), or null for a line that is no command
       syntax(cmd) {
@@ -86,7 +86,7 @@ function createLinux(node, session) {
         const names = p.error ? [] : p.list.flatMap(i => i.pipeline.map(c => (text(c.words[0]) === 'sudo' ? text(c.words[1]) : text(c.words[0]))));
         return [...new Set(names)].map(n => LINUX_CMDS[n]?.synopsis || LX_SYNOPSIS[n]).filter(Boolean).join(' | ') || null;
       },
-      recheck: 'You typed all the commands, so check names, paths and values: use ls -l, cat and id.',
+      recheck: LINUX_HINTS.recheck,
     },
     banner: () => [
       'Welcome to Ubuntu 24.04.1 LTS (GNU/Linux 6.8.0-45-generic x86_64)', ' ',

@@ -276,6 +276,45 @@ test('apt: update, install, remove and list, root only for changes', () => {
   assert.equal(st.packages.tree, undefined);
 });
 
+test('review: rm asks before removing a write-protected file, unless -f', () => {
+  const {run, dev, st} = host({files: [['/home/student/p', 'x\n', {mode: 0o444}], ['/home/student/q', '', {mode: 0o444}], ['/home/student/r', 'x\n', {mode: 0o444}]]});
+  assert.deepEqual(run('rm p'), []);
+  assert.equal(dev.prompt(), "rm: remove write-protected regular file 'p'?");
+  assert.equal(dev.asksPassword(), false, 'the answer is shown');
+  run('n');
+  assert.ok(lxFind(st, '/home/student/p'), 'n keeps it');
+  run('rm p q');
+  assert.equal(dev.prompt(), "rm: remove write-protected regular file 'p'?");
+  run('y');
+  assert.equal(dev.prompt(), "rm: remove write-protected regular empty file 'q'?");
+  run('yes');
+  assert.ok(!lxFind(st, '/home/student/p') && !lxFind(st, '/home/student/q'));
+  assert.deepEqual(run('rm -f r'), []);
+  assert.ok(!lxFind(st, '/home/student/r'));
+});
+
+test('review: smaller GNU and bash details', () => {
+  const {run, dev} = host({files: [['/home/student/a', 'one two\nthree\n'], ['/home/student/t/x', 'hello\n']], users: {zed: {uid: 1005, gid: 1005, home: '/home/zed'}}, groups: {zed: {gid: 1005, members: []}}});
+  assert.deepEqual(run('kill -l'), ["ERR kill: option '-l' is not available in this lab"]);
+  assert.deepEqual(run('kill -s KILL 1'), ["ERR kill: option '-s' is not available in this lab"]);
+  assert.deepEqual(run('cd -P /tmp; pwd'), ['/tmp']);
+  run('cd');
+  assert.deepEqual(run('wc -l a nothere'), [' 2 a', 'ERR wc: nothere: No such file or directory', ' 2 total']);
+  assert.match(run('ls -ld /var/tmp')[0], /^drwxrwxrwt \d+ root root /);
+  assert.deepEqual(run('grep -r hello t/x'), ['hello']);
+  assert.deepEqual(run('sort nothere'), ['ERR sort: cannot read: nothere: No such file or directory']);
+  assert.deepEqual(run('help cd'), ['ERR bash: help: help for one command is not available in this lab (type help for the list)']);
+  run('sudo true');
+  run('student');
+  run('sudo useradd newbie');
+  assert.deepEqual(run('id -u newbie'), ['1006'], 'useradd takes the highest uid plus one');
+  run('sudo ls');
+  run('sudo -k');
+  run('sudo ls');
+  assert.deepEqual(dev.help('?', () => {}), undefined);
+  assert.equal(dev.prompt(), '[sudo] password for student:', 'a ? typed at a password prompt is an attempt, not help');
+});
+
 test('every command has a synopsis for the hints', () => {
   for (const [name, c] of Object.entries(get('LINUX_CMDS'))) assert.match(c.synopsis, new RegExp(`^${name}\\b`), name);
 });
