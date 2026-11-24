@@ -7,7 +7,7 @@ const {load} = require('./load.js');
 const en = load('en'), cs = load('cs');
 // texts that are the same in Czech on purpose (product and protocol names)
 const SAME = new Set(['Trunking (802.1Q)', 'Spanning Tree Protocol (STP)', 'EtherChannel', 'IPv6 routing', 'DHCP snooping',
-  'Dynamic ARP inspection', 'Switching']);
+  'Dynamic ARP inspection', 'Switching', 'Router', 'Switch', 'L3 switch']);
 const sameOk = t => SAME.has(t) || !/[A-Za-zÀ-ž]{4,}/.test(t.replace(/\b[A-Z0-9][A-Za-z0-9-]*[A-Z0-9][a-z]?\b/g, ''));
 
 // pairs [where, english, czech] that read the same although they should not
@@ -40,6 +40,19 @@ test('the Switching catalogue keeps its keys, commands and modes in English', ()
     assert.deepEqual([c.refGroup, c.keywords, c.labLevels, c.domain], [t.refGroup, t.keywords, t.labLevels, t.domain], id);
     if (t.ref) assert.deepEqual([c.ref.verify, c.ref.commands.map(r => r.slice(0, 2))], [t.ref.verify, t.ref.commands.map(r => r.slice(0, 2))], id);
   }
+});
+
+// every text a lab session shows: subtitle, scenario, steps, requirements and diagram labels
+const sessionTexts = s => [['sub', s.sub], ['lead', s.lead], ...s.steps.map((t, i) => [`step ${i}`, t]),
+  ...s.reqs.map((r, i) => [`req ${i}`, r.text]), ...s.nodes.map(n => [`node ${n.id}`, n.sub])].filter(([, t]) => t);
+
+test('every Switching lab is all in Czech', () => {
+  const misses = [];
+  for (const [id, t] of Object.entries(en('CATALOGUE'))) for (const level of t.labLevels) {
+    const a = en('createSession')({topic: id, level, net: 7}), b = cs('createSession')({topic: id, level, net: 7});
+    misses.push(...untranslated(zip(sessionTexts(a), sessionTexts(b))).map(m => `${id} ${level} ${m}`));
+  }
+  assert.deepEqual(misses, []);
 });
 
 test('every Reference group has its Czech name', () => {
