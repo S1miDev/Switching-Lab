@@ -34,10 +34,34 @@ function createLinux(node, session) {
   const commandNames = () => [...new Set([...Object.keys(LX_BUILTINS), ...Object.keys(LINUX_CMDS)])].sort();
   const escape = name => name.replace(/([ '"\\$&;|<>()*?[\]#!])/g, '\\$1');
 
-  // Tab: the first word against the commands, later words against the paths (shown with \ before a space, like bash)
+  // an unclosed ' or " in the line: {at, q}, or null
+  function openQuote(line) {
+    let q = null, at = -1;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '\\' && q !== "'") i++;
+      else if (!q && (c === "'" || c === '"')) { q = c; at = i; }
+      else if (c === q) q = null;
+    }
+    return q ? {at, q} : null;
+  }
+
+  // Tab: the first word against the commands, later words against the paths (shown with \ before a space, like bash;
+  // inside an open quote the names go in as they are, and a file closes the quote)
   function complete(line) {
     if (st.askPw) return {value: line}; // never complete (or reveal) a hidden password
-    const m = /^(.*?)((?:\\.|[^\s\\])*)$/.exec(line), before = m[1], typed = m[2].replace(/\\(.)/g, '$1');
+    const open = openQuote(line);
+    if (open) {
+      const inside = line.slice(open.at + 1), {q} = open;
+      const wrap = t => q + (q === '"' ? t.replace(/(["\\$`])/g, '\\$1') : t);
+      return pathsAndCommands(line, line.slice(0, open.at), q === '"' ? inside.replace(/\\(["\\$`])/g, '$1') : inside, wrap, q);
+    }
+    const m = /^(.*?)((?:\\.|[^\s\\])*)$/.exec(line);
+    return pathsAndCommands(line, m[1], m[2].replace(/\\(.)/g, '$1'), escape, '');
+  }
+
+  // complete typed (the last word, without its quoting) after before; wrap writes a name back, close ends a file's word
+  function pathsAndCommands(line, before, typed, wrap, close) {
     const first = !before.trim() || /(?:[|;&]|&&|\|\|)\s*$/.test(before) || /^\s*sudo\s+$/.test(before);
     let hits;
     if (first && !typed.includes('/')) hits = commandNames().filter(n => n.startsWith(typed)).map(n => ({name: n, text: n, dir: false}));
@@ -51,10 +75,10 @@ function createLinux(node, session) {
         : [];
     }
     if (!hits.length) return {value: line};
-    if (hits.length === 1) return {value: before + escape(hits[0].text) + (hits[0].dir ? '/' : ' ')};
+    if (hits.length === 1) return {value: before + wrap(hits[0].text) + (hits[0].dir ? '/' : close + ' ')};
     let common = hits[0].text;
     for (const h of hits) while (!h.text.startsWith(common)) common = common.slice(0, -1);
-    if (common.length > typed.length) return {value: before + escape(common)};
+    if (common.length > typed.length) return {value: before + wrap(common)};
     return {value: line, list: hits.map(h => h.name).join('  ')};
   }
 

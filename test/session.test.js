@@ -22,6 +22,13 @@ test('a single answer evens out the spaces inside it', () => {
   assert.equal(answerMatches('2026-11-24  08:00 ok', '2026-11-24 08:00 ok'), true);
 });
 
+test('a list whose items contain spaces is split at commas and new lines only', () => {
+  assert.equal(answerMatches('my file, b c', ['b c', 'my file']), true);
+  assert.equal(answerMatches('my file\nb  c', ['b c', 'my file']), true);
+  assert.equal(answerMatches('my file', ['b c', 'my file']), false);
+  assert.equal(answerMatches('my file b c', ['b c', 'my file']), false);
+});
+
 test('an empty or missing answer never matches', () => {
   assert.equal(answerMatches('', '0'), false);
   assert.equal(answerMatches(undefined, 'x'), false);

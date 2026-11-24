@@ -3,6 +3,7 @@
 //
 //   labConsole.show(session, onCommand)  show a session with empty consoles, opened on session.home; after every typed
 //                                        command onCommand() runs and may return more lines [{text, cls}] to print
+//   labConsole.say(lines)                print lines [{text, cls}] on the open device's console
 const labConsole = (() => {
   const term = $('term'), input = $('cmd'), promptEl = $('prompt');
   let session = null;       // the session shown
@@ -134,5 +135,5 @@ const labConsole = (() => {
   });
   term.addEventListener('click', () => input.focus());
 
-  return {show, sync, current: () => dev, open: name => session && session.devices[name] && showDevice(name)};
+  return {show, sync, say: printAll, current: () => dev, open: name => session && session.devices[name] && showDevice(name)};
 })();

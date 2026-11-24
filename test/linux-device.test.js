@@ -95,6 +95,15 @@ test('review fixes: no Tab at a password prompt, real commands are never "not fo
   assert.match(run('sudo apt remove -y coreutils').join('\n'), /essential/);
 });
 
+test('Tab completes inside an open quote, closing it after a file', () => {
+  const {dev} = host({files: [['/home/student/my file', ''], ['/home/student/my notes.txt', '']], dirs: [['/home/student/docs']]});
+  assert.equal(dev.complete('cat "my f').value, 'cat "my file" ');
+  assert.equal(dev.complete("cat 'my").value, "cat 'my ", 'the common prefix, still inside the quote');
+  assert.equal(dev.complete('ls "/et').value, 'ls "/etc/', 'a directory leaves the quote open');
+  assert.equal(dev.complete('ls "do').value, 'ls "docs/');
+  assert.equal(dev.complete('cat my').value, 'cat my\\ ', 'without a quote, spaces are escaped as before');
+});
+
 test('sudo -i opens a root shell and exit goes back', () => {
   const {dev, run} = host();
   run('sudo -i');

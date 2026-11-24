@@ -12,12 +12,14 @@ function randomNet(avoid) {
 const atNet = (v, x) => (typeof v === 'function' ? v(x) : v);
 
 // Does a typed answer match the expected one? Surrounding whitespace is ignored and inner runs of spaces count as one; a list (expected is an array) is
-// compared as a set, in any order, separated by spaces, commas or new lines.
+// compared as a set, in any order, separated by spaces, commas or new lines (only commas or new lines when an item has a space in it).
 function answerMatches(typed, expected) {
+  const even = s => String(s).trim().replace(/\s+/g, ' ');
   const text = String(typed ?? '').trim();
   if (!text) return false;
-  if (!Array.isArray(expected)) return text.replace(/\s+/g, ' ') === String(expected).trim().replace(/\s+/g, ' ');
-  const got = new Set(text.split(/[\s,]+/).filter(Boolean)), want = new Set(expected.map(String));
+  if (!Array.isArray(expected)) return even(text) === even(expected);
+  const spaced = expected.some(e => /\s/.test(even(e)));
+  const got = new Set(text.split(spaced ? /\s*[,\n]\s*/ : /[\s,]+/).map(even).filter(Boolean)), want = new Set(expected.map(even));
   return got.size === want.size && [...want].every(w => got.has(w));
 }
 

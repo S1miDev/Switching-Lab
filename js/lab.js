@@ -271,7 +271,7 @@ const labPage = (() => {
     setTimeout(() => {
       const a = document.activeElement, inList = a && $('reqs').contains(a);
       const sel = !inList ? null : a.dataset.answer !== undefined ? `[data-answer="${a.dataset.answer}"]` : a.dataset.i !== undefined ? `.rhint-btn[data-i="${a.dataset.i}"]` : null;
-      afterChange();
+      labConsole.say(afterChange()); // the "all requirements met" line when this answer solves the lab
       if (sel) document.querySelector(`#reqs ${sel}`)?.focus();
     });
   });
