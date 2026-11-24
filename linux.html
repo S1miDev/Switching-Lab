@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>ls-labbing · Linux</title>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/output.css">
+</head>
+
+<body>
+  <nav class="side" aria-label="Main">
+    <a class="brand" href="index.html"><span class="brand-dot" aria-hidden="true"></span>ls-labbing</a>
+    <button class="nav-item active" id="nav-labs">Labs</button>
+    <button class="nav-item" id="nav-ref">Reference</button>
+    <button class="nav-item" id="nav-auth">Log in</button>
+  </nav>
+
+  <!-- Labs: the topic rows are built from LINUX_CATALOGUE in js/linux/topics.js (renderDashboard in js/script.js) -->
+  <section id="dash" class="page">
+    <header class="flex flex-wrap items-end justify-between gap-x-6 gap-y-4 mb-8">
+      <div>
+        <h1 class="text-[34px]">Linux</h1>
+        <p class="mt-1.5 mb-0 text-muted">Choose a difficulty, then start a lab on a simulated Ubuntu terminal.</p>
+      </div>
+      <div class="flex flex-wrap items-center gap-3">
+        <input id="search" type="search" placeholder="Search topics" aria-label="Search topics" class="w-60 max-w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-text [font:inherit] placeholder:text-muted">
+        <div class="seg" id="dash-seg" role="group" aria-label="Difficulty">
+          <button class="seg-btn" data-set="beginner">Beginner</button>
+          <button class="seg-btn" data-set="intermediate">Intermediate</button>
+          <button class="seg-btn" data-set="advanced">Advanced</button>
+          <button class="seg-btn" data-set="expert">Expert</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="domains" id="dash-domains"></div>
+  </section>
+
+  <!-- One lab: filled in by labPage.open() in js/lab.js (the same lab page as switching.html, with one console tab and no topology) -->
+  <section id="lab" class="page" hidden>
+    <header class="mb-7">
+      <p class="mt-0 mx-0 mb-2.5 font-mono text-[12px] leading-[normal] text-muted" id="crumb"></p>
+      <div class="flex flex-wrap items-start justify-between gap-4">
+        <div class="min-w-0">
+          <div class="flex flex-wrap items-center gap-3"><h1 id="lab-title" class="text-[28px]"></h1><span class="pill" id="lab-level"></span></div>
+          <p id="lab-sub" class="mt-1.5 mb-0 text-muted"></p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2 [&_button]:px-3.5 [&_button]:py-2">
+          <button class="ghost" id="back">Back to labs</button>
+          <span class="pill" id="lab-timer"></span>
+          <span class="count" id="req-count">0/0</span>
+          <button class="ghost" id="new-net">New lab</button>
+          <button class="ghost" id="reset">Reset</button>
+          <div class="flex" id="check-row"><button id="check">Check</button></div>
+        </div>
+      </div>
+    </header>
+    <div id="lab-bar"></div>
+    <main class="grid grid-cols-[minmax(0,1fr)_400px] items-start gap-6 max-[980px]:grid-cols-1">
+      <div class="grid min-w-0 content-start gap-6">
+        <section class="card">
+          <h2>Scenario</h2>
+          <p id="scenario-lead"></p>
+          <ol class="steps" id="steps"></ol>
+        </section>
+        <section class="card console">
+          <div class="console-head">
+            <span class="console-label">Terminal</span>
+            <div class="tabs"></div>
+          </div>
+          <div class="term min-h-[60vh]" id="term">
+            <div class="line"><span id="prompt"></span><input id="cmd" aria-label="Terminal input" spellcheck="false" autocomplete="off" autocapitalize="off"></div>
+          </div>
+        </section>
+      </div>
+      <div class="grid min-w-0 content-start gap-6">
+        <section class="card">
+          <h2>Requirements</h2>
+          <div class="bar"><span id="req-bar"></span></div>
+          <ul class="reqs mb-0" id="reqs"></ul>
+        </section>
+        <details class="card" id="cmds-card">
+          <summary>Commands you'll need</summary>
+          <div class="dbody">
+            <div class="cmds" id="cmds"></div>
+            <p class="note">Tab completes commands and paths. Up/Down for history. Type help for every command this terminal knows.</p>
+          </div>
+        </details>
+      </div>
+    </main>
+  </section>
+
+  <!-- Reference: the topic rows are built from LINUX_CATALOGUE (js/reference.js) -->
+  <section id="ref" class="page" hidden>
+    <header class="mb-4">
+      <h1>Linux command reference</h1>
+      <p class="mt-2 mb-0 max-w-[640px] text-muted">Each topic covered by the labs, with its commands and options, plus every command in one searchable list.</p>
+      <div class="tabs mt-4" id="ref-tabs" role="tablist">
+        <button class="tab active" role="tab" aria-selected="true" data-reftab="topics">Topics</button>
+        <button class="tab" role="tab" aria-selected="false" data-reftab="commands">Commands</button>
+      </div>
+    </header>
+    <div id="ref-topics">
+      <input type="search" id="ref-search" placeholder="Search topics and commands" aria-label="Search the topics" autocomplete="off">
+      <p id="ref-empty" class="note" hidden>No topics match.</p>
+      <div id="ref-detail" hidden></div>
+      <div class="domains" id="ref-groups"></div>
+    </div>
+    <div id="ref-commands" hidden>
+      <input type="search" id="cmd-search" placeholder="Search commands, e.g. chmod, grep -r, ls -l" aria-label="Search the commands" autocomplete="off">
+      <p id="cmd-count" class="note"></p>
+      <p id="cmd-empty" class="note" hidden>No commands match.</p>
+      <table class="ref-table" id="cmd-table">
+        <thead><tr><th>Command</th><th>Options</th><th>Purpose</th><th>Topic</th></tr></thead>
+        <tbody id="cmd-rows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- order matters: the Linux catalogue, then the device registry and the simulated system, shell and commands, then the
+       lab builds and track.js, which points the shared engine's names at the Linux track; script.js starts the page -->
+  <script src="js/dom.js"></script>
+  <script src="js/linux/topics.js"></script>
+  <script src="js/devices/device.js"></script>
+  <script src="js/linux/fs.js"></script>
+  <script src="js/linux/bash.js"></script>
+  <script src="js/linux/cmds-files.js"></script>
+  <script src="js/linux/cmds-text.js"></script>
+  <script src="js/linux/cmds-system.js"></script>
+  <script src="js/devices/linux.js"></script>
+  <script src="js/linux/labs.js"></script>
+  <script src="js/linux/track.js"></script>
+  <script src="js/reference.js"></script>
+  <script src="js/session.js"></script>
+  <script src="js/console.js"></script>
+  <script src="js/lab.js"></script>
+  <script src="js/script.js"></script>
+  <!-- accounts: supabase-js is pinned with an integrity hash -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" integrity="sha384-0w2KAL2YHP6wKOkUDzkCDGgVvfmHnj02DHeQ6XcHOgTfFsGyonKOpShMH1x6nk9o" crossorigin="anonymous"></script>
+  <script src="js/streak.js"></script>
+  <script src="js/auth.js"></script>
+</body>
+</html>

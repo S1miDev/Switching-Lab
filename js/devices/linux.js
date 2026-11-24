@@ -61,7 +61,8 @@ function createLinux(node, session) {
     name: node.id, type: node.type, configurable: true, state: st, questionHelp: false,
     asksPassword: () => !!st.askPw && st.askPw.hidden !== false,
     prompt: () => (st.askPw ? st.askPw.prompt : `${st.user}@${st.host}:${where()}${st.user === 'root' ? '#' : '$'}`),
-    run(line, print) {
+    run(line, raw) {
+      const print = (text, cls) => raw(text || ' ', cls); // an empty console line would collapse; a space keeps it
       if (st.askPw) return answer(line, print);
       if (lxNeedsSudo(st, line)) return askSudo(line, print);
       lxRun(st, line, print);
@@ -85,7 +86,7 @@ function createLinux(node, session) {
       recheck: 'You typed all the commands, so check names, paths and values: use ls -l, cat and id.',
     },
     banner: () => [
-      'Welcome to Ubuntu 24.04.1 LTS (GNU/Linux 6.8.0-45-generic x86_64)', '',
+      'Welcome to Ubuntu 24.04.1 LTS (GNU/Linux 6.8.0-45-generic x86_64)', ' ',
       ' * This terminal simulates the commands listed by help.',
       ' * Tab completes, Up/Down for history.',
     ],
