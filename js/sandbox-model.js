@@ -48,9 +48,9 @@ function createSandbox() {
     // Each change below returns why it cannot be made (a sentence), or null once it is made and added to the history.
     add(id, type, x, y) {
       if (sb.full()) return FULL;
-      if (!SB_TYPES.includes(type) || !SB_ID.test(id)) return 'Unknown device type or name.';
-      if (sb.devices[id]) return `There is already a ${id}.`;
-      if (sb.nodes.length >= SB_MAX_DEVICES) return `A sandbox holds up to ${SB_MAX_DEVICES} devices.`;
+      if (!SB_TYPES.includes(type) || !SB_ID.test(id)) return L('Unknown device type or name.', 'Neznámý typ nebo název zařízení.');
+      if (sb.devices[id]) return L(`There is already a ${id}.`, `${id} už existuje.`);
+      if (sb.nodes.length >= SB_MAX_DEVICES) return L(`A sandbox holds up to ${SB_MAX_DEVICES} devices.`, `Sandbox pojme nejvýš ${SB_MAX_DEVICES} zařízení.`);
       const node = {id, type};
       sbPlace(node, x, y);
       sb.nodes.push(node);
@@ -67,7 +67,7 @@ function createSandbox() {
     },
     removeNode(id) {
       if (sb.full()) return FULL;
-      if (!sb.devices[id]) return `There is no ${id}.`;
+      if (!sb.devices[id]) return L(`There is no ${id}.`, `${id} neexistuje.`);
       sb.links.filter(l => l.a === id || l.b === id).forEach(l => sb.unlink(l));
       sb.nodes = sb.nodes.filter(n => n.id !== id);
       delete sb.devices[id];
@@ -77,12 +77,12 @@ function createSandbox() {
     connect(a, pa, b, pb) {
       if (sb.full()) return FULL;
       const A = sb.nodeOf(a), B = sb.nodeOf(b);
-      if (!A || !B) return 'Unknown device.';
-      if (a === b) return 'A device cannot be cabled to itself.';
+      if (!A || !B) return L('Unknown device.', 'Neznámé zařízení.');
+      if (a === b) return L('A device cannot be cabled to itself.', 'Zařízení nejde propojit samo se sebou.');
       const find = (n, p) => sbPorts(n.type).find(q => q.toLowerCase() === String(p).toLowerCase());
       const x = find(A, pa), y = find(B, pb);
-      if (!x || !y) return `${x ? b : a} has no port ${x ? pb : pa}.`;
-      for (const [id, p] of [[a, x], [b, y]]) if (sb.cableOn(id, p)) return `${id} ${p} is already cabled.`;
+      if (!x || !y) return L(`${x ? b : a} has no port ${x ? pb : pa}.`, `${x ? b : a} nemá port ${x ? pb : pa}.`);
+      for (const [id, p] of [[a, x], [b, y]]) if (sb.cableOn(id, p)) return L(`${id} ${p} is already cabled.`, `${id} ${p} už má kabel.`);
       sb.links.push({a, b, pa: x, pb: y});
       for (const [n, peer, port] of [[A, b, y], [B, a, x]]) if (n.type === 'pc') sb.setAt(n, `${peer} ${port.toLowerCase()}`);
       sb.log.push(['cable', a, x, b, y]);
@@ -92,7 +92,7 @@ function createSandbox() {
     disconnect(id, port) {
       if (sb.full()) return FULL;
       const link = sb.cableOn(id, port);
-      if (!link) return `${id} ${port} is not cabled.`;
+      if (!link) return L(`${id} ${port} is not cabled.`, `${id} ${port} nemá kabel.`);
       sb.unlink(link);
       sb.log.push(['uncable', id, port]);
       return null;
@@ -149,10 +149,10 @@ function createSandbox() {
     ping(src, ip) {
       const pc = sb.devices[src], dst = Object.values(sb.devices).find(d => d.ports().some(p => p.ip === ip));
       const ok = !!pc.canReach(ip), path = dst ? sb.findPath(src, dst.name) : null;
-      const events = [{text: `${src} sends an ICMP echo request to ${ip}`}];
+      const events = [{text: L(`${src} sends an ICMP echo request to ${ip}`, `${src} posílá ICMP echo request na ${ip}`)}];
       if (path) path.slice(1).forEach((id, i) => events.push({text: `${path[i]} → ${id}`}));
-      if (ok) events.push({text: `${dst.name} answers; ${src} gets the echo reply`, cls: 'ok'});
-      else events.push({text: dst ? 'No reply. Check the addresses, the gateway, the VLANs and any shut down port.' : `No device has the address ${ip}.`, cls: 'err'});
+      if (ok) events.push({text: L(`${dst.name} answers; ${src} gets the echo reply`, `${dst.name} odpovídá; ${src} dostává echo reply`), cls: 'ok'});
+      else events.push({text: dst ? L('No reply. Check the addresses, the gateway, the VLANs and any shut down port.', 'Bez odpovědi. Zkontroluj adresy, bránu, VLANy a vypnuté porty.') : L(`No device has the address ${ip}.`, `Adresu ${ip} nemá žádné zařízení.`), cls: 'err'});
       return {ok, path, events};
     },
 
@@ -233,9 +233,9 @@ const sbCmds = (dev, ...lines) => ['enable', 'conf t', ...lines, 'end'].map(l =>
 const sbAccess = (port, vlan) => [`interface ${port}`, 'switchport mode access', `switchport access vlan ${vlan}`, 'no shutdown', 'exit'];
 const sbPc = (dev, ip, gw) => [[dev, `ip ${ip} 255.255.255.0 ${gw}`]];
 const SB_PRESETS = [
-  {name: 'Blank canvas', desc: 'Start from nothing and build your own network.', data: {v: 1, nodes: [], links: [], log: []}},
+  {name: L('Blank canvas', 'Prázdné plátno'), desc: L('Start from nothing and build your own network.', 'Začni od nuly a postav vlastní síť.'), data: {v: 1, nodes: [], links: [], log: []}},
   {
-    name: 'Router on a stick', desc: 'One router and one switch carry VLAN 10 and VLAN 20 over a trunk; the two PCs ping each other.',
+    name: 'Router on a stick', desc: L('One router and one switch carry VLAN 10 and VLAN 20 over a trunk; the two PCs ping each other.', 'Jeden router a jeden switch přenášejí VLAN 10 a VLAN 20 po trunku; obě PC se navzájem pingnou.'),
     data: {
       v: 1,
       nodes: [{id: 'R1', type: 'router', x: 390, y: 60}, {id: 'S1', type: 'switch', x: 390, y: 230},
@@ -252,7 +252,7 @@ const SB_PRESETS = [
     },
   },
   {
-    name: 'Multilayer switch (SVIs)', desc: 'One layer 3 switch routes between VLAN 10 and VLAN 20 with SVIs.',
+    name: 'Multilayer switch (SVIs)', desc: L('One layer 3 switch routes between VLAN 10 and VLAN 20 with SVIs.', 'Jeden L3 switch routuje mezi VLAN 10 a VLAN 20 pomocí SVI.'),
     data: {
       v: 1,
       nodes: [{id: 'MLS1', type: 'mls', x: 390, y: 120}, {id: 'PC1', type: 'pc', x: 190, y: 360}, {id: 'PC2', type: 'pc', x: 590, y: 360}],
@@ -266,7 +266,7 @@ const SB_PRESETS = [
     },
   },
   {
-    name: 'Router with DHCP', desc: 'A router gives two LANs their addresses by DHCP; type dhcp on each PC.',
+    name: L('Router with DHCP', 'Router s DHCP'), desc: L('A router gives two LANs their addresses by DHCP; type dhcp on each PC.', 'Router přiděluje adresy dvěma LAN přes DHCP; na každém PC napiš dhcp.'),
     data: {
       v: 1,
       nodes: [{id: 'R1', type: 'router', x: 390, y: 120}, {id: 'PC1', type: 'pc', x: 190, y: 360}, {id: 'PC2', type: 'pc', x: 590, y: 360}],

@@ -14,14 +14,16 @@ const LINUX_REF_GROUPS = ['Files and navigation', 'Text and search', 'Permission
 
 // the Reference page labels for this track (js/reference.js)
 const LINUX_REF_TEXT = {
-  commands: 'Commands', mode: 'Options', verifyMode: 'shell', verifyPurpose: 'Check the result.',
-  graded: 'Random tasks, graded against the simulated system state.',
+  commands: L('Commands', 'Příkazy'), mode: L('Options', 'Volby'), verifyMode: 'shell', verifyPurpose: L('Check the result.', 'Kontrola výsledku.'),
+  graded: L('Random tasks, graded against the simulated system state.', 'Náhodné úkoly, hodnocené podle stavu simulovaného systému.'),
 };
 
 // the lab page's hint texts for a Linux host (js/devices/linux.js)
 const LINUX_HINTS = {
-  nudge: (user, where, first, root) => `You are ${user} in ${where}. The command starts with "${first}"${root ? ' and needs root: put sudo in front' : ''}`,
-  recheck: 'You typed all the commands, so check names, paths and values: use ls -l, cat and id.',
+  nudge: (user, where, first, root) => L(`You are ${user} in ${where}. The command starts with "${first}"${root ? ' and needs root: put sudo in front' : ''}`,
+    `Jsi ${user} v ${where}. Příkaz začíná slovem "${first}"${root ? ' a potřebuje roota: dej před něj sudo' : ''}`),
+  recheck: L('You typed all the commands, so check names, paths and values: use ls -l, cat and id.',
+    'Všechny příkazy máš zadané, tak zkontroluj názvy, cesty a hodnoty: použij ls -l, cat a id.'),
 };
 
 const LX_LEVELS = ['beginner', 'intermediate', 'advanced', 'expert'];
