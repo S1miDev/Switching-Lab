@@ -49,6 +49,13 @@ Po přihlášení si můžeš trackovat svůj progress:
 - **Day streak** – den se počítá, když v něm vyřešíš 3 labs nebo topology úlohy
 - **Profil** – jméno, barva zvýraznění a změna hesla
 - Postup se ukládá k účtu, takže je po přihlášení dostupný i na jiných zařízeních
+## 🎨 Styly
+Všechny styly jsou v **Tailwind CSS** (v4, CLI). Zdroj je `css/input.css`, stránky načítají jen `css/output.css`.
+- Barvy a fonty jsou theme tokeny v `@theme` (`--color-*`, `--font-*`), takže se píše `bg-surface`, `text-muted`, `border-border`, `text-accent`
+- Statický markup i šablony v JS používají utility třídy
+- `@layer components` v `css/input.css` jen pro kusy, které JS opakuje, nebo co utility neumí (keyframes, `::before`, SVG, `details`)
+- Žádné nové `.css` soubory, žádné `<style>` bloky a žádné inline `style`, kromě hodnot, které JS spočítá za běhu
+- Netlify nic nebuildí, takže po každé změně stylů, markupu nebo tříd v JS spusť `npm run build:css` a commitni i `css/output.css`
 ## 📋 Plány a opravy
 Aktuální to-do list, opravy a QOL změny najdeš na [Milanote boardu](https://app.milanote.com/1XlAZz1AkO2qfh?p=MziMUNwVsQF). Dokončené úkoly jsou tam označené jako hotové a na konci dne se smažou. Historii změn najdeš v [commitech](https://github.com/S1miDev/Switching-Lab/commits/main).
  
