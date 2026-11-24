@@ -42,6 +42,37 @@ test('cz picks the Czech plural form', () => {
     ['hostů', 'host', 'hosty', 'hosty', 'hostů', 'hostů', 'hostů']);
 });
 
+// Every word of page text in the markup is marked data-i18n and has its Czech in CS. Text that reads the same in Czech is listed.
+const SAME = new Set(['ls-labbing', 'Linux', 'CCNA', 'Expert', 'PC', 'WLC', 'DHCP server', 'Router', 'Switch', 'Serial', 'Console',
+  '0/0', '%', '→', '←', '·']);
+const PAGES = ['index.html'];
+const decode = s => s.replace(/&amp;/g, '&').replace(/&larr;/g, '←').replace(/&rarr;/g, '→').replace(/\s+/g, ' ').trim();
+
+test('every page text is marked data-i18n and has a Czech entry', () => {
+  const ctx = vm.createContext({});
+  vm.runInContext(SRC, ctx);
+  const CS = vm.runInContext('CS', ctx);
+  const missing = [];
+  for (const page of PAGES) {
+    const html = fs.readFileSync(path.join(__dirname, '..', page), 'utf8')
+      .replace(/<!--[\s\S]*?-->/g, '').replace(/<script[\s\S]*?<\/script>/g, '').replace(/<head>[\s\S]*?<\/head>/, '');
+    // each piece of text with the tag just before it
+    for (const m of html.matchAll(/<(\/?)([a-z0-9]+)([^>]*)>([^<]*)/gi)) {
+      const [, closing, , attrs, raw] = m, marked = /\sdata-i18n\b/.test(attrs);
+      const texts = [];
+      const text = decode(raw);
+      if (/[A-Za-z]/.test(text)) texts.push(text);
+      if (!closing) for (const a of attrs.matchAll(/\s(placeholder|aria-label|title)="([^"]*)"/g)) texts.push(decode(a[2]));
+      for (const t of texts) {
+        if (SAME.has(t)) continue;
+        if (closing || !marked) missing.push(`${page}: not marked: ${t}`);
+        else if (!CS[t]) missing.push(`${page}: no Czech: ${t}`);
+      }
+    }
+  }
+  assert.deepEqual(missing, []);
+});
+
 test('langSync: push a pending choice, pull a different valid saved one, else nothing (no reload loop)', () => {
   const {langSync} = load('en');
   assert.equal(langSync({lang: 'cs'}, '1'), 'push');

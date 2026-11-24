@@ -15,7 +15,47 @@ const L = (en, cs) => (LANG === 'cs' && cs ? cs : en);
 
 // Czech for the markup (elements marked data-i18n) and for display-only keys such as domain and group names, by English text
 const CS = {
+  // every page
+  'Main': 'Hlavní menu',
   'Log in': 'Přihlásit se',
+  'Switching & Routing': 'Switching a routing',
+  'Troubleshooting': 'Řešení problémů',
+  'Beginner': 'Začátečník',
+  'Intermediate': 'Mírně pokročilý',
+  'Advanced': 'Pokročilý',
+  // landing page and Profile
+  'Pick what to practise: random labs on a simulated command line, graded as you type.':
+    'Vyber si, co chceš procvičit: náhodné laby na simulovaném příkazovém řádku, hodnocené už během psaní.',
+  'Cisco IOS labs: VLANs, trunks, routing, services and security, plus the sandbox and mock exams.':
+    'Laby v Cisco IOS: VLANy, trunky, routing, služby a zabezpečení, k tomu sandbox a cvičné testy.',
+  'The bash command line: files, text, permissions, users, processes and packages on Ubuntu.':
+    'Příkazový řádek bash: soubory, text, oprávnění, uživatelé, procesy a balíčky na Ubuntu.',
+  'Open →': 'Otevřít →',
+  'Profile': 'Profil',
+  'Your account and how ls-labbing looks for you.': 'Tvůj účet a to, jak pro tebe ls-labbing vypadá.',
+  'Log in to see your profile.': 'Pro zobrazení profilu se přihlas.',
+  'Account': 'Účet',
+  'Email': 'E-mail',
+  'Member since': 'Členem od',
+  'Last login': 'Poslední přihlášení',
+  'Log out': 'Odhlásit se',
+  'Change password': 'Změna hesla',
+  'New password (8+ characters)': 'Nové heslo (aspoň 8 znaků)',
+  'New password': 'Nové heslo',
+  'Confirm new password': 'Nové heslo znovu',
+  'Update password': 'Změnit heslo',
+  'Customize': 'Přizpůsobení',
+  'Nickname': 'Přezdívka',
+  'Shown on the site instead of your email': 'Zobrazí se na webu místo e-mailu',
+  'Accent colour': 'Barva zvýraznění',
+  'Save': 'Uložit',
+  'Day streak': 'Denní série',
+  'day streak': 'dní v řadě',
+  'Best': 'Nejlepší',
+  'Resets in': 'Vyprší za',
+  'Progress': 'Postup',
+  // the accent colour names (keys of ACCENTS in auth.js)
+  'Blue': 'Modrá', 'Green': 'Zelená', 'Amber': 'Jantarová', 'Pink': 'Růžová', 'Purple': 'Fialová', 'Teal': 'Tyrkysová',
 };
 const tr = en => (LANG === 'cs' && CS[en]) || en;
 
