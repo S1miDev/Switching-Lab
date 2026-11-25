@@ -27,18 +27,18 @@ const store = {
 // ---- drawing ----
 
 function render() {
-  let svg = `<svg viewBox="${view.x} ${view.y} ${view.w} ${view.h}" role="img" aria-label="Network canvas. Drag devices to move them.">`;
+  let svg = `<svg viewBox="${view.x} ${view.y} ${view.w} ${view.h}" role="img" aria-label="${L('Network canvas. Drag devices to move them.', 'Plátno sítě. Zařízení přesuneš tažením.')}">`;
   if (!sb.nodes.length) {
     svg += `<rect class="empty" x="60" y="60" width="${SB_W - 120}" height="${SB_H - 120}" rx="14"/>` +
-      `<text class="empty-t" x="${SB_W / 2}" y="${SB_H / 2 - 4}">An empty network</text>` +
-      `<text class="empty-s" x="${SB_W / 2}" y="${SB_H / 2 + 18}">Click a device above to add it, or pick a preset</text>`;
+      `<text class="empty-t" x="${SB_W / 2}" y="${SB_H / 2 - 4}">${L('An empty network', 'Prázdná síť')}</text>` +
+      `<text class="empty-s" x="${SB_W / 2}" y="${SB_H / 2 + 18}">${L('Click a device above to add it, or pick a preset', 'Přidej zařízení kliknutím nahoře, nebo vyber předvolbu')}</text>`;
   }
   let labels = ''; // drawn last, on top of the devices
   sb.links.forEach((l, i) => {
     const a = nodeMid(sb.nodeOf(l.a)), b = nodeMid(sb.nodeOf(l.b)), ends = `x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"`;
     const up = sb.linkUp(l);
     svg += `<line class="link${up ? '' : ' down'}" ${ends}/>` +
-      `<line class="hit" data-cable="${i}" ${ends}><title>${esc(l.a)} ${esc(l.pa)} to ${esc(l.b)} ${esc(l.pb)}${up ? '' : ' (shut down)'}. Delete mode: click to remove.</title></line>`;
+      `<line class="hit" data-cable="${i}" ${ends}><title>${esc(l.a)} ${esc(l.pa)} ${L('to', '–')} ${esc(l.b)} ${esc(l.pb)}${up ? '' : L(' (shut down)', ' (vypnuto)')}. ${L('Delete mode: click to remove.', 'Režim mazání: kliknutím odebereš.')}</title></line>`;
     const len = Math.hypot(b.x - a.x, b.y - a.y);
     if (len < 1) return;
     const d = {x: (b.x - a.x) / len, y: (b.y - a.y) / len};
@@ -49,7 +49,7 @@ function render() {
     const lit = sb.links.some(l => (l.a === n.id || l.b === n.id) && sb.linkUp(l));
     svg += `<g data-dev="${esc(n.id)}" tabindex="0" role="button" aria-label="${esc(n.id)}, ${TOPO_TYPES[n.type].label}"${n.id === arrived ? ' class="arrive"' : ''}>` +
       `<rect class="box" x="${n.x}" y="${n.y}" width="${NODE_W}" height="${NODE_H}" rx="12"/>` +
-      `<circle class="lamp${lit ? ' on' : ''}" cx="${n.x + NODE_W - 12}" cy="${n.y + 12}" r="4"><title>${lit ? 'Has a cable that is up' : 'No working cable'}</title></circle>` +
+      `<circle class="lamp${lit ? ' on' : ''}" cx="${n.x + NODE_W - 12}" cy="${n.y + 12}" r="4"><title>${lit ? L('Has a cable that is up', 'Má zapojený funkční kabel') : L('No working cable', 'Žádný funkční kabel')}</title></circle>` +
       `<circle class="ico-bg" cx="${n.x + 22}" cy="${n.y + 22}" r="16"/>` +
       `<g class="icon" transform="translate(${n.x + 13} ${n.y + 13}) scale(0.75)">${TOPO_ICONS[n.type]}</g>` +
       `<text class="name" x="${n.x + 44}" y="${n.y + 19}">${esc(n.id)}</text>` +
@@ -103,14 +103,14 @@ function addDevice(type, x, y) {
   arrived = null;
   showDock(true);
   labConsole.open(n.id);
-  msg(`Added ${n.id}. Drag it to move it; the console is open on it.`);
+  msg(L(`Added ${n.id}. Drag it to move it; the console is open on it.`, `Přidáno ${n.id}. Přesuneš ho tažením; jeho konzole je otevřená.`));
 }
 
 // Undo the last step: the history is a replay, so loading it one step shorter is exact. Positions are kept.
 function undo() {
-  if (!sb.log.length) return msg('Nothing to undo.');
+  if (!sb.log.length) return msg(L('Nothing to undo.', 'Není co vrátit.'));
   try {
-    setSandbox(loadSandbox(sb.undoData()), 'Undid the last step.');
+    setSandbox(loadSandbox(sb.undoData()), L('Undid the last step.', 'Poslední krok vrácen.'));
   } catch (err) {
     msg(err.message);
   }
@@ -137,7 +137,7 @@ function openMenu(id) {
     b.dataset.port = port;
     return b;
   });
-  menu.replaceChildren(el('p', 'note', cabling ? `Cable ${cabling.a} ${cabling.pa} to ${id}, port:` : `Cable from ${id}, port:`), ...buttons);
+  menu.replaceChildren(el('p', 'note', cabling ? L(`Cable ${cabling.a} ${cabling.pa} to ${id}, port:`, `Kabel z ${cabling.a} ${cabling.pa} do ${id}, port:`) : L(`Cable from ${id}, port:`, `Kabel z ${id}, port:`)), ...buttons);
   const r = canvas.querySelector('svg').getBoundingClientRect(), w = canvas.parentElement.getBoundingClientRect(), scale = canvas.querySelector('svg').getScreenCTM().a;
   const ctm = canvas.querySelector('svg').getScreenCTM();
   menu.style.left = clamp(ctm.e - w.left + (n.x + NODE_W) * scale, 0, Math.max(0, w.width - 180)) + 'px';
@@ -153,7 +153,7 @@ menu.addEventListener('click', e => {
   closeMenu();
   if (!cabling) {
     cabling = {a: id, pa: port};
-    msg(`Now click the device to cable ${id} ${port} to (click ${id} again to cancel).`);
+    msg(L(`Now click the device to cable ${id} ${port} to (click ${id} again to cancel).`, `Teď klikni na zařízení, ke kterému povede kabel z ${id} ${port} (dalším kliknutím na ${id} to zrušíš).`));
     return render();
   }
   const first = cabling;
@@ -175,7 +175,7 @@ function activate(id) {
     if (cabling && cabling.a === id) {
       cabling = null;
       render();
-      return msg('Cable cancelled.');
+      return msg(L('Cable cancelled.', 'Kabel zrušen.'));
     }
     return openMenu(id);
   }
@@ -189,8 +189,10 @@ function setMode(next) {
   closeMenu();
   document.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-pressed', b.dataset.mode === mode));
   render();
-  msg({move: 'Drag devices to move them; click one to open its console.', cable: 'Click a device, pick a port, then click the device at the other end.',
-    delete: 'Click a device or a cable to delete it.', copy: 'Click a device to add another of the same type (its configuration is not copied).'}[mode]);
+  msg({move: L('Drag devices to move them; click one to open its console.', 'Zařízení přesuneš tažením; kliknutím otevřeš jeho konzoli.'),
+    cable: L('Click a device, pick a port, then click the device at the other end.', 'Klikni na zařízení, vyber port a pak klikni na zařízení na druhém konci.'),
+    delete: L('Click a device or a cable to delete it.', 'Kliknutím na zařízení nebo kabel ho smažeš.'),
+    copy: L('Click a device to add another of the same type (its configuration is not copied).', 'Kliknutím na zařízení přidáš další stejného typu (konfigurace se nekopíruje).')}[mode]);
 }
 $('sb-undo').addEventListener('click', undo);
 
@@ -198,7 +200,7 @@ $('sb-undo').addEventListener('click', undo);
 const dock = $('sb-dock'), dockBtn = $('sb-dock-toggle');
 function showDock(show) {
   dock.hidden = !show;
-  dockBtn.textContent = show ? 'Hide console' : 'Show console';
+  dockBtn.textContent = show ? L('Hide console', 'Skrýt konzoli') : L('Show console', 'Zobrazit konzoli');
   dockBtn.setAttribute('aria-expanded', show);
 }
 dockBtn.addEventListener('click', () => showDock(dock.hidden));
@@ -274,7 +276,7 @@ canvas.addEventListener('click', e => {
   const line = e.target.closest('[data-cable]');
   if (!line || mode !== 'delete') return;
   const l = sb.links[Number(line.dataset.cable)];
-  msg(sb.disconnect(l.a, l.pa) || 'Cable removed.');
+  msg(sb.disconnect(l.a, l.pa) || L('Cable removed.', 'Kabel odebrán.'));
   changed();
 });
 document.addEventListener('keydown', e => {
@@ -282,7 +284,7 @@ document.addEventListener('keydown', e => {
   cabling = null;
   closeMenu();
   render();
-  msg('Cable cancelled.');
+  msg(L('Cable cancelled.', 'Kabel zrušen.'));
 });
 
 // ---- the palette: click a device to add it, or drag it onto the canvas ----
@@ -292,7 +294,7 @@ for (const type of SB_TYPES) {
   chip.type = 'button';
   chip.insertAdjacentHTML('afterbegin', `<svg class="chip-ico" viewBox="0 0 24 24" aria-hidden="true">${TOPO_ICONS[type]}</svg>`);
   dragFromChip(chip, TOPO_TYPES[type].label, canvas, p => addDevice(type, p.x - NODE_W / 2, p.y - NODE_H / 2),
-    () => msg('Drop the device on the canvas.'));
+    () => msg(L('Drop the device on the canvas.', 'Pusť zařízení na plátno.')));
   chip.addEventListener('click', () => {
     if (chip.dragged) return void (chip.dragged = false); // the drag already handled it
     const p = sb.freeSpot();
@@ -325,8 +327,8 @@ $('sb-ping').addEventListener('submit', e => {
   const src = $('sb-src').value, ip = $('sb-dst').value.trim();
   const list = $('sb-events');
   const say = events => list.replaceChildren(...events.map(ev => el('li', ev.cls, ev.text)));
-  if (!src) return say([{text: 'Add a PC and cable it first.', cls: 'err'}]);
-  if (!DOTTED.test(ip)) return say([{text: 'Type the destination as an IPv4 address, like 192.168.20.10.', cls: 'err'}]);
+  if (!src) return say([{text: L('Add a PC and cable it first.', 'Nejdřív přidej PC a připoj ho kabelem.'), cls: 'err'}]);
+  if (!DOTTED.test(ip)) return say([{text: L('Type the destination as an IPv4 address, like 192.168.20.10.', 'Zadej cíl jako IPv4 adresu, např. 192.168.20.10.'), cls: 'err'}]);
   const result = sb.ping(src, ip);
   say(result.events);
   animate(result.path, result.ok);
@@ -357,25 +359,25 @@ function card(name, desc, data, ...buttons) {
 function fillLists() {
   const q = $('sb-search').value.trim().toLowerCase();
   const presets = SB_PRESETS.filter(p => `${p.name} ${p.desc}`.toLowerCase().includes(q)).map(p => {
-    const b = el('button', 'ghost', 'Use this');
+    const b = el('button', 'ghost', L('Use this', 'Použít'));
     b.type = 'button';
     b.addEventListener('click', () => openData(p.data, `${p.name}: ${p.desc}`));
     return card(p.name, p.desc, p.data, b);
   });
-  $('sb-presets').replaceChildren(...(presets.length ? presets : [el('p', 'note', 'No presets match your search.')]));
+  $('sb-presets').replaceChildren(...(presets.length ? presets : [el('p', 'note', L('No presets match your search.', 'Hledání neodpovídá žádná předvolba.'))]));
   const saves = savedList().map(s => {
-    const open = el('button', 'ghost', 'Open'), del = el('button', 'ghost', 'Delete');
+    const open = el('button', 'ghost', L('Open', 'Otevřít')), del = el('button', 'ghost', L('Delete', 'Smazat'));
     open.type = del.type = 'button';
-    open.addEventListener('click', () => openData(s.data, `Opened "${s.name}".`));
+    open.addEventListener('click', () => openData(s.data, L(`Opened "${s.name}".`, `Otevřeno „${s.name}“.`)));
     del.addEventListener('click', () => {
-      if (!confirm(`Delete the saved sandbox "${s.name}"?`)) return;
+      if (!confirm(L(`Delete the saved sandbox "${s.name}"?`, `Smazat uložený sandbox „${s.name}“?`))) return;
       store.set(SB_SAVED, savedList().filter(x => x.name !== s.name));
       fillLists();
-      msg(`Deleted "${s.name}".`);
+      msg(L(`Deleted "${s.name}".`, `Smazáno „${s.name}“.`));
     });
-    return card(s.name, `${s.data?.pos ? Object.keys(s.data.pos).length : 0} devices`, s.data, open, del);
+    return card(s.name, `${s.data?.pos ? Object.keys(s.data.pos).length : 0} ${L('devices', 'zařízení')}`, s.data, open, del);
   });
-  $('sb-saves').replaceChildren(...(saves.length ? saves : [el('p', 'note', 'Nothing saved yet. Name your sandbox above and press Save.')]));
+  $('sb-saves').replaceChildren(...(saves.length ? saves : [el('p', 'note', L('Nothing saved yet. Name your sandbox above and press Save.', 'Zatím nic uloženého. Nahoře sandbox pojmenuj a stiskni Uložit.'))]));
 }
 $('sb-search').addEventListener('input', fillLists);
 
@@ -390,7 +392,7 @@ function download(data, name) {
 
 // replace the network with data from a preset, a save or a file; says why when the data is not usable
 function openData(data, text) {
-  if (sb.nodes.length && !confirm('Replace the sandbox you are working on? Anything not saved or exported is lost.')) return;
+  if (sb.nodes.length && !confirm(L('Replace the sandbox you are working on? Anything not saved or exported is lost.', 'Nahradit sandbox, na kterém pracuješ? Co není uložené nebo exportované, se ztratí.'))) return;
   try {
     setSandbox(loadSandbox(data), text);
   } catch (err) {
@@ -400,49 +402,49 @@ function openData(data, text) {
 
 $('sb-share').addEventListener('click', async () => {
   const hash = sbShare(sb.serialize());
-  if (!hash) return msg('This sandbox is too big for a link. Use Export instead.');
+  if (!hash) return msg(L('This sandbox is too big for a link. Use Export instead.', 'Tento sandbox je na odkaz moc velký. Použij radši Export.'));
   const url = location.origin + location.pathname + hash;
   try {
     await navigator.clipboard.writeText(url);
-    msg('Link copied. Anyone who opens it gets their own copy of this sandbox.');
+    msg(L('Link copied. Anyone who opens it gets their own copy of this sandbox.', 'Odkaz zkopírován. Kdo ho otevře, dostane vlastní kopii tohoto sandboxu.'));
   } catch {
-    prompt('Copy this link:', url);
+    prompt(L('Copy this link:', 'Zkopíruj tento odkaz:'), url);
   }
 });
 $('sb-save').addEventListener('click', () => {
   const name = $('sb-name').value.trim(), saves = savedList(), at = saves.findIndex(s => s.name === name);
-  if (!name) return msg('Type a name first.');
-  if (at < 0 && saves.length >= MAX_SAVES) return msg(`You can keep ${MAX_SAVES} saved sandboxes; delete one first.`);
+  if (!name) return msg(L('Type a name first.', 'Nejdřív napiš název.'));
+  if (at < 0 && saves.length >= MAX_SAVES) return msg(L(`You can keep ${MAX_SAVES} saved sandboxes; delete one first.`, `Uložit jde nejvýš ${MAX_SAVES} sandboxů; nejdřív jeden smaž.`));
   if (at >= 0) saves[at].data = sb.serialize();
   else saves.push({name, data: sb.serialize()});
-  if (!store.set(SB_SAVED, saves)) return msg('The browser would not save it (storage is full or blocked). Use Export instead.');
+  if (!store.set(SB_SAVED, saves)) return msg(L('The browser would not save it (storage is full or blocked). Use Export instead.', 'Prohlížeč to neuložil (úložiště je plné nebo blokované). Použij radši Export.'));
   fillLists();
   msg(`Saved "${name}".`);
 });
 $('sb-export').addEventListener('click', () => {
   download(sb.serialize(), ($('sb-name').value.trim().replace(/[^\w-]+/g, '-') || 'sandbox') + '.swlab.json');
-  msg('Exported. Import the file to open it again, here or on another device.');
+  msg(L('Exported. Import the file to open it again, here or on another device.', 'Exportováno. Soubor otevřeš znovu importem, tady nebo na jiném zařízení.'));
 });
 $('sb-import').addEventListener('click', () => $('sb-file').click());
 $('sb-file').addEventListener('change', async e => {
   const file = e.target.files[0];
   e.target.value = '';
   if (!file) return;
-  if (file.size > 5e6) return msg('That file is too big to be a sandbox.');
+  if (file.size > 5e6) return msg(L('That file is too big to be a sandbox.', 'Ten soubor je na sandbox moc velký.'));
   try {
-    openData(JSON.parse(await file.text()), `Imported ${file.name}.`);
+    openData(JSON.parse(await file.text()), L(`Imported ${file.name}.`, `Importováno ${file.name}.`));
   } catch {
-    msg('That file is not a sandbox (it is not valid JSON).');
+    msg(L('That file is not a sandbox (it is not valid JSON).', 'Ten soubor není sandbox (není to platný JSON).'));
   }
 });
 $('sb-recenter').addEventListener('click', () => {
   view = {x: 0, y: 0, w: SB_W, h: SB_H};
   render();
-  msg('View reset.');
+  msg(L('View reset.', 'Pohled obnoven.'));
 });
 $('sb-clear').addEventListener('click', () => {
-  if (!sb.nodes.length) return msg('The canvas is already empty.');
-  openData(EMPTY, 'Cleared the canvas.');
+  if (!sb.nodes.length) return msg(L('The canvas is already empty.', 'Plátno už je prázdné.'));
+  openData(EMPTY, L('Cleared the canvas.', 'Plátno vymazáno.'));
 });
 
 // ---- start: pick up where the last visit stopped ----
@@ -460,19 +462,19 @@ sb = first;
 labConsole.show(sb, afterCommand);
 changed();
 if (failed) {
-  msg(`Your last sandbox could not be opened (${failed.message}). A copy is kept in this browser.`);
-  const b = el('button', 'ghost', 'Download the copy');
+  msg(L(`Your last sandbox could not be opened (${failed.message}). A copy is kept in this browser.`, `Poslední sandbox nešel otevřít (${failed.message}). Kopie zůstala v tomto prohlížeči.`));
+  const b = el('button', 'ghost', L('Download the copy', 'Stáhnout kopii'));
   b.type = 'button';
   b.addEventListener('click', () => { download(store.get(SB_BROKEN), 'sandbox-recovered.swlab.json'); b.remove(); });
   $('sb-msg').after(b);
 } else if (sb.nodes.length) {
-  msg('Welcome back. Your last sandbox is open.');
+  msg(L('Welcome back. Your last sandbox is open.', 'Vítej zpět. Poslední sandbox je otevřený.'));
 }
 // a share link: open what it carries (asks first when there is work here), then drop the hash so a reload does not ask again
 const shared = sbUnshare(location.hash);
 if (shared) {
   history.replaceState(null, '', location.pathname + location.search);
-  openData(shared, 'Opened the shared sandbox.');
+  openData(shared, L('Opened the shared sandbox.', 'Otevřen sdílený sandbox.'));
 } else if (location.hash.startsWith('#s=')) {
-  msg('That share link is not readable.');
+  msg(L('That share link is not readable.', 'Ten odkaz pro sdílení nejde přečíst.'));
 }

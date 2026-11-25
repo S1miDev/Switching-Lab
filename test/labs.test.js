@@ -1,9 +1,10 @@
-// Every lab builds, and every known-good solution meets all its requirements (which a fresh lab does not).
+// Every lab builds, and every known-good solution meets all its requirements (which a fresh lab does not), in both
+// languages: grading never reads display text.
 const test = require('node:test');
 const assert = require('node:assert');
 const get = require('./load');
 
-const CATALOGUE = get('CATALOGUE'), LABS = get('LABS'), createSession = get('createSession');
+const CATALOGUE = get('CATALOGUE'), LABS = get('LABS');
 const net = get('randomNet')();
 
 // the error lines a typed line prints (a failed ping is not an error here)
@@ -17,9 +18,10 @@ test('catalogue and lab builds agree', () => {
   for (const id of Object.keys(LABS)) assert.ok(CATALOGUE[id], `${id} has no topic`);
 });
 
-for (const [id, T] of Object.entries(LABS)) {
-  for (const level of Object.keys(T.levels)) {
-    test(`${id} ${level}`, () => {
+for (const lang of ['en', 'cs']) {
+  const createSession = get.load(lang)('createSession');
+  for (const [id, T] of Object.entries(LABS)) for (const level of Object.keys(T.levels)) {
+    test(`${id} ${level} (${lang})`, () => {
       const session = createSession({topic: id, level, net});
       assert.ok(session.reqs.length && session.steps.length, 'has requirements and steps');
       assert.ok(session.nodes.some(n => n.id === session.home), 'home is a node');
@@ -45,8 +47,8 @@ test('vlsm host needs vary per network and always fit aligned in the /24', () =>
   const seen = new Set();
   for (let x = 0; x < 256; x++) {
     for (const level of Object.keys(LABS.vlsm.levels)) {
-      const s = createSession({topic: 'vlsm', level, net: x});
-      const ifs = s.nodes.filter(n => n.type === 'pc').map(n => +n.sub.match(/(\d+) hosts/)[1]);
+      const s = get('createSession')({topic: 'vlsm', level, net: x});
+      const ifs = s.nodes.filter(n => n.type === 'pc').map(n => +n.sub.match(/, (\d+)/)[1]);
       let off = 0;
       for (const need of ifs) {
         let size = 4;

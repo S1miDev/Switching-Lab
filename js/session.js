@@ -8,6 +8,21 @@ function randomNet(avoid) {
   return x;
 }
 
+// a lab value that is either fixed or a function of the lab's random number x
+const atNet = (v, x) => (typeof v === 'function' ? v(x) : v);
+
+// Does a typed answer match the expected one? Surrounding whitespace is ignored and inner runs of spaces count as one; a list (expected is an array) is
+// compared as a set, in any order, separated by spaces, commas or new lines (only commas or new lines when an item has a space in it).
+function answerMatches(typed, expected) {
+  const even = s => String(s).trim().replace(/\s+/g, ' ');
+  const text = String(typed ?? '').trim();
+  if (!text) return false;
+  if (!Array.isArray(expected)) return even(text) === even(expected);
+  const spaced = expected.some(e => /\s/.test(even(e)));
+  const got = new Set(text.split(spaced ? /\s*[,\n]\s*/ : /[\s,]+/).map(even).filter(Boolean)), want = new Set(expected.map(even));
+  return got.size === want.size && [...want].every(w => got.has(w));
+}
+
 // Type one line on a session's device; returns its output as [{text, cls}]. A line ending in "?" (or just "help") asks for
 // help; the device does the rest. Shared by lab sessions and the sandbox (sandbox-model.js).
 function runOn(session, name, raw) {
@@ -21,7 +36,8 @@ function runOn(session, name, raw) {
 }
 
 // A lab for a topic and difficulty on the network 192.168.net.0, with fresh devices. Everything about the lab comes from its build (labs.js):
-//   reqs, solution   the requirements ({text, ok, hint}) and a known-good config [[device, lines], ...] (empty when the lab has none)
+//   reqs, solution   the requirements ({text, ok, hint}) and a known-good config [[device, lines], ...] (empty when the lab has none);
+//                    a requirement with answer(session) in place of ok is met when answers[i] matches it (answerMatches)
 //   sub, lead, steps, nodes, links, height   the texts and the diagram
 //   home             the device whose console opens first
 //   setup            a preset (often broken) config [[device, lines], ...], typed in global configuration on every reset
@@ -34,7 +50,8 @@ function runOn(session, name, raw) {
 //   judge()          like grade, but null for a requirement met since the (re)start in a lab with a preset config: not the
 //                    student's work, so it is neither ticked nor scored; once broken it counts as false again
 //   typed            the lines typed on each device since the (re)start, {name: [line]}, for the hints
-//   reset()          fresh devices
+//   answers          what the student typed for each answer requirement, by requirement index
+//   reset()          fresh devices, no answers
 function createSession({topic, level, net}) {
   const T = LABS[topic], cfg = T.levels[level];
   const session = {
@@ -44,7 +61,7 @@ function createSession({topic, level, net}) {
     ...buildLab(T, cfg, net),
     server: T.server ? T.server(net) : null,
     config: name => session.devices[name]?.state,
-    grade: () => session.reqs.map(r => !!r.ok(session)),
+    grade: () => session.reqs.map((r, i) => (r.answer ? answerMatches(session.answers[i], r.answer(session)) : !!r.ok(session))),
     judge: () => session.grade().map((ok, i) => (session.startMet[i] && ok ? null : ok)),
     // met and scored requirements; the total is fixed at the (re)start, so breaking a requirement met since then does not grow it
     score() {
@@ -55,6 +72,7 @@ function createSession({topic, level, net}) {
     reset() {
       // a node marked readonly is display-only whatever its type
       session.typed = {};
+      session.answers = [];
       session.devices = Object.fromEntries(session.nodes.map(n => [n.id, DEVICE_TYPES[n.readonly ? 'readonly' : n.type](n, session)]));
       for (const [name, lines] of session.setup || []) for (const l of ['enable', 'conf t', ...lines, 'end', 'disable']) session.run(name, l);
       // only a preset config (troubleshooting) makes requirements "given"; in other labs every requirement is the student's work

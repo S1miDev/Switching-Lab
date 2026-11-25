@@ -1,5 +1,5 @@
 {
-  "name": "switching-lab",
+  "name": "ls-labbing",
   "version": "1.0.0",
   "description": "Webové virtuální prostředí na switching a routing ve stylu Cisco labů. Vybereš si téma a obtížnost a dostaneš náhodnou úlohu.",
   "main": "index.html",

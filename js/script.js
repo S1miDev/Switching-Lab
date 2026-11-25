@@ -1,4 +1,5 @@
-// App core: lab set-up, the Labs page, navigation and page wiring. Starts the app; only auth.js loads after it.
+// App core shared by the track pages: lab set-up, the Labs page, navigation and page wiring. Starts the app; the page's
+// own wiring (switching.js on switching.html) and auth.js load after it.
 
 // ---- state ----
 // the open lab's devices live in its session (session.js), shown by the lab page (lab.js) and its console (console.js)
@@ -15,18 +16,18 @@ function newLab(lvl = level, t = topic) {
   topic = t;
   markLevel();
   lastNet = randomNet(lastNet);
-  labPage.open(createSession({topic, level, net: lastNet}), {crumb: isFix(topic) ? `Troubleshooting / ${CATALOGUE[topic].name}` : undefined});
+  labPage.open(createSession({topic, level, net: lastNet}), {crumb: isFix(topic) ? `${tr('Troubleshooting')} / ${CATALOGUE[topic].name}` : undefined});
 }
 
 // highlight the chosen difficulty on the Labs page
 function markLevel() {
   document.querySelectorAll('[data-set]').forEach(b => b.classList.toggle('active', b.dataset.set === level));
-  moveSeg($('dash-seg'));
-  moveSeg($('trouble-seg'));
+  for (const v of Object.values(VIEWS)) if (v.seg) moveSeg($(v.seg));
 }
 
 // slide a segmented control's highlight under its active button (it can only measure while visible)
 function moveSeg(seg) {
+  if (!seg) return;
   const active = seg.querySelector('.active');
   if (!active || !active.offsetWidth) return;
   seg.style.setProperty('--x', active.offsetLeft + 'px');
@@ -46,52 +47,24 @@ function renderDashboard(box, fix) {
   $(box).innerHTML = domains.map(([n, title], d) => {
     const rows = ids.filter(id => CATALOGUE[id].domain === Number(n));
     return `<details class="domain"${d && !fix ? '' : ' open'}>` +
-      `<summary><span class="dom-num">${n}.0</span><span class="dom-title">${esc(title)}</span><span class="dom-meta">${topicCount(rows.length)}</span></summary>` +
+      `<summary><span class="dom-num">${n}.0</span><span class="dom-title">${esc(title)}</span></summary>` +
       '<div class="rows">' +
       rows.map(id => `<div class="row" data-search="${esc(searchText(id))}">` +
         `<div class="row-title">${esc(CATALOGUE[id].name)}</div><div class="row-desc">${esc(CATALOGUE[id].desc)}</div>` +
-        `<button class="start" data-start="${id}">Start lab →</button></div>`).join('') +
+        `<button class="start" data-start="${id}">${L('Start lab →', 'Spustit lab →')}</button></div>`).join('') +
       '</div></details>';
   }).join('');
 }
 
 // ---- navigation ----
 
-// each view: its section, its nav tab (the lab page has none: it lights the tab of labFrom) and its segmented control
+// each view: its section, its nav tab (the lab page has none: it lights the tab of labFrom) and its segmented control.
+// These are on every track page; a page adds its own views (switching.js).
 const VIEWS = {
   dash: {page: 'dash', nav: 'nav-labs', seg: 'dash-seg'},
-  trouble: {page: 'trouble', nav: 'nav-trouble', seg: 'trouble-seg'},
-  sandbox: {page: 'sandbox', nav: 'nav-sandbox', seg: 'sandbox-seg'},
-  topo: {page: 'topo-view', nav: 'nav-topo', seg: 'topo-seg'},
-  exam: {page: 'exam-view', nav: 'nav-exam'},
-  ccna: {page: 'ccna-view', nav: 'nav-ccna'},
   ref: {page: 'ref', nav: 'nav-ref'},
-  profile: {page: 'profile', nav: 'nav-auth'},
   lab: {page: 'lab'},
 };
-
-// navbar highlight; to Profile it slides left and shrinks away, then grows in from the right;
-// from Profile it slides right and shrinks away, then grows in from the left. It never passes behind the brand.
-let onProfile = false, navMove = 0;
-function moveNav(toProfile) {
-  const nav = document.querySelector('.side');
-  const wrap = toProfile !== onProfile && nav.classList.contains('ready')
-    && !matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const from = onProfile;
-  onProfile = toProfile;
-  const id = ++navMove;
-  if (!wrap) return moveSeg(nav);
-  const first = $('nav-labs').offsetLeft, auth = $('nav-auth');
-  nav.style.setProperty('--x', (from ? auth.offsetLeft + auth.offsetWidth : first) + 'px');
-  nav.style.setProperty('--w', '0px');
-  setTimeout(() => {
-    if (id !== navMove) return; // a newer move took over
-    nav.classList.remove('ready'); // jump to the opposite edge without animating
-    nav.style.setProperty('--x', (from ? first : nav.scrollWidth) + 'px');
-    nav.offsetWidth; // force reflow
-    moveSeg(nav);
-  }, 300);
-}
 
 function show(view) {
   const lit = view === 'lab' ? labFrom : view;
@@ -100,24 +73,14 @@ function show(view) {
     if (v.nav) $(v.nav).classList.toggle('active', name === lit);
   }
   if (VIEWS[view].seg) moveSeg($(VIEWS[view].seg));
-  moveNav(view === 'profile');
+  moveSeg(document.querySelector('.side'));
   if (view === 'ref') refHome();
   window.scrollTo(0, 0);
   if (view === 'lab') $('cmd').focus();
 }
 
 $('nav-labs').addEventListener('click', () => show('dash'));
-$('nav-brand').addEventListener('click', () => show('dash'));
-$('nav-sandbox').addEventListener('click', () => show('sandbox'));
-$('sb-go-labs').addEventListener('click', () => show('dash'));
-document.querySelectorAll('[data-sb-tab]').forEach(b => b.addEventListener('click', () => {
-  $('sb-guided').hidden = b.dataset.sbTab !== 'guided';
-  $('sb-mine').hidden = b.dataset.sbTab !== 'mine';
-  document.querySelectorAll('[data-sb-tab]').forEach(x => x.classList.toggle('active', x === b));
-  moveSeg($('sandbox-seg'));
-}));
 $('nav-ref').addEventListener('click', () => show('ref'));
-$('nav-trouble').addEventListener('click', () => show('trouble'));
 $('back').addEventListener('click', () => show(labFrom));
 // every "Start lab" button, on the Labs page and in the Reference
 document.addEventListener('click', e => {
@@ -150,5 +113,4 @@ window.addEventListener('load', () => moveSeg(document.querySelector('.side')));
 
 // ---- start ----
 renderDashboard('dash-domains', false);
-renderDashboard('trouble-domains', true);
 markLevel();

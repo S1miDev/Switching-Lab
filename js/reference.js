@@ -1,12 +1,15 @@
-// Reference page: what to know about each CCNA topic, its commands, and a link to its lab if it has one.
-// The rows and topic pages are built from CATALOGUE (js/topics.js), looked up by id.
+// Reference page: what to know about each topic of the page's track, its commands, and a link to its lab if it has one.
+// The rows and topic pages are built from the track's CATALOGUE, looked up by id; the labels come from its REF_TEXT.
+
+// the text the search boxes (here and on the Labs page) match: id, name and keywords, in lower case
+const searchText = id => [id, CATALOGUE[id].name, ...CATALOGUE[id].keywords].join(' ').toLowerCase();
 
 // One group per refGroup, in REF_GROUPS order; the first group starts open
 function renderReference() {
   document.getElementById('ref-groups').innerHTML = REF_GROUPS.map((group, g) => {
     const ids = Object.keys(CATALOGUE).filter(id => CATALOGUE[id].refGroup === group);
     return `<details class="domain"${g ? '' : ' open'}>` +
-      `<summary><span class="dom-title">${esc(group)}</span><span class="dom-meta">${topicCount(ids.length)}</span></summary>` +
+      `<summary><span class="dom-title">${esc(tr(group))}</span></summary>` +
       '<div class="rows">' +
       ids.map(id => `<div class="row ref-item" role="button" tabindex="0" data-topic="${id}">` +
         `<div class="row-title">${esc(CATALOGUE[id].name)}</div><div class="row-desc">${esc(CATALOGUE[id].ref.summary)}</div></div>`).join('') +
@@ -25,27 +28,27 @@ function showRef(card) {
   const commandRows = info.commands.map(([cmd, mode, purpose]) => `<tr><td>${code(cmd)}</td><td>${esc(mode)}</td><td>${esc(purpose)}</td></tr>`);
 
   $('ref-detail').innerHTML =
-    '<button class="ghost" id="ref-back">Back to reference</button>' +
+    `<button class="ghost" id="ref-back">${L('Back to reference', 'Zpět na přehled')}</button>` +
     '<span class="ref-nav">' +
-      `<button class="ghost" data-ref="${i - 1}"${i > 0 ? '' : ' disabled'}>← Previous</button>` +
-      `<button class="ghost" data-ref="${i + 1}"${i < cards.length - 1 ? '' : ' disabled'}>Next →</button>` +
+      `<button class="ghost" data-ref="${i - 1}"${i > 0 ? '' : ' disabled'}>${L('← Previous', '← Předchozí')}</button>` +
+      `<button class="ghost" data-ref="${i + 1}"${i < cards.length - 1 ? '' : ' disabled'}>${L('Next →', 'Další →')}</button>` +
     '</span>' +
-    `<p class="ref-eyebrow">${esc(topic.refGroup)}</p><h2>${esc(topic.name)}</h2><p class="ref-intro">${esc(info.intro)}</p>` +
-    `<h3 class="ref-h">What you need to know</h3><ul class="ref-list">${items(info.know)}</ul>` +
-    '<h3 class="ref-h">Configuration commands</h3>' +
-    '<table class="ref-table"><thead><tr><th>Command</th><th>Mode</th><th>Purpose</th></tr></thead>' +
+    `<p class="ref-eyebrow">${esc(tr(topic.refGroup))}</p><h2>${esc(topic.name)}</h2><p class="ref-intro">${esc(info.intro)}</p>` +
+    `<h3 class="ref-h">${L('What you need to know', 'Co potřebuješ vědět')}</h3><ul class="ref-list">${items(info.know)}</ul>` +
+    `<h3 class="ref-h">${esc(REF_TEXT.commands)}</h3>` +
+    `<table class="ref-table"><thead><tr><th>${L('Command', 'Příkaz')}</th><th>${esc(REF_TEXT.mode)}</th><th>${L('Purpose', 'Účel')}</th></tr></thead>` +
       `<tbody>${commandRows.join('')}</tbody>` +
     '</table>' +
     '<div class="ref-two">' +
-      `<div><h3 class="ref-h">Verify it</h3><ul class="ref-list ref-verify">${items(info.verify, code)}</ul></div>` +
-      `<div><h3 class="ref-h">Common mistakes</h3><ul class="ref-list ref-warn">${items(info.mistakes)}</ul></div>` +
+      `<div><h3 class="ref-h">${L('Verify it', 'Ověření')}</h3><ul class="ref-list ref-verify">${items(info.verify, code)}</ul></div>` +
+      `<div><h3 class="ref-h">${L('Common mistakes', 'Časté chyby')}</h3><ul class="ref-list ref-warn">${items(info.mistakes)}</ul></div>` +
     '</div>' +
     (topic.labLevels.length
       ? '<div class="ref-cta">' +
-          `<div><strong>${esc(info.cta)}</strong><p>Generated labs, graded against the simulated network state.</p></div>` +
-          `<button data-start="${esc(id)}">Start lab →</button>` +
+          `<div><strong>${esc(info.cta)}</strong><p>${esc(REF_TEXT.graded)}</p></div>` +
+          `<button data-start="${esc(id)}">${L('Start lab →', 'Spustit lab →')}</button>` +
         '</div>'
-      : '<p class="note">No lab for this topic yet.</p>');
+      : `<p class="note">${L('No lab for this topic yet.', 'K tomuto tématu zatím lab není.')}</p>`);
   document.querySelector('#ref .domains').hidden = true;
   $('ref-detail').hidden = false;
   window.scrollTo(0, 0);
@@ -104,7 +107,7 @@ function commandIndex() {
   Object.keys(CATALOGUE).forEach(id => {
     const topic = CATALOGUE[id];
     topic.ref.commands.forEach(([cmd, mode, purpose]) => rows.push({id, cmd, mode, purpose, topic: topic.name}));
-    topic.ref.verify.forEach(cmd => rows.push({id, cmd, mode: 'privileged exec', purpose: 'Verify the configuration.', topic: topic.name}));
+    topic.ref.verify.forEach(cmd => rows.push({id, cmd, mode: REF_TEXT.verifyMode, purpose: REF_TEXT.verifyPurpose, topic: topic.name}));
   });
   return rows.sort((a, b) => modeRank(a.mode) - modeRank(b.mode));
 }
@@ -125,9 +128,9 @@ $('cmd-search').addEventListener('input', e => {
   });
   $('cmd-empty').hidden = !!shown;
   $('cmd-table').hidden = !shown;
-  $('cmd-count').textContent = `${shown} of ${COMMANDS.length} commands`;
+  $('cmd-count').textContent = L(`${shown} of ${COMMANDS.length} commands`, `${shown} z ${COMMANDS.length} příkazů`);
 });
-$('cmd-count').textContent = `${COMMANDS.length} commands`;
+$('cmd-count').textContent = L(`${COMMANDS.length} commands`, `${COMMANDS.length} ${cz(COMMANDS.length, 'příkaz', 'příkazy', 'příkazů')}`);
 
 // Open a topic by click, Enter or Space. (The lab button inside a topic is handled in script.js.)
 const refPage = document.getElementById('ref');

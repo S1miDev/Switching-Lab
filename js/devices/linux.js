@@ -1,0 +1,130 @@
+// Linux lab host: an Ubuntu machine with a bash prompt (js/linux/bash.js) on a simulated system (js/linux/fs.js).
+// Its node carries the lab's set-up as init, so a Reset builds the same system again. Its state is the system itself,
+// which the Linux lab requirements read (js/linux/labs.js).
+//
+// A prompt (sudo, su, passwd, apt's yes/no) is st.askPw = {prompt, tries, check(answer), then(print, answer), fail(print),
+// retry, hidden}: the next line typed answers it, and the console hides it (asksPassword) unless hidden is false.
+// sudo asks once per lab, like sudo's credential cache.
+
+function createLinux(node, session) {
+  const st = lxState(node.init);
+  const home = () => st.users[st.user].home;
+  const where = () => (st.cwd === home() ? '~' : st.cwd.startsWith(home() + '/') ? '~' + st.cwd.slice(home().length) : st.cwd);
+
+  // sudo's password for the user typing, then the line runs
+  function askSudo(line, print) {
+    st.askPw = {
+      prompt: `[sudo] password for ${st.user}:`, tries: 3, retry: 'Sorry, try again.',
+      check: pw => pw === st.users[st.user].pw,
+      then: out => { st.sudoOk = true; lxRun(st, line, out); },
+      // shortcut: the whole line is dropped after three wrong passwords; real bash carries on after a ; or ||
+      fail: out => { out('sudo: 3 incorrect password attempts', 'ln-err'); st.status = 1; },
+    };
+  }
+
+  // the typed line answers the open password prompt
+  function answer(line, print) {
+    const ask = st.askPw;
+    if (ask.check(line)) { st.askPw = null; return ask.then(print, line); }
+    if (--ask.tries > 0) return print(ask.retry, 'ln-err');
+    st.askPw = null;
+    ask.fail(print);
+  }
+
+  const commandNames = () => [...new Set([...Object.keys(LX_BUILTINS), ...Object.keys(LINUX_CMDS)])].sort();
+  const escape = name => name.replace(/([ '"\\$&;|<>()*?[\]#!])/g, '\\$1');
+
+  // an unclosed ' or " in the line: {at, q}, or null
+  function openQuote(line) {
+    let q = null, at = -1;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '\\' && q !== "'") i++;
+      else if (!q && (c === "'" || c === '"')) { q = c; at = i; }
+      else if (c === q) q = null;
+    }
+    return q ? {at, q} : null;
+  }
+
+  // Tab: the first word against the commands, later words against the paths (shown with \ before a space, like bash;
+  // inside an open quote the names go in as they are, and a file closes the quote)
+  function complete(line) {
+    if (st.askPw) return {value: line}; // never complete (or reveal) a hidden password
+    const open = openQuote(line);
+    if (open) {
+      const inside = line.slice(open.at + 1), {q} = open;
+      const wrap = t => q + (q === '"' ? t.replace(/(["\\$`])/g, '\\$1') : t);
+      return pathsAndCommands(line, line.slice(0, open.at), q === '"' ? inside.replace(/\\(["\\$`])/g, '$1') : inside, wrap, q);
+    }
+    const m = /^(.*?)((?:\\.|[^\s\\])*)$/.exec(line);
+    return pathsAndCommands(line, m[1], m[2].replace(/\\(.)/g, '$1'), escape, '');
+  }
+
+  // complete typed (the last word, without its quoting) after before; wrap writes a name back, close ends a file's word
+  function pathsAndCommands(line, before, typed, wrap, close) {
+    const first = !before.trim() || /(?:[|;&]|&&|\|\|)\s*$/.test(before) || /^\s*sudo\s+$/.test(before);
+    let hits;
+    if (first && !typed.includes('/')) hits = commandNames().filter(n => n.startsWith(typed)).map(n => ({name: n, text: n, dir: false}));
+    else {
+      const slash = typed.lastIndexOf('/'), dirPart = typed.slice(0, slash + 1), stem = typed.slice(slash + 1);
+      const dirAbs = lxPath(st, (dirPart.startsWith('~') ? home() + dirPart.slice(1) : dirPart) || '.');
+      const dir = lxFind(st, dirAbs);
+      hits = dir?.type === 'dir' && lxMay(st, st.user, dir, 'r')
+        ? Object.keys(dir.children).filter(n => n.startsWith(stem) && (stem.startsWith('.') || !n.startsWith('.'))).sort(lxCollate)
+          .map(n => ({name: n, text: dirPart + n, dir: dir.children[n].type === 'dir'}))
+        : [];
+    }
+    if (!hits.length) return {value: line};
+    if (hits.length === 1) return {value: before + wrap(hits[0].text) + (hits[0].dir ? '/' : close + ' ')};
+    let common = hits[0].text;
+    for (const h of hits) while (!h.text.startsWith(common)) common = common.slice(0, -1);
+    if (common.length > typed.length) return {value: before + wrap(common)};
+    return {value: line, list: hits.map(h => h.name).join('  ')};
+  }
+
+  const self = defineDevice({
+    name: node.id, type: node.type, configurable: true, state: st, questionHelp: false,
+    asksPassword: () => !!st.askPw && st.askPw.hidden !== false,
+    prompt: () => (st.askPw ? st.askPw.prompt : `${st.user}@${st.host}:${where()}${st.user === 'root' ? '#' : '$'}`),
+    run(line, raw) {
+      const print = (text, cls) => raw(text || ' ', cls); // an empty console line would collapse; a space keeps it
+      if (st.askPw) return answer(line, print);
+      if (lxNeedsSudo(st, line)) return askSudo(line, print);
+      lxRun(st, line, print);
+    },
+    // runOn sends "help", a lone "?" and every line ending in "?" here: in bash "?" is a glob, so only the first two
+    // list the commands; any other line runs as bash
+    help(line, print) {
+      if (line === '?' && !st.askPw) lxRun(st, 'help', print); // at a prompt, ? is an answer like any other
+      else self.run(line, print);
+    },
+    complete,
+    hints: {
+      nudge(cmd) {
+        const first = cmd.split(/\s+/)[0];
+        return LINUX_HINTS.nudge(st.user, where(), first, first === 'sudo' && st.user !== 'root');
+      },
+      // the synopsis of every command in the line (a pipeline shows each one), or null for a line that is no command
+      syntax(cmd) {
+        const p = lxParse(cmd), text = w => w?.map(s => s.text).join('');
+        const names = p.error ? [] : p.list.flatMap(i => i.pipeline.map(c => (text(c.words[0]) === 'sudo' ? text(c.words[1]) : text(c.words[0]))));
+        return [...new Set(names)].map(n => LINUX_CMDS[n]?.synopsis || LX_SYNOPSIS[n]).filter(Boolean).join(' | ') || null;
+      },
+      recheck: LINUX_HINTS.recheck,
+    },
+    banner: () => [
+      'Welcome to Ubuntu 24.04.1 LTS (GNU/Linux 6.8.0-45-generic x86_64)', ' ',
+      ' * This terminal simulates the commands listed by help.',
+      ' * Tab completes, Up/Down for history.',
+    ],
+    ports: () => [], // no network interfaces in version 1
+  });
+  return self;
+}
+DEVICE_TYPES.linux = createLinux;
+
+// the synopses of the shell builtins (the commands carry their own)
+const LX_SYNOPSIS = {
+  cd: 'cd [DIR]', pwd: 'pwd', echo: 'echo [-n] [TEXT]...', umask: 'umask [-S] [MODE]', jobs: 'jobs [-l]',
+  kill: 'kill [-SIGNAL] PID|%JOB...', exit: 'exit', help: 'help', sudo: 'sudo COMMAND [ARG]...', su: 'su [-]',
+};

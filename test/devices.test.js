@@ -16,6 +16,15 @@ test('router modes change the prompt', () => {
   session.run('R1', 'end');
 });
 
+test('a device asks for a password when its prompt is Password:', () => {
+  const s = get('createSession')({topic: 'vlans', level: 'beginner', net: 6});
+  for (const l of ['en', 'conf t', 'enable secret class', 'end', 'disable']) s.run('R1', l);
+  assert.equal(s.devices.R1.asksPassword(), false);
+  s.run('R1', 'enable');
+  assert.equal(s.devices.R1.asksPassword(), true);
+  assert.equal(s.devices.R1.questionHelp, true);
+});
+
 test('unknown commands are refused', () => {
   assert.match(texts('R1', 'bogus').join('\n'), /^%/);
   assert.match(texts('PC1', 'bogus').join('\n'), /^%/);

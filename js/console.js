@@ -3,6 +3,7 @@
 //
 //   labConsole.show(session, onCommand)  show a session with empty consoles, opened on session.home; after every typed
 //                                        command onCommand() runs and may return more lines [{text, cls}] to print
+//   labConsole.say(lines)                print lines [{text, cls}] on the open device's console
 const labConsole = (() => {
   const term = $('term'), input = $('cmd'), promptEl = $('prompt');
   let session = null;       // the session shown
@@ -29,7 +30,7 @@ const labConsole = (() => {
     term.scrollTop = term.scrollHeight;
   }
 
-  const asksPassword = () => active().prompt() === 'Password:';
+  const asksPassword = () => active().asksPassword();
   const renderPrompt = () => {
     promptEl.textContent = active().prompt();
     input.type = asksPassword() ? 'password' : 'text';
@@ -94,7 +95,7 @@ const labConsole = (() => {
   }
 
   input.addEventListener('keydown', e => {
-    if (e.key === '?' && active().configurable) { // like IOS: show the options at once and keep what was typed
+    if (e.key === '?' && active().configurable && active().questionHelp) { // like IOS: show the options at once and keep what was typed
       e.preventDefault();
       const typed = input.value;
       echo(typed + '?');
@@ -134,5 +135,5 @@ const labConsole = (() => {
   });
   term.addEventListener('click', () => input.focus());
 
-  return {show, sync, current: () => dev, open: name => session && session.devices[name] && showDevice(name)};
+  return {show, sync, say: printAll, current: () => dev, open: name => session && session.devices[name] && showDevice(name)};
 })();
