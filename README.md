@@ -20,6 +20,9 @@ The bash command line on a simulated Ubuntu 24.04: **9 topics** at **4 difficult
 
 ## 🧪 Labs
 Practise switching and routing along the CCNA syllabus: **38 topics** at **4 difficulties** (Beginner, Intermediate, Advanced, Expert).
+- **Hints** – up to 3 per requirement: the first points to the device and mode, the second shows the syntax, the third the remaining commands. Hints react to what you have already typed
+- **Hint cost** – each hint used lowers the score by 2 / 4 / 6 / 8 percentage points by difficulty
+- **Check** – shows the score, time, hints used, the state of every requirement and the reference solution
 
 ## 🛠️ Troubleshooting
 Broken networks for you to fix. There are **5** topics, each at **4 difficulties**:
@@ -49,13 +52,15 @@ A free space where you build your own topology and configure it from the console
 ## 📝 Mock exam *(beta)*
 A test made of random labs (at least one lab from each chosen topic): by difficulty, or your own mix (number of labs, difficulty, topics).
 - The **time limit** is optional: 5, 8, 12 or 15 minutes per lab by difficulty (Beginner to Expert)
+- **No help** – the test has no hints, command list or solutions
 - **Grading:** you pass at 80%
 
 ## 🎓 CCNA
-Multiple-choice tests following the official CCNA courses.
-- Currently **CCNA 2 v7 (SRWE) Modules 1-4 Checkpoint Exam**: 33 questions drawn at random from a bank of 68
-- Some questions have more than one correct answer (tick them all) and some include a picture
-- **Grading:** you pass at 80%
+Multiple-choice tests following the official CCNA courses. Currently **CCNA 2 v7 (SRWE) Modules 1-4 Checkpoint Exam** with a bank of 75 questions, and the Modules 5-6 Redundant Networks Exam:
+- **Start exam** – 33 random questions, you pass at 80%
+- **Practice** – all 75 questions one by one; after **Check** you see the correct answer and move on
+- **See questions** – browse all questions with their correct answers
+- **Question types** – one or several correct answers, and matching or ordering with drop-down menus; some questions have a picture
 
 ## 📖 Reference
 Stuck on a lab? The **CCNA command reference** has the commands, the mode each one is typed in, what it does, some theory and the most common mistakes. Topics are grouped by CCNA area, and all commands can be searched in one list. It also covers Structured troubleshooting: how to hunt down faults.

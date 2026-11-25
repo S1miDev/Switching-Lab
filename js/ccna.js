@@ -92,6 +92,25 @@ const CCNA_EXAMS = [{
       rows: [['a client initiating a message to find a DHCP server', 'DHCPDISCOVER'], ['a DHCP server responding to the initial request by a client', 'DHCPOFFER'], ['the client accepting the IP address provided by the DHCP server', 'DHCPREQUEST'], ['the DHCP server confirming that the address lease has been accepted', 'DHCPACK']],
       extra: ['DHCPNACK']},
   ],
+}, {
+  id: 'srwe-5-6',
+  title: 'CCNA 2 v7 (SRWE) Modules 5-6 Redundant Networks Exam',
+  desc: 'Spanning Tree Protocol and EtherChannel.',
+  count: 12,
+  questions: [
+    ['What additional information is contained in the 12-bit extended system ID field of a BPDU?', ['MAC address', 'VLAN ID', 'IP address', 'port ID'], [1]],
+    ['What is the first step of the spanning-tree election process after switches reboot?', ['Switches with lower root IDs stop sending BPDUs.', 'All switches send out BPDUs advertising themselves as the root bridge.', 'The best path to the root is selected.', 'Redundant ports are blocked.'], [1]],
+    ['Which port role is assigned to a switch port if there is no other port with a lower cost to the root bridge?', ['designated port', 'root port', 'alternate port', 'disabled port'], [1]],
+    ['Which three components are combined to form a bridge ID? (Choose three.)', ['extended system ID', 'cost', 'IP address', 'bridge priority', 'MAC address', 'port ID'], [0, 3, 4]],
+    ['Which two PVST states are used to learn MAC addresses and process BPDUs? (Choose two.)', ['disabled', 'forwarding', 'listening', 'blocking', 'learning'], [1, 4]],
+    ['Three ports on a switch are forwarding in VLAN 33. Which two port roles could they hold? (Choose two.)', ['alternate', 'designated', 'disabled', 'blocked', 'root'], [1, 4]],
+    ['Which spanning-tree standard supports only one root bridge for all VLANs?', ['PVST+', '802.1D', 'MST', 'Rapid PVST'], [1]],
+    ['What are two drawbacks of turning off spanning tree in a switched network? (Choose two.)', ['The MAC address table becomes unstable.', 'The switch behaves like a hub.', 'Port security becomes unstable.', 'Broadcast frames are transmitted indefinitely.', 'Port security shuts down the ports.'], [0, 3]],
+    ['Which priority value makes a switch the most likely to become the root bridge?', ['1', '28672', '32768', '34816', '61440'], [1]],
+    ['Which two requirements must be met to bundle switch links into an EtherChannel? (Choose two.)', ['All links must use the same speed.', 'All links must be in different VLANs.', 'The links must have different allowed VLAN ranges.', 'All links must use the same duplex.', 'The links must be contiguous interfaces.'], [0, 3]],
+    ['Which two parameters must match on all interfaces for PAgP to form an EtherChannel? (Choose two.)', ['port ID', 'PAgP mode', 'MAC address', 'speed', 'VLAN information'], [3, 4]],
+    ['Which spanning-tree bridge priority is the least likely to become the root bridge?', ['65535', '4096', '32768', '61440'], [3]],
+  ],
 }];
 
 const ccnaCard = $('ccna-card');

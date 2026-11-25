@@ -32,6 +32,7 @@ function moveSeg(seg) {
   if (!active || !active.offsetWidth) return;
   seg.style.setProperty('--x', active.offsetLeft + 'px');
   seg.style.setProperty('--w', active.offsetWidth + 'px');
+  seg.style.setProperty('--h', active.offsetHeight + 'px'); // only the navbar highlight uses it
   requestAnimationFrame(() => seg.classList.add('ready')); // animate from the second move on
 }
 
@@ -72,6 +73,7 @@ function show(view) {
     if (v.nav) $(v.nav).classList.toggle('active', name === lit);
   }
   if (VIEWS[view].seg) moveSeg($(VIEWS[view].seg));
+  moveSeg(document.querySelector('.side'));
   if (view === 'ref') refHome();
   window.scrollTo(0, 0);
   if (view === 'lab') $('cmd').focus();
@@ -105,7 +107,9 @@ $('new-net').addEventListener('click', () => newLab());
 
 window.addEventListener('resize', () => {
   for (const v of Object.values(VIEWS)) if (v.seg) moveSeg($(v.seg));
+  moveSeg(document.querySelector('.side'));
 });
+window.addEventListener('load', () => moveSeg(document.querySelector('.side'))); // after fonts, so widths are final
 
 // ---- start ----
 renderDashboard('dash-domains', false);

@@ -144,6 +144,30 @@
     @apply flex h-16 items-center gap-1 overflow-x-auto border-b border-border bg-bg px-8;
   }
 
+  /* moveSeg() slides this highlight under the active nav item */
+  .side {
+    @apply sticky top-0 z-6;
+  }
+
+  .side::before {
+    content: "";
+    @apply absolute left-0 rounded-lg bg-accent-tint;
+    top: calc(50% - var(--h, 0px) / 2);
+    width: var(--w, 0);
+    height: var(--h, 0);
+    transform: translateX(var(--x, 0));
+  }
+
+  .side.ready::before {
+    transition: transform .3s cubic-bezier(.4, 0, .2, 1), width .3s cubic-bezier(.4, 0, .2, 1);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .side.ready::before {
+      transition: none;
+    }
+  }
+
   .brand {
     @apply m-0 mr-5 flex cursor-pointer items-center gap-2 border-0 bg-none p-0 font-mono text-[18px] font-semibold whitespace-nowrap text-inherit;
     background-color: transparent;
@@ -157,6 +181,8 @@
   }
 
   .nav-item {
+    @apply relative z-1;
+    transition: color .3s;
     flex: none;
     font-weight: 500;
     color: var(--color-muted);
@@ -173,7 +199,6 @@
   }
 
   .nav-item.active {
-    background: var(--color-accent-tint);
     color: var(--color-accent);
   }
 
