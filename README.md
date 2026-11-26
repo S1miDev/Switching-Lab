@@ -72,14 +72,6 @@ Log in to track your progress:
 - **Profile**: name, accent colour and password change
 - Progress is saved to your account, so it is there on other devices after you log in
 
-## 🎨 Styles
-All styling is **Tailwind CSS** (v4, CLI). The source is `css/input.css`; the pages load only `css/output.css`.
-- Colours and fonts are theme tokens in `@theme` (`--color-*`, `--font-*`), so you write `bg-surface`, `text-muted`, `border-border`, `text-accent`
-- Static markup and JS templates both use utility classes
-- `@layer components` in `css/input.css` is only for pieces JS builds over and over, or things utilities can't do (keyframes, `::before`, SVG, `details`)
-- No new `.css` files, no `<style>` blocks and no inline `style`, except values JS computes at run time
-- Netlify builds nothing, so after any change to styles, markup or classes in JS, run `npm run build:css` and commit `css/output.css` too
-
 ## 🌍 Translations
 Each text sits next to its Czech version: `L('English', 'Česky')` in JS and data files, and `data-i18n` on markup with the Czech in `CS` in `js/i18n.js`. Missing Czech falls back to English. `npm test` checks that every page text has its Czech and that every lab passes in both languages.
 
