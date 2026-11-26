@@ -4,9 +4,9 @@
  
 Webové virtuální prostředí na procvičování příkazové řádky. Má dvě části: **Switching a routing** ve stylu Cisco labů a **Linux** na simulovaném terminálu Ubuntu. Vybereš si obtížnost, spustíš lab a pracuješ přímo v prohlížeči. Lab se hodnotí už během psaní.
  
-🔗 **Živá verze:** https://switching-lab.netlify.app/
+🔗 **Živá verze:** https://ls-labbing.netlify.app/index.html
  
-<img width="1877" height="957" alt="image" src="https://github.com/user-attachments/assets/8a31d814-0a5e-4f49-908d-466597cb847e" />
+<img width="1271" height="728" alt="image" src="https://github.com/user-attachments/assets/4fac6213-1197-4a35-85cd-0b4915d109b3" />
 
 ## 🌐 Jazyk
 Web je česky i anglicky. Přepínač **CZ / EN** je v horní liště každé stránky. Při první návštěvě se jazyk řídí prohlížečem, potom tvou volbou (po přihlášení se ukládá k účtu). Výpisy zařízení, příkazy a otázky CCNA zůstávají anglicky, stejně jako na skutečných zařízeních a v oficiálních kurzech.
