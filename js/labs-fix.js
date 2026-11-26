@@ -18,7 +18,7 @@ const TRUNKFIX = {
     sub: L('S2 does not trunk: fix its side of the link', 'S2 netvoří trunk: oprav jeho stranu linky'),
     steps: [L('On S2, run show interfaces trunk: Gi0/1 is missing.', 'Na S2 spusť show interfaces trunk: Gi0/1 chybí.'), L('Check Gi0/1 in show running-config on S2.', 'Zkontroluj Gi0/1 v show running-config na S2.'), L('Make S2 Gi0/1 a trunk.', 'Nastav S2 Gi0/1 jako trunk.')],
     setup: [['S1', [...SW2_BASE, ...uplink('switchport mode trunk')]], ['S2', [...SW2_BASE, ...uplink('switchport mode access')]]],
-    reqs: bothTrunk,
+    reqs: [...bothTrunk, pcPings('PC1', 'PC2')],
     then: [onDev('S2', ...onIf('gi0/1', 'switchport mode trunk'))],
   },
   intermediate: {
@@ -43,9 +43,61 @@ const TRUNKFIX = {
       L('Then turn off DTP on both ends with switchport nonegotiate (it is refused while the port is dynamic).', 'Pak na obou koncích vypni DTP příkazem switchport nonegotiate (na dynamickém portu ho switch odmítne).')],
     setup: ['S1', 'S2'].map(d => [d, [...SW2_BASE, ...uplink('switchport mode dynamic auto', 'switchport trunk native vlan 99',
       'switchport trunk allowed vlan 10,20,99')]]),
-    reqs: [...bothTrunk, ...bothNative, ...bothAllowed, ...bothNoneg],
+    reqs: [...bothTrunk, ...bothNative, ...bothAllowed, ...bothNoneg, pcPings('PC1', 'PC2')],
     cmds: onIf('gi0/1', 'switchport mode trunk', 'switchport nonegotiate'),
     then: [onDev('S2', ...onIf('gi0/1', 'switchport mode trunk', 'switchport nonegotiate'))],
+  },
+};
+
+// 2.0 VLAN troubleshooting on the same diagram: the symptom is PC1 failing to ping PC2
+const VLANFIX_LEAD = L('PC1 on S1 Fa0/1 and PC2 on S2 Fa0/1 both belong in VLAN 10, but PC1 cannot ping 192.168.10.2. S1 Gi0/1 to S2 Gi0/1 should be a trunk. Find the fault and fix it.',
+  'PC1 na S1 Fa0/1 i PC2 na S2 Fa0/1 patří do VLAN 10, ale PC1 nepingne 192.168.10.2. Linka S1 Gi0/1 – S2 Gi0/1 má být trunk. Najdi chybu a oprav ji.');
+// a working setup of one switch, with the faults of a level: the PC port's VLAN, the trunk's allowed list and its mode
+const vlanSetup = ({vlan = 10, allowed, mode = 'trunk'} = {}) => [...SW2_BASE, ...onIf('fa0/1', `switchport access vlan ${vlan}`),
+  ...uplink(`switchport mode ${mode}`, ...(allowed ? [`switchport trunk allowed vlan ${allowed}`] : []))];
+const VLANFIX_ALL = [
+  ...['S1', 'S2'].flatMap(d => [
+    devReq(d, 'fa0/1', L('is an access port in VLAN 10', 'je access port ve VLAN 10'), q => q.mode === 'access' && q.vlan === 10, 'switchport access vlan 10'),
+    devReq(d, 'gi0/1', L('is a trunk', 'je trunk'), q => q.mode === 'trunk', 'switchport mode trunk'),
+    devReq(d, 'gi0/1', L('allows VLAN 10', 'povoluje VLAN 10'), q => !q.allowed || q.allowed.includes(10), 'switchport trunk allowed vlan add 10'),
+  ]),
+  pcPings('PC1', 'PC2'),
+];
+const VLAN_PING_STEP = L('On PC1, run ping 192.168.10.2 to see the fault.', 'Na PC1 spusť ping 192.168.10.2 a uvidíš chybu.');
+const VLANFIX = {
+  beginner: {
+    sub: L('One PC port is in the wrong VLAN', 'Jeden port PC je ve špatném VLANu'),
+    steps: [VLAN_PING_STEP, L('Run show vlan brief on both switches: which VLAN is each Fa0/1 in?', 'Spusť show vlan brief na obou switchích: v jakém VLANu je který Fa0/1?'),
+      L('Move the wrong port to VLAN 10, then ping again.', 'Přesuň špatný port do VLAN 10 a pingni znovu.')],
+    setup: [['S1', vlanSetup()], ['S2', vlanSetup({vlan: 20})]],
+    reqs: VLANFIX_ALL,
+    then: [onDev('S2', ...onIf('fa0/1', 'switchport access vlan 10'))],
+  },
+  intermediate: {
+    sub: L('Both PC ports are right, but VLAN 10 does not cross the trunk', 'Oba porty PC jsou správně, ale VLAN 10 neprojde trunkem'),
+    steps: [VLAN_PING_STEP, L('Compare the allowed VLANs in show interfaces trunk on both switches.', 'Porovnej povolené VLANy v show interfaces trunk na obou switchích.'),
+      L('Add VLAN 10 without retyping the list.', 'Přidej VLAN 10 bez přepisování seznamu.')],
+    setup: [['S1', vlanSetup({allowed: '20,99'})], ['S2', vlanSetup()]],
+    reqs: VLANFIX_ALL,
+    cmds: onIf('gi0/1', 'switchport trunk allowed vlan add 10'),
+  },
+  advanced: {
+    sub: L('Two faults: one on each switch', 'Dvě chyby: jedna na každém switchi'),
+    steps: [VLAN_PING_STEP, L('Check the VLAN of each PC port with show vlan brief.', 'Zkontroluj VLAN každého portu PC pomocí show vlan brief.'),
+      L('Check the allowed list at both ends of the trunk: one fix alone does not bring the ping back.', 'Zkontroluj seznam povolených na obou koncích trunku: jedna oprava sama ping neobnoví.')],
+    setup: [['S1', vlanSetup({vlan: 20})], ['S2', vlanSetup({allowed: '20,99'})]],
+    reqs: VLANFIX_ALL,
+    cmds: onIf('fa0/1', 'switchport access vlan 10'),
+    then: [onDev('S2', ...onIf('gi0/1', 'switchport trunk allowed vlan add 10'))],
+  },
+  expert: {
+    sub: L('Three faults between PC1 and PC2', 'Tři chyby mezi PC1 a PC2'),
+    steps: [VLAN_PING_STEP, L('Follow the path of the frame: PC port, trunk on S1, trunk on S2, PC port.', 'Sleduj cestu rámce: port PC, trunk na S1, trunk na S2, port PC.'),
+      L('Use show interfaces gi0/1 switchport to compare both ends of the link, and ping after each fix.', 'Pomocí show interfaces gi0/1 switchport porovnej oba konce linky a po každé opravě pingni.')],
+    setup: [['S1', vlanSetup({allowed: '20,99'})], ['S2', vlanSetup({vlan: 99, mode: 'access'})]],
+    reqs: VLANFIX_ALL,
+    cmds: onIf('gi0/1', 'switchport trunk allowed vlan add 10'),
+    then: [onDev('S2', ...onIf('fa0/1', 'switchport access vlan 10'), ...onIf('gi0/1', 'switchport mode trunk'))],
   },
 };
 
@@ -233,6 +285,7 @@ const ACLFIX = {
 
 Object.assign(LABS, {
   trunkfix: {kind: 'sw2', lead: TRUNKFIX_LEAD, levels: TRUNKFIX},
+  vlanfix: {kind: 'sw2', lead: VLANFIX_LEAD, levels: VLANFIX},
   ospffix: {kind: 'rt', lead: OSPFFIX_LEAD, levels: OSPFFIX},
   intervlanfix: {kind: 'sw', lead: INTERFIX_LEAD, levels: INTERVLANFIX},
   dhcpfix: {kind: 'rt', lead: DHCPFIX_LEAD, levels: DHCPFIX},

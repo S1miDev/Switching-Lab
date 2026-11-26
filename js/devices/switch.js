@@ -386,6 +386,72 @@ function switchport(p, w, out) {
   else out('% Invalid input detected', 'ln-err');
 }
 
+// ---- layer 2: which hosts and gateways a frame reaches ----
+// Worked out on demand from the current configuration. A frame on a cable is untagged (tag null) or tagged with a VLAN.
+// shortcut: no STP blocking, and a switch forwards a VLAN it has not created; extend when a diagram has a transit switch
+
+const portPasses = p => !!p && !p.shut && !p.routed;
+
+// Does port p trunk? other is the switch port at the far end, or null for a router or PC, which never negotiate (DTP)
+function swTrunking(p, other) {
+  if (p.mode !== 'dynamic') return p.mode === 'trunk';
+  if (!other || other.noneg) return false;
+  return other.mode === 'trunk' || (other.mode === 'dynamic' && (p.dtp === 'desirable' || other.dtp === 'desirable'));
+}
+
+// the tag a frame of VLAN vlan leaves port p with, or undefined when p does not send that VLAN
+function swSend(p, trunk, vlan) {
+  if (!trunk) return p.vlan === vlan ? null : undefined;
+  if (p.allowed && !p.allowed.includes(vlan)) return undefined;
+  return vlan === p.native ? null : vlan;
+}
+
+// the VLAN an arriving frame joins on port p, or undefined when p drops it
+function swReceive(p, trunk, tag) {
+  if (!trunk) return tag === null ? p.vlan : undefined;
+  const vlan = tag ?? p.native;
+  return p.allowed && !p.allowed.includes(vlan) ? undefined : vlan;
+}
+
+// Everything a frame from the host cabled to switch name, port key reaches: {pcs: Set of devices, gateways: [L3 interfaces]}
+// shortcut: a gateway is checked in the host's direction only, which differs from the way back only with a native VLAN mismatch
+function l2Reach(session, name, key) {
+  const pcs = new Set(), gateways = [], seen = new Set(), queue = [];
+  const visit = (at, vlan) => {
+    if (vlan !== undefined && !seen.has(at + '/' + vlan)) { seen.add(at + '/' + vlan); queue.push([at, vlan]); }
+  };
+  const first = session.devices[name]?.state?.ports?.[key];
+  if (portPasses(first)) visit(name, swReceive(first, swTrunking(first, null), null));
+  while (queue.length) {
+    const [at, vlan] = queue.shift(), st = session.devices[at].state;
+    const svi = st.l3 ? usable(st.ports['vlan' + vlan]) : null;
+    if (svi) gateways.push(svi);
+    // PCs say where they are cabled themselves (at): a lab link does not name the switch's end of a PC cable
+    for (const d of Object.values(session.devices)) {
+      const [where, port] = (d.state?.at || '').split(' ');
+      const p = where === at ? st.ports[port] : null;
+      if (portPasses(p) && swSend(p, swTrunking(p, null), vlan) === null) pcs.add(d);
+    }
+    for (const [peer, l] of peersOf(session, at)) {
+      const p = st.ports[l.mine.toLowerCase()], theirs = l.theirs?.toLowerCase();
+      if (!portPasses(p)) continue;
+      if (peer.state?.ports) {
+        const q = peer.state.ports[theirs];
+        if (!portPasses(q)) continue;
+        const tag = swSend(p, swTrunking(p, q), vlan);
+        if (tag !== undefined) visit(peer.name, swReceive(q, swTrunking(q, p), tag));
+      } else if (peer.state?.ifs) {
+        const tag = swSend(p, swTrunking(p, null), vlan);
+        if (tag === undefined) continue;
+        // untagged frames reach the physical interface, tagged ones the subinterface of that VLAN (router-on-a-stick)
+        const g = tag === null ? peer.gateway(theirs) : peer.vlanGateway(theirs, tag);
+        if (g) gateways.push(g);
+      }
+    }
+  }
+  return {pcs, gateways};
+}
+
 // A switch in the lab: the node's id is its hostname. l3 makes it a multilayer switch; keys are its Tab commands.
 function createSwitch(node, session, {l3 = false, keys = SW_KEYS} = {}) {
   const st = freshSw(node.id, l3);
@@ -394,20 +460,8 @@ function createSwitch(node, session, {l3 = false, keys = SW_KEYS} = {}) {
     prompt: () => st.host + SUFFIX[st.mode],
     ports: () => Object.values(st.ports),
     routes: () => st.routing,
-    // The interface a host on port key uses as its gateway: the VLAN's SVI on a multilayer switch, otherwise the router's
-    // subinterface for the VLAN, over a trunk port that is cabled to that router (router-on-a-stick)
-    gateway(key) {
-      const p = st.ports[key];
-      if (!p || p.shut || p.mode === 'trunk' || p.routed) return null;
-      if (st.l3) return usable(st.ports['vlan' + p.vlan]);
-      for (const [peer, l] of peersOf(session, node.id)) {
-        const up = st.ports[l.mine.toLowerCase()];
-        if (!up || up.mode !== 'trunk' || up.shut || (up.allowed && !up.allowed.includes(p.vlan))) continue;
-        const g = peer.vlanGateway?.(l.theirs.toLowerCase(), p.vlan);
-        if (g) return g;
-      }
-      return null;
-    },
+    // the first L3 interface a host on port key reaches: an SVI, or a router's interface or subinterface
+    gateway: key => l2Reach(session, node.id, key).gateways[0] || null,
     run: (line, out) => runSw(st, line, out),
     complete: line => iosComplete(line, keys[st.mode], st.mode, self.ports()),
     help: (line, out) => helpFor(line, SWITCH_HELP[st.mode], st.mode, 's', out),

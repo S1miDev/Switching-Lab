@@ -791,7 +791,8 @@ function createRouter(node, session) {
     routes: () => true,
     pools: () => Object.values(st.dhcp).map(p => ({...p, ex: st.dhcpEx})),
     // the subinterface of a VLAN, for a switch trunked to the physical interface key (router-on-a-stick)
-    vlanGateway: (key, vlan) => (st.ifs[key].shut ? null : usable(Object.values(st.ifs).find(i => i.encap === vlan))),
+    vlanGateway: (key, vlan) => (!st.ifs[key] || st.ifs[key].shut ? null
+      : usable(Object.entries(st.ifs).find(([k, i]) => k.startsWith(key + '.') && i.encap === vlan)?.[1])),
     run: (line, out) => runRouter(st, node.id, session, line, out),
     complete: line => iosComplete(line, ROUTER_KEYS[st.mode], st.mode, self.ports()),
     help: (line, out) => helpFor(line, routerHelpEntry(st), st.mode, 'r', out),
