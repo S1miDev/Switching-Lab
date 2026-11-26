@@ -62,6 +62,31 @@ test('a port is connected only when something is cabled to it', () => {
   }
 });
 
+test('show commands naming a VLAN do not create or misreport an SVI', () => {
+  const s = createSession({topic: 'vlans', level: 'beginner', net: 5});
+  const config = () => show(s, 'S1', 'show running-config');
+  const before = config();
+  for (const l of ['show interfaces vlan 10', 'show interfaces vlan10', 'show port-security interface vlan 10']) {
+    assert.match(show(s, 'S1', l), /Invalid input/, l);
+  }
+  assert.strictEqual(config(), before);
+});
+
+test('no switchport port-security turns it off, and bouncing the port then recovers it', () => {
+  const s = working();
+  conf(s, 'S1', 'int fa0/1', 'switchport port-security mac-address 0050.7966.9999');
+  conf(s, 'S1', 'int fa0/1', 'no switchport port-security', 'shutdown', 'no shutdown');
+  assert.strictEqual(portLink(s, 'S1', 'fa0/1').state, 'connected');
+  assert.ok(pings(s));
+});
+
+test('a gigabit link forced to half duplex runs at 100 Mbit/s', () => {
+  const s = working();
+  conf(s, 'S1', 'int gi0/1', 'duplex full');
+  conf(s, 'S2', 'int gi0/1', 'duplex half');
+  for (const dev of ['S1', 'S2']) assert.strictEqual(portLink(s, dev, 'gi0/1').speed, 100, dev);
+});
+
 test('speed and duplex refuse what the port cannot do', () => {
   const s = working();
   for (const l of ['enable', 'conf t', 'int fa0/1']) s.run('S1', l);

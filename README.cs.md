@@ -27,8 +27,8 @@ Procvičování switchingu a routingu podle osnovy CCNA: **38 témat** ve **4 ob
 ## 🛠️ Troubleshooting
 Najdeš tu rozbité sítě, které musíš opravit. Témat je **7** a každé je ve **4 obtížnostech**:
 - Interface troubleshooting
-- VLAN troubleshooting
 - Trunk troubleshooting
+- VLAN troubleshooting
 - Inter-VLAN troubleshooting
 - OSPF troubleshooting
 - DHCP troubleshooting

@@ -27,8 +27,8 @@ Practise switching and routing along the CCNA syllabus: **38 topics** at **4 dif
 ## 🛠️ Troubleshooting
 Broken networks for you to fix. There are **7** topics, each at **4 difficulties**:
 - Interface troubleshooting
-- VLAN troubleshooting
 - Trunk troubleshooting
+- VLAN troubleshooting
 - Inter-VLAN troubleshooting
 - OSPF troubleshooting
 - DHCP troubleshooting

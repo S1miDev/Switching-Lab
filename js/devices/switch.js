@@ -290,10 +290,12 @@ function swShow(s, args, out, wire) {
   if (pick(args[0], ['interfaces']) && pick(args[1], ['status']) && pick(args[2], ['err-disabled'])) return swErrDisabled(s, out);
   if (pick(args[0], ['interfaces']) && pick(args[1], ['status'])) return swStatus(s, out, wire.link);
   if (pick(args[0], ['interfaces']) && args.length === 1) return swPhysical(s).forEach(([key, p]) => swInterface(p, wire.link(key), out));
-  const named = pick(args[0], ['interfaces']) ? swKey(s, args.slice(1).join('')) : null;
+  // the physical port named from args[from] on; naming an SVI to swKey would create it
+  const portArg = from => (/^v/.test(args[from] || '') ? null : swKey(s, args.slice(from).join('')));
+  const named = pick(args[0], ['interfaces']) ? portArg(1) : null;
   if (named) return swInterface(s.ports[named], wire.link(named), out);
   if (pick(args[0], ['port-security']) && pick(args[1], ['interface'])) {
-    const key = swKey(s, args.slice(2).join(''));
+    const key = portArg(2);
     if (key) return swPortSecurity(s.ports[key], wire.mac(key), out);
   }
   if (pick(args[0], ['interfaces']) && pick(args[1], ['trunk'])) return swTrunks(s, out);
@@ -376,6 +378,7 @@ function swInterfaceCommand(s, c, w, line, out) {
   else if (c === 'switchport' && !p.svi) switchport(p, w, out);
   else if (c === 'no' && pick(w[1], ['switchport']) && pick(w[2], ['port-security']) && pick(w[3], ['mac-address']) && MAC.test(w[4])
     && w.length === 5) p.psMacs = p.psMacs.filter(m => m !== w[4]);
+  else if (c === 'no' && pick(w[1], ['switchport']) && pick(w[2], ['port-security']) && w.length === 3) p.psec = false;
   else if (!p.svi && linkCommand(p, c, w)) return true;
   else if (c === 'no' && pick(w[1], ['switchport']) && w.length === 2 && s.l3 && !p.svi) p.routed = true;
   else if (c === 'ip' && pick(w[1], ['dhcp']) && pick(w[2], ['snooping']) && pick(w[3], ['trust']) && w.length === 4) p.trust = true;
@@ -475,7 +478,9 @@ function portLink(session, name, key) {
   const st = session.devices[name].state, p = (st.ports || st.ifs)[key], far = farEnd(session, name, key);
   const dead = far ? far.shut || far.errDisabled || speedClash(p, far) : !plainCable(session, name, key);
   const state = p.errDisabled ? 'err-disabled' : p.shut ? 'disabled' : dead ? 'notconnect' : 'connected';
-  const speed = p.speed || far?.speed || Math.min(portCap(p.name), far ? portCap(far.name) : 1000);
+  const top = Math.min(portCap(p.name), far ? portCap(far.name) : 1000);
+  // gigabit has no half duplex, so an unfixed speed drops to 100 when either end is forced to half
+  const speed = p.speed || far?.speed || ([p.duplex, far?.duplex].includes('half') ? Math.min(top, 100) : top);
   const duplex = far ? opDuplex(p, far, speed) : p.duplex || 'full';
   return {state, speed, duplex, mismatch: state === 'connected' && !!far && duplex !== opDuplex(far, p, speed)};
 }

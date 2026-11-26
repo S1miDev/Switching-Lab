@@ -435,6 +435,8 @@ function routeTable(st, out) {
 }
 
 // a ping succeeds when the target is on a connected network that is up
+// shortcut: router ping, connected routes and OSPF treat only "shutdown" as down, not a missing link (portLink);
+// use portLink here when a router lab depends on it
 function ping(st, target, out) {
   if (!DOTTED.test(target)) out('% Unrecognized host or address', 'ln-err');
   else pingResult(target, Object.values(st.ifs).some(i => i.ip && !i.shut && inNet(i.ip, i.mask, target)), out);
