@@ -12,7 +12,8 @@ const PC_HELP = {pc: {head: 'PC commands:', rows: [
 
 function freshPc(node) {
   // a lab node may preset the address (the two-switch diagram)
-  return {mode: 'pc', host: node.id, at: node.at, ip: node.ip || null, mask: node.mask || null, gw: null, dhcp: false};
+  const mac = '0050.7966.68' + node.id.replace(/\D/g, '').padStart(2, '0').slice(-2); // fixed per name: PC1 ends in 01
+  return {mode: 'pc', host: node.id, at: node.at, mac, ip: node.ip || null, mask: node.mask || null, gw: null, dhcp: false};
 }
 
 
@@ -96,6 +97,7 @@ function createPc(node, session) {
         out(`NAME        : ${st.host}`);
         out(`IP/MASK     : ${st.ip ? `${st.ip}/${prefixLen(st.mask)}` : 'not set'}`);
         out(`GATEWAY     : ${st.gw || 'not set'}`);
+        out(`MAC         : ${st.mac}`);
         return out(`DHCP        : ${st.dhcp ? 'yes' : 'no'}`);
       }
       if (c === 'ping' && w.length === 2) {

@@ -2017,10 +2017,13 @@ const CATALOGUE = {
   },
   iftrouble: {
     name: L('Interface troubleshooting', 'Řešení problémů s rozhraními'),
+    domain: 1,
+    desc: L('Find the shut, speed, duplex and err-disabled faults between two PCs.', 'Najdi mezi dvěma PC vypnutý port, chyby rychlosti a duplexu a port v err-disabled.'),
     keywords: ['duplex mismatch', 'speed', 'show interfaces', 'crc', 'late collisions', 'err-disabled', 'cable'],
     refGroup: 'Troubleshooting',
-    labLevels: [],
+    labLevels: ['beginner', 'intermediate', 'advanced', 'expert'],
     ref: {
+      cta: L('Practise interface troubleshooting in the lab', 'Procvič si řešení problémů s rozhraními v labu'),
       summary: L('Read show interfaces to find shutdowns, speed and duplex mismatches, and cabling faults.', 'Čti show interfaces a najdi vypnutí, neshody rychlosti a duplexu a chyby kabeláže.'),
       intro: L('Most layer 1 and layer 2 faults show up in the interface status and counters. Read the two status words, then the errors.', 'Většina chyb vrstvy 1 a 2 se projeví ve stavu a čítačích rozhraní. Přečti dvě slova stavu a pak chyby.'),
       know: [
@@ -2035,13 +2038,14 @@ const CATALOGUE = {
         ['speed 100', 'config-if', L('Fix the port speed at 100 Mbit/s.', 'Nastaví rychlost portu napevno na 100 Mbit/s.')],
         ['duplex full', 'config-if', L('Fix the duplex to full.', 'Nastaví duplex napevno na full.')],
         ['speed auto', 'config-if', L('Go back to auto-negotiated speed.', 'Vrátí se k vyjednané rychlosti.')],
-        ['mdix auto', 'config-if', L('Let the port fix the wrong cable type itself.', 'Nechá port opravit špatný typ kabelu sám.')],
+        ['no switchport port-security mac-address 0050.7966.9999', 'config-if', L('Remove a wrong static secure MAC address.', 'Odebere chybnou statickou zabezpečenou MAC adresu.')],
+        ['mdix auto', 'config-if', L('Let the port fix the wrong cable type itself (real IOS only, not in the lab).', 'Nechá port opravit špatný typ kabelu sám (jen na skutečném IOS, v labu není).')],
         ['shutdown', 'config-if', L('Disable the port.', 'Vypne port.')],
         ['no shutdown', 'config-if', L('Enable the port, or recover it from err-disabled after a shutdown.', 'Zapne port, nebo ho po shutdown obnoví z err-disabled.')],
-        ['errdisable recovery cause psecure-violation', 'config', L('Recover port-security err-disabled ports automatically.', 'Automaticky obnoví porty v err-disabled kvůli port security.')],
-        ['clear counters gi0/1', 'exec', L('Reset the counters to see if errors keep growing.', 'Vynuluje čítače, aby bylo vidět, jestli chyby dál rostou.')],
+        ['errdisable recovery cause psecure-violation', 'config', L('Recover port-security err-disabled ports automatically (real IOS only, not in the lab).', 'Automaticky obnoví porty v err-disabled kvůli port security (jen na skutečném IOS, v labu není).')],
+        ['clear counters gi0/1', 'exec', L('Reset the counters to see if errors keep growing (real IOS only, not in the lab).', 'Vynuluje čítače, aby bylo vidět, jestli chyby dál rostou (jen na skutečném IOS, v labu není).')],
       ],
-      verify: ['show interfaces', 'show interfaces gi0/1', 'show interfaces status', 'show interfaces counters errors', 'show ip interface brief',
+      verify: ['show interfaces', 'show interfaces gi0/1', 'show interfaces status', 'show port-security interface fa0/1', 'show ip interface brief',
         'show interfaces status err-disabled'],
       mistakes: [
         L('Hard-setting speed and duplex on one end and leaving the other on auto.', 'Rychlost a duplex napevno na jednom konci a druhý ponechaný na auto.'),

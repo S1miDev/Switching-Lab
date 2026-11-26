@@ -8,12 +8,13 @@ const SW_CMDS = {
   config: ['hostname', 'interface', 'ip', 'no', 'line', 'vlan', 'spanning-tree', 'port-channel', 'exit', 'end', 'show'],
   vlan: ['name', 'exit', 'end'],
   line: ['no', 'exit', 'end', 'show'],
-  ifc: ['interface', 'description', 'ip', 'no', 'shutdown', 'switchport', 'channel-group', 'spanning-tree', 'exit', 'end', 'show'],
+  ifc: ['interface', 'description', 'ip', 'no', 'shutdown', 'switchport', 'channel-group', 'spanning-tree', 'speed', 'duplex', 'exit', 'end', 'show'],
 };
 
 // The full commands Tab completes to, per mode, in the order Tab lists them
 const SW_SHOWS = ['show vlan brief', 'show interfaces status', 'show interfaces trunk', 'show ip interface brief', 'show running-config',
-  'show startup-config', 'show etherchannel summary', 'show spanning-tree', 'show ip dhcp snooping', 'show ip arp inspection'];
+  'show startup-config', 'show etherchannel summary', 'show spanning-tree', 'show ip dhcp snooping', 'show ip arp inspection',
+  'show interfaces', 'show interfaces status err-disabled', 'show port-security interface'];
 const SW_KEYS = {
   user: ['enable', 'exit', 'show vlan brief', 'show interfaces status', 'show running-config'],
   priv: ['configure terminal', 'copy running-config startup-config', 'disable', 'exit', 'write memory', ...SW_SHOWS],
@@ -26,6 +27,7 @@ const SW_KEYS = {
     'switchport trunk native vlan', 'shutdown', 'no shutdown', 'channel-group 1 mode active', 'spanning-tree portfast',
     'spanning-tree bpduguard enable', 'switchport voice vlan', 'switchport nonegotiate', 'switchport trunk allowed vlan add',
     'switchport mode dynamic desirable', 'ip dhcp snooping trust', 'ip dhcp snooping limit rate', 'ip arp inspection trust',
+    'speed', 'duplex', 'switchport port-security mac-address',
     'exit', 'end', ...SW_SHOWS],
 };
 
@@ -91,6 +93,7 @@ const SWITCH_HELP = {
 
 const CHANNEL_MODES = ['active', 'passive', 'on', 'desirable', 'auto'];
 const VIOLATION_MODES = ['shutdown', 'restrict', 'protect'];
+const MAC = /^[0-9a-f]{4}(\.[0-9a-f]{4}){2}$/; // a MAC address as IOS writes it
 const DAI_CHECKS = ['src-mac', 'dst-mac', 'ip'];
 const NONEG_CONFLICT = "Command rejected: Conflict between 'nonegotiate' and 'dynamic' status.";
 const ALL_VLANS = Array.from({length: 4094}, (_, i) => i + 1); // what a trunk allows by default (stored as allowed: null)
@@ -100,6 +103,7 @@ const swPort = (name, shut = true) => ({
   portfast: false, bpdu: false, psec: false, psMax: null, psViolation: null, psSticky: false,
   voice: null, noneg: false, dtp: 'auto', trust: false, rate: null, daiTrust: false, // dtp: desirable or auto while mode is dynamic
   svi: false, routed: false, ip: null, mask: null, helpers: [],
+  speed: null, duplex: null, psMacs: [], errDisabled: false, // psMacs: the static secure addresses
 });
 // a plain access switch; l3 makes it a multilayer switch (a Catalyst 3560 has the same ports)
 function freshSw(host, l3) {
@@ -142,6 +146,7 @@ function swConfigLines(s) {
   for (const p of Object.values(s.ports)) {
     lines.push(`interface ${p.name}`);
     if (p.desc) lines.push(` description ${p.desc}`);
+    lines.push(...linkLines(p));
     if (p.group) lines.push(` channel-group ${p.group} mode ${p.chanMode}`);
     if (p.portfast) lines.push(' spanning-tree portfast');
     if (p.bpdu) lines.push(' spanning-tree bpduguard enable');
@@ -149,6 +154,7 @@ function swConfigLines(s) {
     if (p.psMax) lines.push(` switchport port-security maximum ${p.psMax}`);
     if (p.psViolation) lines.push(` switchport port-security violation ${p.psViolation}`);
     if (p.psSticky) lines.push(' switchport port-security mac-address sticky');
+    for (const mac of p.psMacs) lines.push(` switchport port-security mac-address ${mac}`);
     if (p.mode === 'access') lines.push(' switchport mode access', ` switchport access vlan ${p.vlan}`);
     if (p.voice) lines.push(` switchport voice vlan ${p.voice}`);
     if (p.mode === 'trunk') lines.push(' switchport mode trunk');
@@ -178,9 +184,42 @@ function swVlanBrief(s, out) {
   }
 }
 
-function swStatus(s, out) {
-  out('Port      Status');
-  for (const p of Object.values(s.ports)) out(p.name.padEnd(10) + (p.shut ? 'administratively down' : 'up'));
+// the physical ports as [key, port]
+const swPhysical = s => Object.entries(s.ports).filter(([, p]) => !p.svi);
+
+function swStatus(s, out, link) {
+  out('Port      Status        Vlan    Duplex  Speed');
+  for (const [key, p] of swPhysical(s)) {
+    const l = link(key), up = l.state === 'connected';
+    const shown = what => (p[what] ? String(p[what]) : up ? 'a-' + l[what] : 'auto');
+    const vlan = p.routed ? 'routed' : p.mode === 'trunk' ? 'trunk' : String(p.vlan);
+    out(p.name.padEnd(10) + l.state.padEnd(14) + vlan.padEnd(8) + shown('duplex').padEnd(8) + shown('speed'));
+  }
+}
+
+function swErrDisabled(s, out) {
+  out('Port      Status        Reason');
+  for (const [, p] of swPhysical(s)) if (p.errDisabled) out(p.name.padEnd(10) + 'err-disabled'.padEnd(14) + 'psecure-violation');
+}
+
+const LINK_STATUS = {connected: 'up', notconnect: 'down', disabled: 'administratively down', 'err-disabled': 'down'};
+
+// show interfaces [<port>]
+function swInterface(p, l, out) {
+  out(`${p.name} is ${LINK_STATUS[l.state]}, line protocol is ${l.state === 'connected' ? 'up' : 'down'} (${l.state})`);
+  out(l.state === 'connected' ? `  ${l.duplex === 'full' ? 'Full' : 'Half'}-duplex, ${SPEED_TEXT[l.speed]}`
+    : `  ${p.duplex ? p.duplex + '-duplex' : 'Auto-duplex'}, ${p.speed ? SPEED_TEXT[p.speed] : 'Auto-speed'}`);
+  showCounters(l, out);
+}
+
+function swPortSecurity(p, mac, out) {
+  const status = !p.psec ? 'Secure-down' : p.errDisabled ? 'Secure-shutdown' : p.shut || !mac ? 'Secure-down' : 'Secure-up';
+  out(`Port Security              : ${p.psec ? 'Enabled' : 'Disabled'}`);
+  out(`Port Status                : ${status}`);
+  out(`Violation Mode             : ${(p.psViolation || 'shutdown').replace(/^./, c => c.toUpperCase())}`);
+  out(`Maximum MAC Addresses      : ${p.psMax || 1}`);
+  out(`Configured MAC Addresses   : ${p.psMacs.length}${p.psMacs.length ? ` (${p.psMacs.join(', ')})` : ''}`);
+  out(`Last Source Address        : ${mac || 'none'}`);
 }
 
 function swEtherSummary(s, out) {
@@ -242,10 +281,21 @@ function swArpInspection(s, out) {
 }
 
 // the order matters: "show s" means spanning-tree
-function swShow(s, args, out) {
-  if (pick(args[0], ['ip']) && pick(args[1], ['interface']) && pick(args[2], ['brief'])) return ipBrief(Object.values(s.ports), out);
+// wire: what the cables add to the configuration, {link(key), mac(key)}
+function swShow(s, args, out, wire) {
+  if (pick(args[0], ['ip']) && pick(args[1], ['interface']) && pick(args[2], ['brief'])) {
+    return ipBrief(Object.values(s.ports), out, p => !p.svi && wire.link(swKey(s, p.name.toLowerCase())).state !== 'connected');
+  }
   if (pick(args[0], ['vlan']) && pick(args[1], ['brief'])) return swVlanBrief(s, out);
-  if (pick(args[0], ['interfaces']) && pick(args[1], ['status'])) return swStatus(s, out);
+  if (pick(args[0], ['interfaces']) && pick(args[1], ['status']) && pick(args[2], ['err-disabled'])) return swErrDisabled(s, out);
+  if (pick(args[0], ['interfaces']) && pick(args[1], ['status'])) return swStatus(s, out, wire.link);
+  if (pick(args[0], ['interfaces']) && args.length === 1) return swPhysical(s).forEach(([key, p]) => swInterface(p, wire.link(key), out));
+  const named = pick(args[0], ['interfaces']) ? swKey(s, args.slice(1).join('')) : null;
+  if (named) return swInterface(s.ports[named], wire.link(named), out);
+  if (pick(args[0], ['port-security']) && pick(args[1], ['interface'])) {
+    const key = swKey(s, args.slice(2).join(''));
+    if (key) return swPortSecurity(s.ports[key], wire.mac(key), out);
+  }
   if (pick(args[0], ['interfaces']) && pick(args[1], ['trunk'])) return swTrunks(s, out);
   if (pick(args[0], ['interfaces']) && args.length >= 3 && pick(args[args.length - 1], ['switchport']) && swKey(s, args.slice(1, -1).join(''))) {
     return swSwitchport(s.ports[swKey(s, args.slice(1, -1).join(''))], out);
@@ -261,10 +311,10 @@ function swShow(s, args, out) {
 
 // ---- the command line ----
 
-function runSw(s, line, out) {
+function runSw(s, line, out, wire) {
   const w = line.toLowerCase().split(/\s+/);
   const c = iosWord(w[0], s.mode, SW_CMDS[s.mode]);
-  if (c === 'show') return swShow(s, w.slice(1), out);
+  if (c === 'show') return swShow(s, w.slice(1), out, wire);
   const done = execCommand(c, w, s, () => saveConfig(s, swConfigLines(s), out))
     || (c === 'interface' && enterInterface(s, swKey(s, w.slice(1).join(''))))
     || SW_MODES[s.mode]?.(s, c, w, line, out)
@@ -324,6 +374,9 @@ function swInterfaceCommand(s, c, w, line, out) {
   const l3Port = p.svi || p.routed; // only these take an IP address
   if (c === 'switchport' && w.length === 1 && s.l3 && !p.svi) Object.assign(p, {routed: false, ip: null, mask: null, helpers: []});
   else if (c === 'switchport' && !p.svi) switchport(p, w, out);
+  else if (c === 'no' && pick(w[1], ['switchport']) && pick(w[2], ['port-security']) && pick(w[3], ['mac-address']) && MAC.test(w[4])
+    && w.length === 5) p.psMacs = p.psMacs.filter(m => m !== w[4]);
+  else if (!p.svi && linkCommand(p, c, w)) return true;
   else if (c === 'no' && pick(w[1], ['switchport']) && w.length === 2 && s.l3 && !p.svi) p.routed = true;
   else if (c === 'ip' && pick(w[1], ['dhcp']) && pick(w[2], ['snooping']) && pick(w[3], ['trust']) && w.length === 4) p.trust = true;
   else if (c === 'no' && pick(w[1], ['ip']) && pick(w[2], ['dhcp']) && pick(w[3], ['snooping']) && pick(w[4], ['trust']) && w.length === 5) p.trust = false;
@@ -370,6 +423,9 @@ function switchport(p, w, out) {
     else if (pick(w[2], ['maximum']) && isNum(w[3])) Object.assign(p, {psec: true, psMax: Number(w[3])});
     else if (pick(w[2], ['violation']) && pick(w[3], VIOLATION_MODES)) Object.assign(p, {psec: true, psViolation: pick(w[3], VIOLATION_MODES)});
     else if (pick(w[2], ['mac-address']) && pick(w[3], ['sticky'])) Object.assign(p, {psec: true, psSticky: true});
+    else if (pick(w[2], ['mac-address']) && MAC.test(w[3]) && w.length === 4) {
+      Object.assign(p, {psec: true, psMacs: [...new Set([...p.psMacs, w[3]])]});
+    }
     else out('% Invalid input detected', 'ln-err');
   }
   else if (pick(w[1], ['access']) && pick(w[2], ['vlan']) && isNum(w[3])) p.vlan = Number(w[3]);
@@ -390,7 +446,55 @@ function switchport(p, w, out) {
 // Worked out on demand from the current configuration. A frame on a cable is untagged (tag null) or tagged with a VLAN.
 // shortcut: no STP blocking, and a switch forwards a VLAN it has not created; extend when a diagram has a transit switch
 
-const portPasses = p => !!p && !p.shut && !p.routed;
+const portPasses = p => !!p && !p.shut && !p.errDisabled && !p.routed;
+
+// two cabled ends cannot agree on a speed, so the link stays down
+const speedClash = (a, b) => !!((a.speed && b.speed && a.speed !== b.speed) || a.speed > portCap(b.name) || b.speed > portCap(a.name));
+const NIC = {name: 'NIC', speed: null, duplex: null}; // a PC's card negotiates both
+
+// the duplex end me runs at. An end left on auto cannot negotiate with one that has speed and duplex both fixed:
+// it detects the speed, and falls back to half duplex below 1 Gbit/s
+const opDuplex = (me, other, speed) => me.duplex || (other.speed && other.duplex ? (speed <= 100 ? 'half' : 'full') : other.duplex || 'full');
+
+const hostOn = (session, name, key) => Object.values(session.devices).find(d => d.state?.at === `${name} ${key}`);
+
+// the port at the other end of the cable on a device's port, or null when nothing known is cabled there
+function farEnd(session, name, key) {
+  for (const [peer, l] of peersOf(session, name)) {
+    const port = l.mine.toLowerCase() === key ? (peer.state?.ports || peer.state?.ifs)?.[l.theirs?.toLowerCase()] : null;
+    if (port) return port;
+  }
+  return hostOn(session, name, key) ? NIC : null;
+}
+
+// a cable to something that has no port to compare: a display-only device, or a diagram PC that does not say where it is cabled
+const plainCable = (session, name, key) => peersOf(session, name).some(([peer, l]) => l.mine.toLowerCase() === key && !peer.state?.at);
+
+// A physical port as it works on its cable: {state: connected|notconnect|disabled|err-disabled, speed, duplex, mismatch}
+function portLink(session, name, key) {
+  const st = session.devices[name].state, p = (st.ports || st.ifs)[key], far = farEnd(session, name, key);
+  const dead = far ? far.shut || far.errDisabled || speedClash(p, far) : !plainCable(session, name, key);
+  const state = p.errDisabled ? 'err-disabled' : p.shut ? 'disabled' : dead ? 'notconnect' : 'connected';
+  const speed = p.speed || far?.speed || Math.min(portCap(p.name), far ? portCap(far.name) : 1000);
+  const duplex = far ? opDuplex(p, far, speed) : p.duplex || 'full';
+  return {state, speed, duplex, mismatch: state === 'connected' && !!far && duplex !== opDuplex(far, p, speed)};
+}
+
+// port security: every address slot holds another static address, so a frame from mac is a violation
+const psBlocks = (p, mac) => p.psec && p.psMacs.length >= (p.psMax || 1) && !p.psMacs.includes(mac);
+
+// after each command: "shutdown" clears err-disabled, and a violating host on a port that is on trips it (violation shutdown)
+// shortcut: checked when the switch runs a command, not when traffic arrives (a sandbox cable alone does not trip it)
+function swGuard(session, name, st, out) {
+  for (const [key, p] of Object.entries(st.ports)) {
+    const mac = hostOn(session, name, key)?.state.mac;
+    if (p.shut) p.errDisabled = false;
+    else if (!p.errDisabled && mac && (p.psViolation || 'shutdown') === 'shutdown' && psBlocks(p, mac)) {
+      p.errDisabled = true;
+      out(`%PM-4-ERR_DISABLE: psecure-violation error detected on ${p.name}, putting ${p.name} in err-disable state`);
+    }
+  }
+}
 
 // Does port p trunk? other is the switch port at the far end, or null for a router or PC, which never negotiate (DTP)
 function swTrunking(p, other) {
@@ -420,8 +524,8 @@ function l2Reach(session, name, key) {
   const visit = (at, vlan) => {
     if (vlan !== undefined && !seen.has(at + '/' + vlan)) { seen.add(at + '/' + vlan); queue.push([at, vlan]); }
   };
-  const first = session.devices[name]?.state?.ports?.[key];
-  if (portPasses(first)) visit(name, swReceive(first, swTrunking(first, null), null));
+  const first = session.devices[name]?.state?.ports?.[key], source = hostOn(session, name, key)?.state.mac;
+  if (portPasses(first) && !(source && psBlocks(first, source))) visit(name, swReceive(first, swTrunking(first, null), null));
   while (queue.length) {
     const [at, vlan] = queue.shift(), st = session.devices[at].state;
     const svi = st.l3 ? usable(st.ports['vlan' + vlan]) : null;
@@ -430,17 +534,18 @@ function l2Reach(session, name, key) {
     for (const d of Object.values(session.devices)) {
       const [where, port] = (d.state?.at || '').split(' ');
       const p = where === at ? st.ports[port] : null;
-      if (portPasses(p) && swSend(p, swTrunking(p, null), vlan) === null) pcs.add(d);
+      if (portPasses(p) && !psBlocks(p, d.state.mac) && swSend(p, swTrunking(p, null), vlan) === null) pcs.add(d);
     }
     for (const [peer, l] of peersOf(session, at)) {
       const p = st.ports[l.mine.toLowerCase()], theirs = l.theirs?.toLowerCase();
       if (!portPasses(p)) continue;
       if (peer.state?.ports) {
         const q = peer.state.ports[theirs];
-        if (!portPasses(q)) continue;
+        if (!portPasses(q) || speedClash(p, q)) continue;
         const tag = swSend(p, swTrunking(p, q), vlan);
         if (tag !== undefined) visit(peer.name, swReceive(q, swTrunking(q, p), tag));
       } else if (peer.state?.ifs) {
+        if (peer.state.ifs[theirs] && speedClash(p, peer.state.ifs[theirs])) continue;
         const tag = swSend(p, swTrunking(p, null), vlan);
         if (tag === undefined) continue;
         // untagged frames reach the physical interface, tagged ones the subinterface of that VLAN (router-on-a-stick)
@@ -462,7 +567,10 @@ function createSwitch(node, session, {l3 = false, keys = SW_KEYS} = {}) {
     routes: () => st.routing,
     // the first L3 interface a host on port key reaches: an SVI, or a router's interface or subinterface
     gateway: key => l2Reach(session, node.id, key).gateways[0] || null,
-    run: (line, out) => runSw(st, line, out),
+    run(line, out) {
+      runSw(st, line, out, {link: key => portLink(session, node.id, key), mac: key => hostOn(session, node.id, key)?.state.mac});
+      swGuard(session, node.id, st, out);
+    },
     complete: line => iosComplete(line, keys[st.mode], st.mode, self.ports()),
     help: (line, out) => helpFor(line, SWITCH_HELP[st.mode], st.mode, 's', out),
   });

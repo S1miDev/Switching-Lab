@@ -101,6 +101,68 @@ const VLANFIX = {
   },
 };
 
+// 1.0 interface troubleshooting on the same diagram: speed, duplex, shutdown and err-disabled faults
+const IFFIX_LEAD = L('PC1 on S1 Fa0/1 and PC2 on S2 Fa0/1 are in VLAN 10, and S1 Gi0/1 is trunked to S2 Gi0/1. The VLANs and the trunk are right: the faults are on the interfaces. Read show interfaces status and show interfaces on both switches.',
+  'PC1 na S1 Fa0/1 a PC2 na S2 Fa0/1 jsou ve VLAN 10 a S1 Gi0/1 je trunkem propojený s S2 Gi0/1. VLANy a trunk jsou správně: chyby jsou na rozhraních. Přečti show interfaces status a show interfaces na obou switchích.');
+const ifSetup = (pcPort = [], uplinkPort = []) => [...SW2_BASE, ...(pcPort.length ? onIf('fa0/1', ...pcPort) : []),
+  ...uplink('switchport mode trunk', ...uplinkPort)];
+// the port is up on its cable and both ends run the same duplex; hint is the level's fix for it
+const portHealthy = (dev, key, text, hint) => ({
+  text,
+  ok: s => {
+    const l = portLink(s, dev, key);
+    return l.state === 'connected' && !l.mismatch;
+  },
+  hint: {cmds: hint, port: portName(key), dev},
+});
+// each argument is the fix hint of S1 Fa0/1, S2 Fa0/1 and the uplink
+const ifReqs = ({s1 = ['no shutdown'], s2 = ['no shutdown'], up = ['no shutdown'], upDev = 'S2'} = {}) => [
+  portHealthy('S1', 'fa0/1', L('S1 Fa0/1 is connected with no duplex mismatch', 'S1 Fa0/1 je připojený bez neshody duplexu'), s1),
+  portHealthy('S2', 'fa0/1', L('S2 Fa0/1 is connected with no duplex mismatch', 'S2 Fa0/1 je připojený bez neshody duplexu'), s2),
+  portHealthy(upDev, 'gi0/1', L('The link S1 Gi0/1 - S2 Gi0/1 is connected with no duplex mismatch', 'Linka S1 Gi0/1 - S2 Gi0/1 je připojená bez neshody duplexu'), up),
+  pcPings('PC1', 'PC2'),
+];
+const BAD_MAC = '0050.7966.9999';
+const IFFIX = {
+  beginner: {
+    sub: L('One port is switched off', 'Jeden port je vypnutý'),
+    steps: [VLAN_PING_STEP, L('Run show interfaces status on both switches: look for a port that is disabled.', 'Spusť show interfaces status na obou switchích: hledej port ve stavu disabled.'),
+      L('Bring the port up and ping again.', 'Zapni port a znovu pingni.')],
+    setup: [['S1', ifSetup()], ['S2', ifSetup(['shutdown'])]],
+    reqs: ifReqs(),
+    then: [onDev('S2', ...onIf('fa0/1', 'no shutdown'))],
+  },
+  intermediate: {
+    sub: L('The link between the switches is down although both ports are on', 'Linka mezi switchi je dole, i když jsou oba porty zapnuté'),
+    steps: [VLAN_PING_STEP, L('show interfaces status shows notconnect on the uplink: compare the Speed column on both switches.', 'show interfaces status ukazuje na uplinku notconnect: porovnej sloupec Speed na obou switchích.'),
+      L('Set both ends to the same speed, or back to auto.', 'Nastav na obou koncích stejnou rychlost, nebo je vrať na auto.')],
+    setup: [['S1', ifSetup([], ['speed 1000'])], ['S2', ifSetup([], ['speed 100'])]],
+    reqs: ifReqs({up: ['speed auto']}),
+    then: [onDev('S2', ...onIf('gi0/1', 'speed auto'))],
+  },
+  advanced: {
+    sub: L('Two faults: one breaks the ping, the other only slows the link', 'Dvě chyby: jedna rozbije ping, druhá linku jen zpomalí'),
+    steps: [VLAN_PING_STEP, L('Fix what stops the ping, then keep looking: a ping that works does not prove the link is healthy.', 'Oprav to, co brání pingu, a hledej dál: funkční ping nedokazuje, že je linka v pořádku.'),
+      L('Run show interfaces gi0/1 on both switches and read the duplex and the error counters.', 'Spusť show interfaces gi0/1 na obou switchích a přečti duplex a čítače chyb.')],
+    setup: [['S1', ifSetup(['shutdown'], ['duplex full'])], ['S2', ifSetup([], ['duplex half'])]],
+    reqs: ifReqs({up: ['duplex auto']}),
+    cmds: onIf('fa0/1', 'no shutdown'),
+    then: [onDev('S2', ...onIf('gi0/1', 'duplex auto'))],
+  },
+  expert: {
+    sub: L('Three faults: an err-disabled port, a dead uplink and a duplex mismatch', 'Tři chyby: port v err-disabled, mrtvý uplink a neshoda duplexu'),
+    steps: [VLAN_PING_STEP, L('For the err-disabled port, run show port-security interface fa0/1 and compare the secure MAC address with the one ipconfig shows on the PC.', 'U portu v err-disabled spusť show port-security interface fa0/1 a porovnej zabezpečenou MAC adresu s tou, kterou na PC ukáže ipconfig.'),
+      L('Remove the cause first, then use shutdown and no shutdown to recover the port.', 'Nejdřív odstraň příčinu, pak port obnov příkazy shutdown a no shutdown.'),
+      L('Check speed on the uplink and duplex on S2 Fa0/1: a PC always negotiates.', 'Zkontroluj rychlost na uplinku a duplex na S2 Fa0/1: PC vždy autonegociuje.')],
+    setup: [['S1', ifSetup(['switchport port-security', `switchport port-security mac-address ${BAD_MAC}`], ['speed 100'])],
+      ['S2', ifSetup(['speed 100', 'duplex full'], ['speed 1000'])]],
+    reqs: ifReqs({s1: [`no switchport port-security mac-address ${BAD_MAC}`, 'shutdown', 'no shutdown'], s2: ['speed auto', 'duplex auto'],
+      up: ['speed auto'], upDev: 'S1'}),
+    cmds: [...onIf('fa0/1', `no switchport port-security mac-address ${BAD_MAC}`, 'shutdown', 'no shutdown'), ...onIf('gi0/1', 'speed auto')],
+    then: [onDev('S2', ...onIf('fa0/1', 'speed auto', 'duplex auto'), ...onIf('gi0/1', 'speed auto'))],
+  },
+};
+
 // 3.0 OSPF troubleshooting on R1: R2 on Gi0/1 should be an area 0 neighbour
 const OSPFFIX_LEAD = serves(L('R2 on Gi0/1 should be an OSPF neighbour in area 0, but the adjacency is not working. ', 'R2 na Gi0/1 má být soused OSPF v oblasti 0, ale sousedství nefunguje. ') +
   L('Find the fault with show ip ospf interface brief and show running-config, and fix it.', 'Najdi chybu pomocí show ip ospf interface brief a show running-config a oprav ji.'));
@@ -286,6 +348,7 @@ const ACLFIX = {
 Object.assign(LABS, {
   trunkfix: {kind: 'sw2', lead: TRUNKFIX_LEAD, levels: TRUNKFIX},
   vlanfix: {kind: 'sw2', lead: VLANFIX_LEAD, levels: VLANFIX},
+  iftrouble: {kind: 'sw2', lead: IFFIX_LEAD, levels: IFFIX},
   ospffix: {kind: 'rt', lead: OSPFFIX_LEAD, levels: OSPFFIX},
   intervlanfix: {kind: 'sw', lead: INTERFIX_LEAD, levels: INTERVLANFIX},
   dhcpfix: {kind: 'rt', lead: DHCPFIX_LEAD, levels: DHCPFIX},
