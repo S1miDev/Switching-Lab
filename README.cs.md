@@ -39,6 +39,7 @@ Nauč se sestavit síť a správně zvolit kabeláž mezi prvky.
 - **Kabely:** straight-through, crossover, některé úlohy vyžadují i fiber, serial nebo console
 - **Úlohy:** ve 4 obtížnostech, každá zadá, co a jak zapojit (např. router se switchem, dva routery sériovým spojem, WLC s access pointy)
 - **Ovládání:** prvky přetáhneš na plochu, přesouvat je můžeš tažením, kabel vytvoříš kliknutím na jedno zařízení a poté na druhé
+
 ## 🧰 Sandbox
 Volné prostředí, kde si sestavíš vlastní topologii a nastavíš ji z konzole.
 - **My workspace** – prázdné plátno: přidáš zařízení (router, switch, multilayer switch, PC, max. 30), propojíš je kabely a každé nastavíš z konzole
@@ -46,17 +47,20 @@ Volné prostředí, kde si sestavíš vlastní topologii a nastavíš ji z konzo
 - **Packet test** – pošle ping mezi zařízeními, ověříš tak funkčnost sítě
 - **Uložení** – až 20 pojmenovaných uložení v prohlížeči, dále **Export** a **Import** do souboru nebo **Copy share link** pro odkaz (u velkých sítí použij Export)
 - Uložení je v tomto prohlížeči, ne v účtu
+
 ## 📝 Mock exam *(beta)*
 Test sestavený z náhodných labů (alespoň jeden lab z každého zvoleného tématu): podle obtížnosti, nebo vlastní (počet úloh, obtížnost, témata nebo mix).
 - **Časový limit** je volitelný: 5, 8, 12 nebo 15 minut na lab podle obtížnosti (Beginner až Expert)
 - **Bez pomoci** – v testu nejsou nápovědy, seznam příkazů ani řešení
 - **Hodnocení:** test je splněný od 80 %
+
 ## 🎓 CCNA
 Testy s výběrovými otázkami podle oficiálních CCNA kurzů. Aktuálně **CCNA 2 v7 (SRWE) Modules 1-4 Checkpoint Exam** s bankem 75 otázek a **Modules 5-6 Redundant Networks Exam**:
 - **Start exam** – 33 náhodných otázek, test je splněný od 80 %
 - **Practice** – všech 75 otázek po jedné, po **Check** uvidíš správnou odpověď a pokračuješ dál
 - **See questions** – projdeš všechny otázky se správnými odpověďmi
 - **Typy otázek** – výběr jedné nebo více odpovědí a přiřazování nebo řazení přes rozbalovací nabídky; některé otázky mají obrázek
+
 ## 📖 Reference
 Nevíš si rady s labem? Najdeš tu **CCNA command reference**: příkazy, v jakém módu se zadávají, k čemu slouží, trochu teorie a nejčastější chyby. Témata jsou seřazená podle oblastí CCNA a příkazy jdou prohledat v jednom seznamu. Součástí je i téma Structured troubleshooting, tedy postupy hledání závad.
  
@@ -66,13 +70,7 @@ Po přihlášení si můžeš trackovat svůj progress:
 - **Day streak** – den se počítá, když v něm vyřešíš 3 labs nebo topology úlohy
 - **Profil** – jméno, barva zvýraznění a změna hesla
 - Postup se ukládá k účtu, takže je po přihlášení dostupný i na jiných zařízeních
-## 🎨 Styly
-Všechny styly jsou v **Tailwind CSS** (v4, CLI). Zdroj je `css/input.css`, stránky načítají jen `css/output.css`.
-- Barvy a fonty jsou theme tokeny v `@theme` (`--color-*`, `--font-*`), takže se píše `bg-surface`, `text-muted`, `border-border`, `text-accent`
-- Statický markup i šablony v JS používají utility třídy
-- `@layer components` v `css/input.css` jen pro kusy, které JS opakuje, nebo co utility neumí (keyframes, `::before`, SVG, `details`)
-- Žádné nové `.css` soubory, žádné `<style>` bloky a žádné inline `style`, kromě hodnot, které JS spočítá za běhu
-- Netlify nic nebuildí, takže po každé změně stylů, markupu nebo tříd v JS spusť `npm run build:css` a commitni i `css/output.css`
+
 ## 🌍 Překlady
 Každý text je vedle své české verze: `L('English', 'Česky')` v JS a datových souborech a `data-i18n` v markupu, s češtinou v `CS` v `js/i18n.js`. Kde čeština chybí, zobrazí se angličtina. `npm test` kontroluje, že každý text stránky má češtinu a že každý lab projde v obou jazycích.
 ## 📋 Plány a opravy
