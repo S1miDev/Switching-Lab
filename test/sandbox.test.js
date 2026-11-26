@@ -72,6 +72,19 @@ test('every starting point replays without errors and its PCs end up able to pin
   assert.ok(dhcp.ping('PC1', dhcp.devices.PC2.state.ip).ok);
 });
 
+test('a cable lights up only while both of its ports have a link', () => {
+  const sb = build(['switch', 'switch', 'pc'], [['S1', 'Gi0/1', 'S2', 'Gi0/1'], ['S1', 'Fa0/1', 'PC1', 'NIC']]);
+  for (const s of ['S1', 'S2']) type(sb, s, 'enable', 'conf t', 'interface gi0/1', 'no shutdown', 'end');
+  type(sb, 'S1', 'conf t', 'interface fa0/1', 'no shutdown');
+  const up = () => sb.links.map(l => sb.linkUp(l));
+  assert.deepEqual(up(), [true, true]);
+  type(sb, 'S1', 'interface gi0/1', 'speed 1000');
+  type(sb, 'S2', 'conf t', 'interface gi0/1', 'speed 100');
+  assert.deepEqual(up(), [false, true], 'speed mismatch');
+  type(sb, 'S1', 'interface fa0/1', 'switchport port-security mac-address 0050.7966.9999');
+  assert.deepEqual(up(), [false, false], 'err-disabled PC port');
+});
+
 test('a ping reports a broken network and shows the path it took', () => {
   const sb = preset('Router on a stick');
   assert.deepEqual(plain(sb.ping('PC1', '192.168.20.10').path), ['PC1', 'S1', 'PC2']);

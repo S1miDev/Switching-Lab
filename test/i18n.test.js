@@ -44,7 +44,7 @@ test('cz picks the Czech plural form', () => {
 
 // Every word of page text in the markup is marked data-i18n and has its Czech in CS. Text that reads the same in Czech is listed.
 const SAME = new Set(['ls-labbing', 'Linux', 'CCNA', 'Expert', 'PC', 'WLC', 'DHCP server', 'Router', 'Switch', 'Serial', 'Console',
-  '0/0', '%', '→', '←', '·', 'V', 'L', 'C', 'D', 'Esc', 'Ctrl+Z']);
+  '0/0', '%', '→', '←', '·', 'V', 'L', 'C', 'D', 'Backspace','Esc', 'Ctrl+Z']);
 const PAGES = ['index.html', 'switching.html', 'linux.html', 'sandbox.html'];
 const decode = s => s.replace(/&amp;/g, '&').replace(/&larr;/g, '←').replace(/&rarr;/g, '→').replace(/\s+/g, ' ').trim();
 

@@ -1308,8 +1308,8 @@ const SW2_TOPO = {
   nodes: [
     {id: 'S1', type: 'switch', x: 8, y: 40, sub: 'Switch'},
     {id: 'S2', type: 'switch', x: 190, y: 40, sub: 'Switch'},
-    {id: 'PC1', type: 'pc', x: 190, y: 120, sub: 'VLAN 10', at: 'S1 fa0/1'},
-    {id: 'PC2', type: 'pc', x: 370, y: 40, sub: 'VLAN 10', at: 'S2 fa0/1'},
+    {id: 'PC1', type: 'pc', x: 190, y: 120, sub: '192.168.10.1', at: 'S1 fa0/1', ip: '192.168.10.1', mask: MASK24},
+    {id: 'PC2', type: 'pc', x: 370, y: 40, sub: '192.168.10.2', at: 'S2 fa0/1', ip: '192.168.10.2', mask: MASK24},
   ],
   links: [{a: 'S1', b: 'S2', port: 'Gi0/1'}, {a: 'S1', b: 'PC1', port: 'Fa0/1'}, {a: 'S2', b: 'PC2', port: 'Fa0/1'}],
   home: 'S1',

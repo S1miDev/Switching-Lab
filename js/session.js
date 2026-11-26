@@ -76,7 +76,7 @@ function createSession({topic, level, net}) {
       session.devices = Object.fromEntries(session.nodes.map(n => [n.id, DEVICE_TYPES[n.readonly ? 'readonly' : n.type](n, session)]));
       for (const [name, lines] of session.setup || []) for (const l of ['enable', 'conf t', ...lines, 'end', 'disable']) session.run(name, l);
       // only a preset config (troubleshooting) makes requirements "given"; in other labs every requirement is the student's work
-      session.startMet = session.setup?.length ? session.grade() : session.reqs.map(() => false);
+      session.startMet = session.setup?.length || session.preset ? session.grade() : session.reqs.map(() => false);
     },
   };
   session.reset();

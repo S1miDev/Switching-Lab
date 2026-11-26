@@ -112,5 +112,11 @@ window.addEventListener('resize', () => {
 window.addEventListener('load', () => moveSeg(document.querySelector('.side'))); // after fonts, so widths are final
 
 // ---- start ----
+// the Troubleshooting page, on the track pages that have one
+if ($('trouble')) {
+  VIEWS.trouble = {page: 'trouble', nav: 'nav-trouble', seg: 'trouble-seg'};
+  $('nav-trouble').addEventListener('click', () => show('trouble'));
+  renderDashboard('trouble-domains', true);
+}
 renderDashboard('dash-domains', false);
 markLevel();

@@ -11,7 +11,9 @@ const PC_HELP = {pc: {head: 'PC commands:', rows: [
 ]}};
 
 function freshPc(node) {
-  return {mode: 'pc', host: node.id, at: node.at, ip: null, mask: null, gw: null, dhcp: false};
+  // a lab node may preset the address (the two-switch diagram)
+  const mac = '0050.7966.68' + node.id.replace(/\D/g, '').padStart(2, '0').slice(-2); // fixed per name: PC1 ends in 01
+  return {mode: 'pc', host: node.id, at: node.at, mac, ip: node.ip || null, mask: node.mask || null, gw: null, dhcp: false};
 }
 
 
@@ -32,16 +34,24 @@ function createPc(node, session) {
     return g && inNet(g.ip, g.mask, st.ip) ? g : null;
   };
 
-  // shortcut: one hop only (the PC's own gateway device); extend when a lab puts a router between two PCs
+  // does a frame from this PC arrive at that one over the switches?
+  const delivers = pc => {
+    const [name, key] = (st.at || '').split(' ');
+    return l2Reach(session, name, key).pcs.has(pc);
+  };
+
+  // shortcut: one router hop only (the PC's own gateway device); extend when a lab puts a second router between two PCs
   function canReach(target) {
+    const other = Object.values(session.devices).find(o => o !== self && o.link && o.state.ip === target);
+    // the same subnet needs no gateway, but the request and the reply must both arrive
+    if (other && st.ip && inNet(st.ip, st.mask, target) && inNet(other.state.ip, other.state.mask, st.ip)
+      && delivers(other) && other.delivers(self)) return true;
     const g = link();
     if (!g) return false;
     const owner = ownerOf(g), ifs = owner.ports(), routes = owner.routes();
-    const other = Object.values(session.devices).find(o => o !== self && o.link && o.state.ip === target);
     if (other) {
       const og = other.link();
-      if (og === g) return true; // same LAN
-      return !!og && ifs.includes(og) && routes && st.gw === g.ip && other.state.gw === og.ip;
+      return !!og && og !== g && ifs.includes(og) && routes && st.gw === g.ip && other.state.gw === og.ip;
     }
     if (target === g.ip) return true;
     return routes && st.gw === g.ip && ifs.some(i => usable(i) && i.ip === target);
@@ -74,7 +84,7 @@ function createPc(node, session) {
     name: node.id, type: node.type, configurable: true, state: st,
     prompt: () => st.host + SUFFIX[st.mode],
     ports: () => [st], // its one network card
-    link, canReach,
+    link, canReach, delivers,
     run(line, out) {
       const w = line.toLowerCase().split(/\s+/);
       const c = pick(w[0], ['ip', 'dhcp', 'ipconfig', 'ping', 'show']);
@@ -87,6 +97,7 @@ function createPc(node, session) {
         out(`NAME        : ${st.host}`);
         out(`IP/MASK     : ${st.ip ? `${st.ip}/${prefixLen(st.mask)}` : 'not set'}`);
         out(`GATEWAY     : ${st.gw || 'not set'}`);
+        out(`MAC         : ${st.mac}`);
         return out(`DHCP        : ${st.dhcp ? 'yes' : 'no'}`);
       }
       if (c === 'ping' && w.length === 2) {

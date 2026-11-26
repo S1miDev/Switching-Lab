@@ -149,6 +149,7 @@ function lxPutDeep(st, abs, node) {
 //   dirs     [[path, {mode, owner, group}]]           files  [[path, content, {mode, owner, group}]]
 //   users    {name: {uid, gid, gecos, home, shell, pw}} groups {name: {gid, members}}
 //   procs    [{pid, user, cmd, cpu, mem, tty, stat, start, ignoresTerm}]   packages [names installed besides the base]   cwd
+//   services [{name, desc, cmd, user, enabled, failed, active, pid (needed when active), config, log}]
 function lxState(init = {}) {
   const st = {
     host: 'lab', user: 'student', cwd: init.cwd || '/home/student', oldpwd: null, root: null,
@@ -157,8 +158,13 @@ function lxState(init = {}) {
     repo: LX_REPO, aptUpdated: false,
     procs: lxCopy([...LX_PROCS, ...(init.procs || [])]), jobs: [], nextPid: 4210,
     umask: 0o002, status: 0, sudoOk: false, askPw: null, shells: [],
+    services: {}, // {name: {desc, cmd, user, enabled, failed, pid, config: {path, line, error} or null, log: []}}
     ifs: [], // network interfaces: none in version 1 (room for Linux hosts in the network labs later)
   };
+  for (const {name, pid = null, active, ...s} of init.services || []) {
+    st.services[name] = {desc: name, cmd: `/usr/sbin/${name}`, user: 'root', enabled: false, failed: false, config: null, log: [], ...lxCopy(s), pid: active ? pid : null};
+    if (active) st.procs.push({pid, user: st.services[name].user, cmd: st.services[name].cmd, cpu: 0, mem: 0.5, tty: '?', stat: 'Ss', start: '08:01'});
+  }
   for (const [name, u] of Object.entries(init.users || {})) st.users[name] = {gecos: '', shell: '/bin/bash', pw: null, ...lxCopy(u)};
   for (const [name, g] of Object.entries(init.groups || {})) st.groups[name] = lxCopy(g);
   lxBaseTree(st);

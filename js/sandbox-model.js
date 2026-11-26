@@ -117,13 +117,10 @@ function createSandbox() {
       return {x: (SB_W - NODE_W) / 2, y: (SB_H - NODE_H) / 2};
     },
 
-    // the cable is up when neither end is shut down (a PC's card is always up)
+    // the cable is up when both ends have a link (a PC's card is always up)
     linkUp(l) {
-      const up = (id, port) => {
-        const st = sb.devices[id].state;
-        return !(st.ifs || st.ports || {})[port.toLowerCase()]?.shut;
-      };
-      return up(l.a, l.pa) && up(l.b, l.pb);
+      return [[l.a, l.pa], [l.b, l.pb]].every(([id, port]) =>
+        sb.nodeOf(id).type === 'pc' || portLink(sb, id, port.toLowerCase()).state === 'connected');
     },
 
     // the devices a packet crosses from a to b over the cables, as ids [a, ..., b], or null when they are not connected

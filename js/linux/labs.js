@@ -684,12 +684,370 @@ const LX_APT = {
   },
 };
 
+// ---- Shell expansion and quoting ----
+
+// a directory holds exactly these names, so a glob that took too much or too little fails
+const lxOnly = (dir, names, cmds) => ({
+  text: L(`${lxShown(dir)} holds exactly: ${names.join(', ')}`, `${lxShown(dir)} obsahuje přesně: ${names.join(', ')}`),
+  ok: s => { const n = lxNodeAt(s, dir); return n?.type === 'dir' && Object.keys(n.children).sort().join('/') === [...names].sort().join('/'); },
+  hint: {cmds},
+});
+
+const LX_SHELL = {
+  beginner: x => {
+    const r = lxRandom(x), proj = r.pick(LX_PROJECTS), logs = r.some(LX_APPS, 3).map(n => `${n}.log`), keep = `${r.pick(LX_WORDS)}.txt`;
+    const dir = `${LX_HOME}/${proj}`, one = [1, 2, 3].map(n => `data${n}.csv`), solution = [`mv ${proj}/*.log ${proj}/logs/`, `mv ${proj}/data?.csv ${proj}/data/`];
+    return {
+      sub: L(`Tidy ~/${proj} with the wildcards * and ?.`, `Ukliď ~/${proj} pomocí zástupných znaků * a ?.`),
+      lead: L(`~/${proj} mixes logs and data files. The directories logs and data are ready.`, `V ~/${proj} se míchají logy a datové soubory. Adresáře logs a data už existují.`),
+      steps: [L('Move every file ending in .log into logs with one command.', 'Přesuň jedním příkazem každý soubor s koncovkou .log do logs.'),
+        L('Move the files named data, then exactly one character, then .csv, into data. data10.csv stays.', 'Přesuň do data soubory se jménem data, pak přesně jeden znak a .csv. data10.csv zůstane.')],
+      init: {dirs: [[`${dir}/logs`], [`${dir}/data`]], files: [...logs, ...one, 'data10.csv', keep].map(f => [`${dir}/${f}`, `${f}\n`])},
+      reqs: [lxOnly(`${dir}/logs`, logs, [solution[0]]), lxOnly(`${dir}/data`, one, [solution[1]]), lxOnly(dir, ['logs', 'data', 'data10.csv', keep], solution)],
+      solution,
+    };
+  },
+  intermediate: x => {
+    const r = lxRandom(x), proj = r.pick(LX_PROJECTS), word = r.pick(LX_WORDS), base = r.pick(['shot', 'scan', 'photo']);
+    const dir = `${LX_HOME}/${proj}`, last = r.pick(['b', 'c', 'd']), letters = [...'abcdef'], moved = letters.filter(c => c <= last).map(c => `${word}-${c}.txt`);
+    const stay = letters.filter(c => c > last).map(c => `${word}-${c}.txt`), digits = r.some([...'0123456789'], 4).map(n => `${base}${n}.jpg`);
+    const named = [`${base}A.jpg`, `${base}_old.jpg`];
+    const solution = [`mv ${proj}/${word}-[a-${last}].txt ${proj}/first/`, `rm ${proj}/${base}[0-9].jpg`];
+    return {
+      sub: L('Pick out files with character classes such as [a-c] and [0-9].', 'Vyber soubory pomocí tříd znaků, jako je [a-c] a [0-9].'),
+      lead: L(`~/${proj} has the parts ${word}-a.txt to ${word}-f.txt and many ${base} pictures.`, `V ~/${proj} jsou části ${word}-a.txt až ${word}-f.txt a spousta obrázků ${base}.`),
+      steps: [L(`Move the parts a to ${last} into ~/${proj}/first with one pattern.`, `Přesuň jedním vzorem části a až ${last} do ~/${proj}/first.`),
+        L(`Delete the pictures named ${base}, then one digit. Keep the others.`, `Smaž obrázky se jménem ${base} a jednou číslicí. Ostatní nech být.`)],
+      init: {dirs: [[`${dir}/first`]], files: [...moved, ...stay, ...digits, ...named].map(f => [`${dir}/${f}`, `${f}\n`])},
+      reqs: [lxOnly(`${dir}/first`, moved, [solution[0]]), lxOnly(dir, ['first', ...stay, ...named], solution)],
+      solution,
+    };
+  },
+  advanced: x => {
+    const r = lxRandom(x), proj = r.pick(LX_PROJECTS), subs = r.some(['src', 'docs', 'tests', 'config', 'assets', 'scripts'], 3), n = r.int(10, 18);
+    const dir = `${LX_HOME}/${proj}`, days = Array.from({length: n}, (_, i) => `day${i + 1}.log`);
+    const solution = [`mkdir -p ${proj}/{${subs.join(',')},logs}`, `touch ${proj}/logs/day{1..${n}}.log`];
+    return {
+      sub: L(`Build the tree of the project ${proj} with two commands, using braces.`, `Postav strom projektu ${proj} dvěma příkazy pomocí složených závorek.`),
+      lead: L('You start in your home directory. Braces make several words out of one: {a,b} and {1..5}.', 'Začínáš ve svém domovském adresáři. Složené závorky udělají z jednoho slova několik: {a,b} a {1..5}.'),
+      steps: [L(`Create ~/${proj} with the directories ${subs.join(', ')} and logs.`, `Vytvoř ~/${proj} s adresáři ${subs.join(', ')} a logs.`),
+        L(`Create the empty files day1.log to day${n}.log in logs.`, `V logs vytvoř prázdné soubory day1.log až day${n}.log.`)],
+      init: {},
+      reqs: [lxOnly(dir, [...subs, 'logs'], [solution[0]]), ...subs.map(s => lxIsDir(`${dir}/${s}`, [solution[0]])), lxOnly(`${dir}/logs`, days, [solution[1]])],
+      solution,
+    };
+  },
+  expert: x => {
+    const r = lxRandom(x), [a, b] = r.some(LX_WORDS, 2), period = r.pick(['monthly', 'weekly', 'yearly']), tag = r.pick(LX_PROJECTS);
+    const dir = `${LX_HOME}/${tag}`, from = `${period} ${a}.txt`, to = `final ${a}.txt`, others = [`${b}.txt`, `${period}.txt`];
+    const line = `${tag}: home=${LX_HOME} user=student keep=$HOME`;
+    const solution = [`mv "${tag}/${from}" "${tag}/${to}"`, `rm '${tag}/*'`, `echo "${tag}: home=$HOME user=$USER" 'keep=$HOME' > ${tag}/note`];
+    return {
+      sub: L('Quote your way through awkward names, and control what the shell expands.', 'Poraď si s nepříjemnými jmény pomocí uvozovek a urči, co shell rozvine.'),
+      lead: L(`~/${tag} has a file with a space in its name, and a file named just * that somebody made by mistake.`, `V ~/${tag} je soubor s mezerou ve jménu a soubor pojmenovaný jen *, který někdo vytvořil omylem.`),
+      steps: [L(`Rename "${from}" to "${to}".`, `Přejmenuj "${from}" na "${to}".`), L('Delete the file named *, and nothing else. An unquoted * means every file.', 'Smaž soubor se jménem * a nic jiného. * bez uvozovek znamená všechny soubory.'),
+        L(`Write one line into ~/${tag}/note: "${tag}: home=", your home directory from $HOME, " user=", your name from $USER, then the literal text keep=$HOME.`,
+          `Zapiš do ~/${tag}/note jeden řádek: "${tag}: home=", svůj domovský adresář z $HOME, " user=", své jméno z $USER a pak doslovný text keep=$HOME.`)],
+      init: {files: [from, '*', ...others].map(f => [`${dir}/${f}`, `${f}\n`])},
+      reqs: [
+        lxIsFile(`${dir}/${to}`, `${from}\n`, [solution[0]], L('is the renamed file', 'je přejmenovaný soubor')),
+        lxGone(`${dir}/*`, [solution[1]]),
+        lxOnly(dir, [to, 'note', ...others], solution),
+        lxIsFile(`${dir}/note`, `${line}\n`, [solution[2]], L(`holds the line "${line}"`, `obsahuje řádek "${line}"`)),
+      ],
+      solution,
+    };
+  },
+};
+
+// ---- Editing text ----
+
+const LX_EDIT = {
+  beginner: x => {
+    const r = lxRandom(x), [proj] = r.some(LX_PROJECTS, 1), [from, to] = r.some(LX_APPS, 2), dir = `${LX_HOME}/${proj}`;
+    const text = `The ${from} service moves next week.\nRestart ${from}, then check ${from} again.\nQuestions about ${from}: ask ops.\n`;
+    const solution = [`sed 's/${from}/${to}/g' ${proj}/notice.txt > ${proj}/notice-new.txt`];
+    return {
+      sub: L(`Make a copy of a notice with ${from} replaced by ${to}.`, `Vytvoř kopii oznámení, kde bude místo ${from} slovo ${to}.`),
+      lead: L(`The service ${from} is now called ${to}. ~/${proj}/notice.txt still uses the old name, sometimes twice on a line.`, `Služba ${from} se teď jmenuje ${to}. ~/${proj}/notice.txt pořád používá starý název, někdy dvakrát na řádku.`),
+      steps: [L(`Replace every ${from} with ${to} using sed.`, `Nahraď pomocí sed každé ${from} slovem ${to}.`), L(`Save the result as ~/${proj}/notice-new.txt and leave notice.txt as it is.`, `Výsledek ulož jako ~/${proj}/notice-new.txt a notice.txt nech beze změny.`)],
+      init: {files: [[`${dir}/notice.txt`, text]]},
+      reqs: [
+        lxIsFile(`${dir}/notice-new.txt`, text.split(from).join(to), solution, L(`has every ${from} replaced by ${to}`, `má každé ${from} nahrazené slovem ${to}`)),
+        lxIsFile(`${dir}/notice.txt`, text, solution, L('is unchanged', 'je beze změny')),
+      ],
+      solution,
+    };
+  },
+  intermediate: x => {
+    const r = lxRandom(x), proj = r.pick(LX_PROJECTS), dir = `${LX_HOME}/${proj}`;
+    const names = r.some(LX_PEOPLE, 4).join('\n') + '\n', serials = Array.from({length: 3}, () => `${r.int(10, 99)}-${r.int(100, 999)}-${r.int(10, 99)}`).join('\n') + '\n';
+    const solution = [`cat ${proj}/names.txt | tr a-z A-Z | tee ${proj}/upper.txt`, `cat ${proj}/serials.txt | tr -d - | tee ${proj}/clean.txt`];
+    return {
+      sub: L('Change text on its way through a pipe with tr, and watch and save it with tee.', 'Uprav text cestou rourou pomocí tr a pomocí tee ho zároveň zobraz a ulož.'),
+      lead: L(`~/${proj} has names.txt in lower case and serials.txt with dashes in the numbers.`, `V ~/${proj} je names.txt s malými písmeny a serials.txt s pomlčkami v číslech.`),
+      steps: [L('Turn the names into capital letters; show them and save them as upper.txt with tee.', 'Převeď jména na velká písmena; pomocí tee je zobraz a ulož jako upper.txt.'),
+        L('Delete the dashes from the serial numbers and save the result as clean.txt.', 'Smaž ze sériových čísel pomlčky a výsledek ulož jako clean.txt.')],
+      init: {files: [[`${dir}/names.txt`, names], [`${dir}/serials.txt`, serials]]},
+      reqs: [
+        lxIsFile(`${dir}/upper.txt`, names.toUpperCase(), [solution[0]], L('has the names in capitals', 'má jména velkými písmeny')),
+        lxIsFile(`${dir}/clean.txt`, serials.replace(/-/g, ''), [solution[1]], L('has the numbers without dashes', 'má čísla bez pomlček')),
+      ],
+      solution,
+    };
+  },
+  advanced: x => {
+    const r = lxRandom(x), app = r.pick(LX_APPS), old = r.int(3000, 4999), port = r.int(5000, 9999), conf = `${LX_HOME}/${app}/${app}.conf`;
+    const text = `# ${app}, was on port ${old} since launch\nport = ${old}\nadmin_port = ${old + 1}\nworkers = ${r.int(2, 16)}\nbackup = /srv/backup\n`;
+    const solution = [`sed -i 's/^port = ${old}/port = ${port}/' ${app}/${app}.conf`];
+    return {
+      sub: L(`Change one setting of ${app} in place, and nothing else.`, `Změň přímo v souboru jedno nastavení služby ${app} a nic jiného.`),
+      lead: L(`${app} must move to port ${port}. Its settings are in ~/${app}/${app}.conf, where the old number also appears elsewhere.`, `${app} se musí přesunout na port ${port}. Jeho nastavení je v ~/${app}/${app}.conf, kde se staré číslo vyskytuje i jinde.`),
+      steps: [L('Look at the file first.', 'Nejdřív si soubor prohlédni.'), L(`With sed -i, set the line "port = ..." to ${port}. The comment and admin_port stay as they are.`, `Pomocí sed -i nastav řádek „port = ...“ na ${port}. Komentář a admin_port zůstanou beze změny.`)],
+      init: {files: [[conf, text]]},
+      reqs: [lxIsFile(conf, text.replace(`\nport = ${old}\n`, `\nport = ${port}\n`), [`cat ${app}/${app}.conf`, ...solution], L(`has port ${port} and no other change`, `má port ${port} a žádnou jinou změnu`))],
+      solution: [`cat ${app}/${app}.conf`, ...solution],
+    };
+  },
+  expert: x => {
+    const r = lxRandom(x), app = r.pick(LX_APPS), owner = r.pick(LX_PEOPLE), conf = `/etc/${app}/${app}.conf`, workers = r.int(2, 16);
+    const text = `# ${app} (remove the debug lines before release)\nmode = development\ndebug = on\nworkers = ${workers}\ndebug_log = /tmp/${app}.log\n`;
+    const want = `# ${app} (remove the debug lines before release)\nmode = production\nworkers = ${workers}\nowner = ${owner}\n`;
+    const solution = [`sudo sed -i 's/^mode = .*/mode = production/' ${conf}`, `sudo sed -i '/^debug/d' ${conf}`, `echo "owner = ${owner}" | sudo tee -a ${conf}`];
+    return {
+      sub: L(`Prepare the root-owned settings of ${app} for production.`, `Připrav pro produkci nastavení služby ${app}, které vlastní root.`),
+      lead: L(`${conf} belongs to root. Note that sudo echo ... >> FILE does not work: your own shell opens the file.`, `${conf} patří rootovi. Pozor: sudo echo ... >> SOUBOR nefunguje, protože soubor otevírá tvůj vlastní shell.`),
+      steps: [L('Set mode to production.', 'Nastav mode na production.'), L('Delete every line that starts with debug. Keep the comment.', 'Smaž každý řádek, který začíná slovem debug. Komentář nech.'),
+        L(`Add the line "owner = ${owner}" at the end.`, `Přidej na konec řádek „owner = ${owner}“.`)],
+      init: {dirs: [[`/etc/${app}`, {owner: 'root', mode: 0o755}]], files: [[conf, text, {owner: 'root', mode: 0o644}]]},
+      reqs: [
+        lxIsFile(conf, want, solution, L('has the production settings', 'má produkční nastavení')),
+        lxOwner(conf, 'root', 'root', solution),
+        lxModeIs(conf, 0o644, solution),
+      ],
+      solution: [...solution, `cat ${conf}`],
+    };
+  },
+};
+
+// ---- Services ----
+
+// a service of a lab: its settings file, which must hold "port = N" for it to start
+function lxService(r, extra = {}) {
+  const name = r.pick(LX_APPS), port = r.int(2000, 9999), path = `/etc/${name}/${name}.conf`;
+  const text = line => `# ${name} settings\n${line}\nworkers = 4\n`;
+  const svc = {name, desc: `The ${name} service`, cmd: `/usr/local/bin/${name}d --config ${path}`, user: 'www-data',
+    config: {path, line: `port = ${port}`, error: `config check failed: ${path}: the setting "port" must be ${port}`}, ...extra};
+  return {name, port, path, text, svc};
+}
+const lxSvcIs = (name, text, ok, cmds) => ({text, ok: s => ok(lxHost(s), lxHost(s).services[name]), hint: {cmds}});
+const lxRunning = (name, cmds) => lxSvcIs(name, L(`The service ${name} is running`, `Služba ${name} běží`), lxActive, cmds);
+const lxAtBoot = (name, cmds) => lxSvcIs(name, L(`${name} starts at boot (enabled)`, `${name} se spouští po startu (enabled)`), (st, svc) => svc.enabled, cmds);
+// a configured service's files: with the port line given
+const lxSvcFiles = (v, line) => ({dirs: [[`/etc/${v.name}`, {owner: 'root', mode: 0o755}]], files: [[v.path, v.text(line), {owner: 'root', mode: 0o644}]]});
+
+const LX_SVC = {
+  beginner: x => {
+    const r = lxRandom(x), enabled = r.int(0, 1) === 1, pid = r.int(2000, 3999), v = lxService(r, {active: true, pid, enabled});
+    return {
+      sub: L(`Read the status of the ${v.name} service.`, `Přečti stav služby ${v.name}.`),
+      lead: L(`The ${v.name} service runs on this machine.`, `Na tomto stroji běží služba ${v.name}.`),
+      steps: [L(`Show the status of ${v.name} with systemctl.`, `Zobraz pomocí systemctl stav služby ${v.name}.`), L('Find its main PID, and whether it starts at boot.', 'Zjisti její hlavní PID a jestli se spouští po startu systému.')],
+      init: {...lxSvcFiles(v, v.svc.config.line), services: [v.svc]},
+      reqs: [
+        lxAsk(L(`The main PID of ${v.name}`, `Hlavní PID služby ${v.name}`), () => String(pid), [`systemctl status ${v.name}`]),
+        lxAsk(L('Does it start at boot? Type enabled or disabled', 'Spouští se po startu? Napiš enabled nebo disabled'), () => (enabled ? 'enabled' : 'disabled'), [`systemctl is-enabled ${v.name}`]),
+      ],
+      solution: [`systemctl status ${v.name}`],
+    };
+  },
+  intermediate: x => {
+    const r = lxRandom(x), v = lxService(r), solution = [`sudo systemctl start ${v.name}`, `sudo systemctl enable ${v.name}`];
+    return {
+      sub: L(`Start ${v.name} and make it start at boot.`, `Spusť ${v.name} a nastav, ať se spouští po startu.`),
+      lead: L(`The ${v.name} service is installed, but it is stopped and disabled.`, `Služba ${v.name} je nainstalovaná, ale je zastavená a zakázaná.`),
+      steps: [L(`Check the status of ${v.name}.`, `Zkontroluj stav služby ${v.name}.`), L('Start it now (this needs sudo).', 'Spusť ji teď (potřebuje to sudo).'),
+        L('Enable it, so it also starts after a reboot. Starting and enabling are two different things.', 'Povol ji, aby se spustila i po restartu. Spuštění a povolení jsou dvě různé věci.')],
+      init: {...lxSvcFiles(v, v.svc.config.line), services: [v.svc]},
+      reqs: [lxRunning(v.name, [solution[0]]), lxAtBoot(v.name, [solution[1]])],
+      solution: [...solution, `systemctl status ${v.name}`],
+    };
+  },
+  advanced: x => {
+    const r = lxRandom(x), v = lxService(r, {enabled: true, failed: true});
+    const setting = r.pick(['listen_port', 'db_host', 'data_dir', 'log_level', 'api_key']), file = `/etc/${v.name}/${r.pick(['main', 'local', 'server', 'runtime'])}.conf`;
+    v.svc.config = {path: file, line: `${setting} = ok`, error: `config check failed: ${file}: missing setting "${setting}"`};
+    v.svc.log = [`Nov 24 06:00:00 lab systemd[1]: Starting ${v.name}.service - The ${v.name} service...`,
+      `Nov 24 06:00:01 lab ${v.name}[911]: ${v.svc.config.error}`, `Nov 24 06:00:01 lab systemd[1]: ${v.name}.service: Failed with result 'exit-code'.`];
+    return {
+      sub: L(`Find out why ${v.name} failed to start.`, `Zjisti, proč se služba ${v.name} nespustila.`),
+      lead: L(`${v.name} should be running, but it is not. Nobody knows why yet.`, `${v.name} má běžet, ale neběží. Zatím nikdo neví proč.`),
+      steps: [L('Check the status of the service.', 'Zkontroluj stav služby.'), L('Read its journal. The system journal needs sudo.', 'Přečti její žurnál. Systémový žurnál potřebuje sudo.'), L('Type what you found next to the requirements.', 'Napiš, co jsi zjistil, k požadavkům.')],
+      init: {services: [v.svc]},
+      reqs: [
+        lxAsk(L('The state systemctl is-active prints', 'Stav, který vypíše systemctl is-active'), () => 'failed', [`systemctl is-active ${v.name}`]),
+        lxAsk(L('The full path of the file the journal blames', 'Celá cesta k souboru, který viní žurnál'), () => file, [`sudo journalctl -u ${v.name}`]),
+        lxAsk(L('The name of the missing setting', 'Název chybějícího nastavení'), () => setting, [`sudo journalctl -u ${v.name}`]),
+      ],
+      solution: [`systemctl status ${v.name}`, `sudo journalctl -u ${v.name}`],
+    };
+  },
+  expert: x => {
+    const r = lxRandom(x), v = lxService(r, {failed: true});
+    const wrong = `port = ${v.port}${r.pick(['0', 'x', 'O'])}`;
+    v.svc.log = [`Nov 24 06:00:01 lab ${v.name}[911]: ${v.svc.config.error}`, `Nov 24 06:00:01 lab systemd[1]: ${v.name}.service: Failed with result 'exit-code'.`];
+    const solution = [`sudo sed -i 's/^port = .*/port = ${v.port}/' ${v.path}`, `sudo systemctl restart ${v.name}`, `sudo systemctl enable ${v.name}`];
+    return {
+      sub: L(`Bring ${v.name} back, and keep it running after a reboot.`, `Zprovozni ${v.name} a zařiď, aby běžela i po restartu.`),
+      lead: L(`${v.name} is down since last night's change.`, `${v.name} od včerejší změny neběží.`),
+      steps: [L('Find the reason in the journal.', 'Najdi důvod v žurnálu.'), L('Fix the settings file, changing only the wrong line.', 'Oprav soubor s nastavením a změň jen chybný řádek.'),
+        L('Restart the service, and make it start at boot.', 'Restartuj službu a nastav, ať se spouští po startu.')],
+      init: {...lxSvcFiles(v, wrong), services: [v.svc]},
+      reqs: [
+        lxIsFile(v.path, v.text(`port = ${v.port}`), [`sudo journalctl -u ${v.name}`, solution[0]], L('has the right port and no other change', 'má správný port a žádnou jinou změnu')),
+        lxRunning(v.name, [solution[1]]),
+        lxAtBoot(v.name, [solution[2]]),
+      ],
+      solution: [`sudo journalctl -u ${v.name}`, ...solution],
+    };
+  },
+};
+
+// ---- Troubleshooting ----
+
+// what a user may do with a path, through every directory on the way, so that any working fix passes
+const lxCan = (st, user, path, perm) => {
+  const {node} = lxWalk(st, user, path);
+  return !!node && lxMay(st, user, node, perm) && (perm !== 'w' || node.type !== 'dir' || lxMay(st, user, node, 'x'));
+};
+const lxAccess = (user, path, perm, text, cmds) => ({text, ok: s => lxCan(lxHost(s), user, path, perm), hint: {cmds}});
+// bits: 0o002 others, 0o022 the group and others
+const lxNoWrite = (path, bits, cmds) => ({
+  text: bits === 0o002 ? L(`${path} is not writable by others`, `Do ${path} nesmějí zapisovat ostatní`)
+    : L(`${path} is not writable by its group or others`, `Do ${path} nesmí zapisovat skupina ani ostatní`),
+  ok: s => { const n = lxNodeAt(s, path); return !!n && !(n.mode & bits); }, hint: {cmds},
+});
+const lxPeople = (...names) => ({
+  users: Object.fromEntries(names.map((n, i) => [n, {uid: 1001 + i, gid: 1001 + i, home: `/home/${n}`}])),
+  groups: Object.fromEntries(names.map((n, i) => [n, {gid: 1001 + i, members: []}])),
+});
+
+const LX_FIX = {
+  beginner: x => {
+    const r = lxRandom(x), site = r.pick(LX_PROJECTS), onDir = r.int(0, 1) === 1;
+    const dir = `/var/www/${site}`, page = `${dir}/index.html`, html = `<h1>${site}</h1>\n`;
+    const fix = onDir ? `sudo chmod 755 ${dir}` : `sudo chmod 644 ${page}`;
+    return {
+      sub: L(`The ${site} web page answers "403 Forbidden". Find out why and fix it.`, `Webová stránka ${site} odpovídá „403 Forbidden“. Zjisti proč a oprav to.`),
+      lead: L(`The web server runs as the user www-data and serves ${page}. Its error log is /var/log/nginx/error.log.`, `Webový server běží jako uživatel www-data a posílá ${page}. Jeho chybový log je /var/log/nginx/error.log.`),
+      steps: [L('Read the error log.', 'Přečti si chybový log.'), L('Check the permissions of the page and of the directory it is in.', 'Zkontroluj oprávnění stránky i adresáře, ve kterém je.'),
+        L('Let www-data read the page, without letting everyone change it.', 'Dovol uživateli www-data stránku číst, ale ať ji nesmí měnit kdokoli.')],
+      init: {
+        packages: ['nginx'], dirs: [[dir, {owner: 'root', mode: onDir ? 0o700 : 0o755}], ['/var/log/nginx', {owner: 'root', mode: 0o755}]],
+        files: [[page, html, {owner: 'root', mode: onDir ? 0o644 : 0o600}],
+          ['/var/log/nginx/error.log', `2026/11/24 07:58:41 [error] 913#913: *1 "${page}" is forbidden (13: Permission denied), request: "GET / HTTP/1.1"\n`,
+            {owner: 'www-data', group: 'adm', mode: 0o640}]],
+      },
+      reqs: [
+        lxAccess('www-data', page, 'r', L(`www-data can read ${page}`, `www-data může číst ${page}`), [`ls -ld ${dir}`, `sudo ls -l ${dir}`, fix]),
+        lxIsFile(page, html, [fix], L('still has its content', 'má pořád svůj obsah')),
+        lxNoWrite(page, 0o002, [fix]),
+        lxNoWrite(dir, 0o002, [fix]),
+      ],
+      solution: ['sudo cat /var/log/nginx/error.log', `ls -ld ${dir}`, `sudo ls -l ${dir}`, fix],
+    };
+  },
+  intermediate: x => {
+    const r = lxRandom(x), user = r.pick(LX_PEOPLE), [team, other] = r.some(LX_TEAMS, 2), dir = `/srv/${team}`;
+    const people = lxPeople(user);
+    people.groups[team] = {gid: 1010, members: []};
+    people.groups[other] = {gid: 1011, members: [user]};
+    const fix = [`sudo usermod -aG ${team} ${user}`, `sudo chmod g+w ${dir}`];
+    return {
+      sub: L(`${user} cannot save files in the ${team} team directory. Fix it.`, `Uživatel ${user} nemůže ukládat soubory do adresáře týmu ${team}. Oprav to.`),
+      lead: L(`${user} joined the ${team} team and gets "Permission denied" when saving into ${dir}. The group ${team} should be able to create files there; other users should not.`,
+        `Uživatel ${user} nastoupil do týmu ${team} a při ukládání do ${dir} dostává „Permission denied“. Skupina ${team} tam má vytvářet soubory; ostatní uživatelé ne.`),
+      steps: [L(`Check which groups ${user} is in.`, `Zkontroluj, ve kterých skupinách ${user} je.`), L(`Check the owner, group and mode of ${dir}.`, `Zkontroluj vlastníka, skupinu a režim ${dir}.`),
+        L(`Fix every cause, keeping the groups ${user} already has.`, `Oprav všechny příčiny a zachovej skupiny, které ${user} už má.`)],
+      init: {...people, dirs: [[dir, {owner: 'root', group: team, mode: 0o750}]]},
+      reqs: [
+        lxUser(user, {groups: [team]}, [`id ${user}`, fix[0]]),
+        lxUser(user, {groups: [other]}, [fix[0]]),
+        lxAccess(user, dir, 'w', L(`${user} can create files in ${dir}`, `${user} může vytvářet soubory v ${dir}`), [`ls -ld ${dir}`, ...fix]),
+        lxNoWrite(dir, 0o002, [fix[1]]),
+      ],
+      solution: [`id ${user}`, `ls -ld ${dir}`, ...fix],
+    };
+  },
+  advanced: x => {
+    const r = lxRandom(x), [user, former] = r.some(LX_PEOPLE, 2), home = `/home/${user}`, ssh = `${home}/.ssh`, keys = `${ssh}/authorized_keys`;
+    const key = `ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI${r.int(100000, 999999)} ${user}@laptop\n`;
+    const solution = [`sudo chmod go-w ${home}`, `sudo chmod 700 ${ssh}`, `sudo chown ${user}:${user} ${keys}`, `sudo chmod 600 ${keys}`];
+    return {
+      sub: L(`${user} cannot log in with an SSH key any more. Fix the files behind it.`, `Uživatel ${user} se už nepřihlásí SSH klíčem. Oprav soubory, na kterých to závisí.`),
+      lead: L(`The key of ${user} worked yesterday. ${former} "tidied up" ${home} since then. sshd refuses a key when the home directory, ~/.ssh or authorized_keys belongs to someone else or may be written by the group or others.`,
+        `Klíč uživatele ${user} včera fungoval. Od té doby ${former} v ${home} „uklízel“. sshd klíč odmítne, když domovský adresář, ~/.ssh nebo authorized_keys patří někomu jinému, nebo do nich smí zapisovat skupina či ostatní.`),
+      steps: [L('Find the reason sshd gives in /var/log/auth.log.', 'V /var/log/auth.log najdi, jaký důvod sshd uvádí.'),
+        L('sshd stops at the first problem, so check the home directory, ~/.ssh and authorized_keys, all three.', 'sshd skončí u prvního problému, takže zkontroluj domovský adresář, ~/.ssh i authorized_keys, všechny tři.'),
+        L('Fix the owners and modes without changing the key.', 'Oprav vlastníky a režimy, aniž bys změnil klíč.')],
+      init: {
+        ...lxPeople(user, former),
+        dirs: [[home, {owner: user, mode: 0o775}], [ssh, {owner: user, mode: 0o777}]],
+        files: [[keys, key, {owner: former, mode: 0o664}],
+          ['/var/log/auth.log', `Nov 24 07:41:09 lab sshd[2318]: Authentication refused: bad ownership or modes for directory ${home}\n` +
+            `Nov 24 07:41:09 lab sshd[2318]: Connection closed by authenticating user ${user} 10.0.2.2 port 50412 [preauth]\n`, {owner: 'syslog', group: 'adm', mode: 0o640}]],
+      },
+      reqs: [
+        lxNoWrite(home, 0o022, ['sudo cat /var/log/auth.log', `ls -ld ${home}`, solution[0]]),
+        lxOwner(ssh, user, null, [`sudo ls -ld ${ssh}`]),
+        lxNoWrite(ssh, 0o022, [solution[1]]),
+        lxOwner(keys, user, null, [`sudo ls -l ${ssh}`, solution[2]]),
+        lxNoWrite(keys, 0o022, [solution[3]]),
+        lxAccess(user, keys, 'r', L(`${user} can read ${keys}`, `${user} může číst ${keys}`), [solution[3]]),
+        lxIsFile(keys, key, [`sudo cat ${keys}`], L('still holds the same key', 'obsahuje pořád stejný klíč')),
+      ],
+      solution: ['sudo cat /var/log/auth.log', `ls -ld ${home}`, `sudo ls -la ${ssh}`, ...solution],
+    };
+  },
+  expert: x => {
+    const r = lxRandom(x), app = r.pick(LX_APPS), pkg = r.pick(['jq', 'curl', 'zip']), port = r.int(2000, 9999), pid = r.int(2000, 3999);
+    const dir = `/etc/${app}`, conf = `${dir}/${app}.conf`, log = `/var/log/${app}/${app}.log`;
+    const good = `# ${app} settings\nname = ${app}\nport = ${port}\nworkers = ${r.int(2, 16)}\n`;
+    const bad = good.replace(`port = ${port}`, `port = ${port}O`); // a letter O typed after the number
+    const solution = [`sudo cp ${conf}.bak ${conf}`, `sudo kill ${pid}`, `sudo apt install -y ${pkg}`];
+    return {
+      sub: L(`The ${app} app is down. There is more than one reason.`, `Aplikace ${app} neběží. Důvodů je víc.`),
+      lead: L(`${app} stopped after last night's change and does not start again. Its settings are in ${dir}.`, `${app} se po včerejší změně zastavil a znovu nenastartuje. Jeho nastavení je v ${dir}.`),
+      steps: [L(`Find the log of ${app} under /var/log and read all of it.`, `Najdi log služby ${app} pod /var/log a přečti ho celý.`),
+        L('Fix every problem it reports. You do not need to start the app.', 'Oprav každý problém, který hlásí. Aplikaci spouštět nemusíš.')],
+      init: {
+        dirs: [[dir, {owner: 'root', mode: 0o755}], [`/var/log/${app}`, {owner: 'root', mode: 0o755}]],
+        files: [[conf, bad, {owner: 'root', mode: 0o644}], [`${conf}.bak`, good, {owner: 'root', mode: 0o644}],
+          [log, `Nov 24 03:00:01 lab ${app}: config error in ${conf}: port is not a number (the last good copy ends in .bak)\n` +
+            `Nov 24 03:00:02 lab ${app}: cannot listen: the port is held by an old ${app}-old process, still running\n` +
+            `Nov 24 03:00:02 lab ${app}: startup check failed: command '${pkg}' not found\n`, {owner: 'root', group: 'adm', mode: 0o640}]],
+        procs: [{pid, user: 'www-data', cmd: `/opt/${app}/${app}-old --serve`, cpu: 0.3, mem: 1.9, tty: '?', stat: 'S', start: '02:59'}],
+      },
+      reqs: [
+        lxIsFile(conf, good, [`sudo cat ${log}`, `ls ${dir}`, solution[0]], L('has the last good settings', 'má poslední funkční nastavení')),
+        lxNoProc(`${app}-old`, ['ps aux', solution[1]]),
+        lxPkg(pkg, true, [solution[2]]),
+      ],
+      solution: [`sudo cat ${log}`, `ls -l ${dir}`, 'ps aux', ...solution],
+    };
+  },
+};
+
 const LINUX_LABS = {
+  'lx-fix': {levels: LX_FIX, preset: true}, // a broken system: what is right from the start is not scored
+  'lx-svc': {levels: LX_SVC},
   'lx-nav': {levels: LX_NAV},
   'lx-files': {levels: LX_FILES},
   'lx-view': {levels: LX_VIEW},
+  'lx-shell': {levels: LX_SHELL},
   'lx-search': {levels: LX_SEARCH},
   'lx-pipes': {levels: LX_PIPES},
+  'lx-edit': {levels: LX_EDIT},
   'lx-perms': {levels: LX_PERMS},
   'lx-users': {levels: LX_USERS_LABS},
   'lx-procs': {levels: LX_PROCS_LABS},
@@ -701,7 +1059,7 @@ function lxLab(T, level, x) {
   const lv = level(x);
   return {
     sub: lv.sub, lead: lv.lead + L(` You are logged in as student (password: ${LX_PASSWORD}).`, ` Jsi přihlášený jako student (heslo: ${LX_PASSWORD}).`),
-    steps: lv.steps, reqs: lv.reqs, solution: [['lab', lv.solution]], home: 'lab', links: [],
+    steps: lv.steps, reqs: lv.reqs, solution: [['lab', lv.solution]], home: 'lab', links: [], preset: T.preset,
     nodes: [{id: 'lab', type: 'linux', sub: 'Ubuntu 24.04', init: lv.init}],
   };
 }

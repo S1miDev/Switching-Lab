@@ -9,7 +9,7 @@ const ROUTER_CMDS = {
   priv: ['configure', 'copy', 'disable', 'exit', 'ping', 'show', 'terminal', 'write'],
   config: ['hostname', 'interface', 'ip', 'ipv6', 'cdp', 'lldp', 'no', 'ntp', 'logging', 'access-list', 'line', 'router', 'enable', 'service', 'banner',
     'crypto', 'username', 'aaa', 'exit', 'end', 'show'],
-  ifc: ['interface', 'description', 'ip', 'ipv6', 'shutdown', 'no', 'cdp', 'standby', 'exit', 'end', 'show', 'encapsulation'],
+  ifc: ['interface', 'description', 'ip', 'ipv6', 'shutdown', 'no', 'cdp', 'standby', 'speed', 'duplex', 'exit', 'end', 'show', 'encapsulation'],
   line: ['password', 'login', 'logging', 'exec-timeout', 'transport', 'access-class', 'no', 'exit', 'end', 'show'],
   router: ['network', 'router-id', 'passive-interface', 'default-information', 'auto-cost', 'version', 'eigrp', 'no', 'exit', 'end', 'show'],
   nacl: ['permit', 'deny', 'exit', 'end', 'show'],
@@ -29,7 +29,7 @@ const ROUTER_KEYS = {
     'ipv6 route', 'no ipv6 route', 'exit', 'end', ...SHOWS],
   ifc: ['interface', 'description', 'ip address', 'ipv6 address', 'ip ospf 1 area 0', 'ipv6 ospf 1 area 0', 'no ip address', 'no ipv6 address',
     'cdp enable', 'no cdp enable', 'no shutdown', 'shutdown', 'ipv6 address autoconfig', 'ip ospf priority', 'ip ospf cost',
-    'ip ospf network point-to-point', 'standby', 'standby version 2', 'exit', 'end', ...SHOWS],
+    'ip ospf network point-to-point', 'standby', 'standby version 2', 'speed', 'duplex', 'exit', 'end', ...SHOWS],
   line: ['password', 'login', 'login local', 'login authentication', 'logging synchronous', 'exec-timeout 5 0', 'transport input ssh',
     'access-class', 'exit', 'end'],
   router: ['network', 'router-id', 'passive-interface', 'no passive-interface', 'default-information originate', 'version 2', 'eigrp router-id','no auto-summary',
@@ -227,7 +227,8 @@ function freshProc() {
 // eui: ip6 is a /64 prefix that EUI-64 completes from mac; auto: SLAAC gives the address; hsrp: {grp, vip, prio, preempt} or null
 function iface(name, mac = null) {
   return {name, mac, ip: null, mask: null, ip6: null, ll: null, eui: false, auto: false, desc: null, encap: null, aclIn: null, aclOut: null,
-    helpers: [], nat: null, ospf: null, ospf6: null, ospfPrio: null, ospfCost: null, ospfP2p: false, hsrp: null, hsrpVer: 1, cdp: true, shut: true};
+    helpers: [], nat: null, ospf: null, ospf6: null, ospfPrio: null, ospfCost: null, ospfP2p: false, hsrp: null, hsrpVer: 1, cdp: true, shut: true,
+    speed: null, duplex: null};
 }
 
 // a fixed, Cisco-looking MAC per router and port: R1 Gi0/2 is ca01.1a2b.0002
@@ -281,6 +282,7 @@ function configLines(st) {
   for (const i of Object.values(st.ifs)) {
     lines.push(`interface ${i.name}`);
     if (i.desc) lines.push(` description ${i.desc}`);
+    lines.push(...linkLines(i));
     if (i.encap) lines.push(` encapsulation dot1Q ${i.encap}`);
     for (const h of i.helpers) lines.push(` ip helper-address ${h}`);
     if (i.nat) lines.push(` ip nat ${i.nat}`);
@@ -373,12 +375,14 @@ function route6Table(st, out) {
 }
 
 // show interfaces <name>: the line that matters here is the MAC address (EUI-64 is built from it)
-function showIf(i, out) {
-  out(`${i.name} is ${i.shut ? 'administratively down' : 'up'}, line protocol is ${i.shut ? 'down' : 'up'}`);
+function showIf(i, link, out) {
+  const up = !i.shut && link.state === 'connected';
+  out(`${i.name} is ${i.shut ? 'administratively down' : up ? 'up' : 'down'}, line protocol is ${up ? 'up' : 'down'}`);
   if (i.mac) out(`  Hardware is CN Gigabit Ethernet, address is ${i.mac} (bia ${i.mac})`);
   if (i.ip) out(`  Internet address is ${i.ip}/${prefixLen(i.mask)}`);
   out('  MTU 1500 bytes, BW 1000000 Kbit/sec, DLY 10 usec');
-  out('  Full-duplex, 1Gbps, media type is RJ45');
+  out(`  ${link.duplex === 'full' ? 'Full' : 'Half'}-duplex, ${SPEED_TEXT[link.speed]}, media type is RJ45`);
+  showCounters(link, out);
 }
 
 function standbyBrief(st, out) {
@@ -431,6 +435,8 @@ function routeTable(st, out) {
 }
 
 // a ping succeeds when the target is on a connected network that is up
+// shortcut: router ping, connected routes and OSPF treat only "shutdown" as down, not a missing link (portLink);
+// use portLink here when a router lab depends on it
 function ping(st, target, out) {
   if (!DOTTED.test(target)) out('% Unrecognized host or address', 'ln-err');
   else pingResult(target, Object.values(st.ifs).some(i => i.ip && !i.shut && inNet(i.ip, i.mask, target)), out);
@@ -441,7 +447,11 @@ function showCmd(st, name, session, args, out) {
   const what = pick(args[0], ['ip', 'ipv6', 'cdp', 'lldp', 'running-config', 'startup-config', 'version', 'interfaces', 'standby']);
   const alone = args.length === 1;
   if (what === 'ipv6' && args.length === 2 && pick(args[1], ['route'])) return route6Table(st, out);
-  if (what === 'interfaces' && args.length >= 2 && ifKey(st, args.slice(1).join(''))) return showIf(st.ifs[ifKey(st, args.slice(1).join(''))], out);
+  // a subinterface shares the link of its physical interface
+  const showOne = key => showIf(st.ifs[key], portLink(session, name, key.split('.')[0]), out);
+  if (what === 'interfaces' && alone) return Object.keys(st.ifs).filter(k => !k.includes('.')).forEach(showOne);
+  const named = what === 'interfaces' ? ifKey(st, args.slice(1).join('')) : null;
+  if (named) return showOne(named);
   if (what === 'standby' && (alone || (args.length === 2 && pick(args[1], ['brief'])))) return standbyBrief(st, out);
   if (what === 'ip' && args.length === 2 && pick(args[1], ['ssh'])) return sshStatus(st, out);
   if (what === 'ip' && args.length === 4 && pick(args[1], ['ospf']) && pick(args[2], ['interface']) && pick(args[3], ['brief'])) return ospfBrief(st, out);
@@ -453,7 +463,10 @@ function showCmd(st, name, session, args, out) {
   if (what === 'startup-config' && alone) return showStartup(st, out);
   if (what === 'ip' && args.length === 2 && pick(args[1], ['route'])) return routeTable(st, out);
   if (args.length === 3 && pick(args[1], ['interface']) && pick(args[2], ['brief'])) {
-    if (what === 'ip') return ipBrief(Object.values(st.ifs), out);
+    if (what === 'ip') {
+      const down = i => !i.name.includes('.') && portLink(session, name, i.name.toLowerCase()).state !== 'connected';
+      return ipBrief(Object.values(st.ifs), out, down);
+    }
     if (what === 'ipv6') return briefV6(st, out);
   }
   if (args.length === 2 && (what === 'cdp' || what === 'lldp') && pick(args[1], ['neighbors'])) return neighbors(st, name, session, what, out);
@@ -647,6 +660,7 @@ function standbyCommand(i, w) {
 // interface configuration
 function interfaceCommand(st, c, w, line) {
   const i = st.ifs[st.iface];
+  if (!st.iface.includes('.') && linkCommand(i, c, w)) return true;
   if (c === 'standby') return standbyCommand(i, w);
   if (c === 'no' && pick(w[1], ['standby']) && w.length === 2) { i.hsrp = null; return true; }
   // ip ospf priority <0-255> | cost <1-65535> | network point-to-point|broadcast, and "no" of each
@@ -791,7 +805,8 @@ function createRouter(node, session) {
     routes: () => true,
     pools: () => Object.values(st.dhcp).map(p => ({...p, ex: st.dhcpEx})),
     // the subinterface of a VLAN, for a switch trunked to the physical interface key (router-on-a-stick)
-    vlanGateway: (key, vlan) => (st.ifs[key].shut ? null : usable(Object.values(st.ifs).find(i => i.encap === vlan))),
+    vlanGateway: (key, vlan) => (!st.ifs[key] || st.ifs[key].shut ? null
+      : usable(Object.entries(st.ifs).find(([k, i]) => k.startsWith(key + '.') && i.encap === vlan)?.[1])),
     run: (line, out) => runRouter(st, node.id, session, line, out),
     complete: line => iosComplete(line, ROUTER_KEYS[st.mode], st.mode, self.ports()),
     help: (line, out) => helpFor(line, routerHelpEntry(st), st.mode, 'r', out),

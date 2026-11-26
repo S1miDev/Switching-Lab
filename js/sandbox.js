@@ -117,11 +117,13 @@ function undo() {
 }
 
 function removeDevice(id) {
-  if (!confirm(`Delete ${id}, its cables and its configuration?`)) return;
+  if (!confirm(L(`Delete ${id}, its cables and its configuration?`, `Smazat ${id}, jeho kabely a konfiguraci?`))) return;
   const why = sb.removeNode(id);
   if (why) return msg(why);
+  cabling = null; // the Backspace key works in cable mode: a half-made cable or open port menu may point at this device
+  closeMenu();
   structureChanged();
-  msg(`Deleted ${id}.`);
+  msg(L(`Deleted ${id}.`, `Smazáno ${id}.`));
 }
 
 // ---- cabling: pick a free port on each end from a small menu next to the device ----
@@ -216,6 +218,16 @@ document.addEventListener('keydown', e => {
     e.preventDefault();
     undo();
   }
+});
+// Backspace removes the focused device or tab, else the one whose console is open. A click leaves the cursor in the console,
+// so it counts on an empty console line too (e.repeat: holding the key to clear a line must not go on to delete).
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Backspace' || e.ctrlKey || e.metaKey || e.altKey || e.repeat || drag) return;
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) && !(e.target.id === 'cmd' && !e.target.value)) return;
+  const id = e.target.closest?.('[data-dev]')?.dataset.dev ?? labConsole.current();
+  if (!sb.devices[id]) return;
+  e.preventDefault();
+  removeDevice(id);
 });
 document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
 

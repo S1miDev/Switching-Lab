@@ -119,10 +119,38 @@ function saveConfig(st, lines, out) {
 // show startup-config
 const showStartup = (st, out) => (st.saved ? st.saved.forEach(l => out(l)) : out('startup-config is not present', 'ln-err'));
 
-// show ip interface brief, for a router's interfaces or a switch's ports
-function ipBrief(ports, out) {
+// show ip interface brief, for a router's interfaces or a switch's ports; down(p) says a port that is on has no link
+function ipBrief(ports, out, down = () => false) {
   out('Interface    IP-Address       Status');
-  for (const p of ports) out(p.name.padEnd(13) + (p.ip || 'unassigned').padEnd(17) + (p.shut ? 'administratively down' : 'up'));
+  for (const p of ports) out(p.name.padEnd(13) + (p.ip || 'unassigned').padEnd(17) + (p.shut ? 'administratively down' : down(p) ? 'down' : 'up'));
+}
+
+// ---- speed and duplex (null is auto) ----
+
+const portCap = name => (name.startsWith('Fa') ? 100 : 1000);
+const SPEED_TEXT = {10: '10Mbps', 100: '100Mbps', 1000: '1Gbps'};
+
+// speed auto|10|100|1000 and duplex auto|full|half, and "no" of each; false for another command or a value the port cannot do
+function linkCommand(p, c, w) {
+  const what = c === 'no' ? pick(w[1], ['speed', 'duplex']) : c;
+  if ((what !== 'speed' && what !== 'duplex') || w.length !== 2) return false;
+  const value = c === 'no' ? 'auto' : w[1];
+  if (value === 'auto') p[what] = null;
+  else if (what === 'speed' && SPEED_TEXT[value] && Number(value) <= portCap(p.name)) p.speed = Number(value);
+  else if (what === 'duplex' && pick(value, ['full', 'half'])) p.duplex = pick(value, ['full', 'half']);
+  else return false;
+  return true;
+}
+
+// the running-config lines of a port's fixed speed and duplex
+const linkLines = p => [...(p.speed ? [` speed ${p.speed}`] : []), ...(p.duplex ? [` duplex ${p.duplex}`] : [])];
+
+// The error counters of show interfaces. A duplex mismatch shows late collisions on the half end, CRCs and runts on the full end.
+// shortcut: fixed numbers that do not grow (no clear counters); extend when a lab needs to watch them
+function showCounters({mismatch, duplex}, out) {
+  const full = mismatch && duplex === 'full', half = mismatch && duplex === 'half';
+  out(`     ${full ? 214 : 0} runts, ${full ? 892 : 0} CRC, ${full ? 1106 : 0} input errors`);
+  out(`     ${half ? 3012 : 0} collisions, ${half ? 1847 : 0} late collision`);
 }
 
 // Tab on an IOS device: interface names complete in global and interface configuration

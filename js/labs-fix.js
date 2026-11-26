@@ -18,7 +18,7 @@ const TRUNKFIX = {
     sub: L('S2 does not trunk: fix its side of the link', 'S2 netvoří trunk: oprav jeho stranu linky'),
     steps: [L('On S2, run show interfaces trunk: Gi0/1 is missing.', 'Na S2 spusť show interfaces trunk: Gi0/1 chybí.'), L('Check Gi0/1 in show running-config on S2.', 'Zkontroluj Gi0/1 v show running-config na S2.'), L('Make S2 Gi0/1 a trunk.', 'Nastav S2 Gi0/1 jako trunk.')],
     setup: [['S1', [...SW2_BASE, ...uplink('switchport mode trunk')]], ['S2', [...SW2_BASE, ...uplink('switchport mode access')]]],
-    reqs: bothTrunk,
+    reqs: [...bothTrunk, pcPings('PC1', 'PC2')],
     then: [onDev('S2', ...onIf('gi0/1', 'switchport mode trunk'))],
   },
   intermediate: {
@@ -43,9 +43,123 @@ const TRUNKFIX = {
       L('Then turn off DTP on both ends with switchport nonegotiate (it is refused while the port is dynamic).', 'Pak na obou koncích vypni DTP příkazem switchport nonegotiate (na dynamickém portu ho switch odmítne).')],
     setup: ['S1', 'S2'].map(d => [d, [...SW2_BASE, ...uplink('switchport mode dynamic auto', 'switchport trunk native vlan 99',
       'switchport trunk allowed vlan 10,20,99')]]),
-    reqs: [...bothTrunk, ...bothNative, ...bothAllowed, ...bothNoneg],
+    reqs: [...bothTrunk, ...bothNative, ...bothAllowed, ...bothNoneg, pcPings('PC1', 'PC2')],
     cmds: onIf('gi0/1', 'switchport mode trunk', 'switchport nonegotiate'),
     then: [onDev('S2', ...onIf('gi0/1', 'switchport mode trunk', 'switchport nonegotiate'))],
+  },
+};
+
+// 2.0 VLAN troubleshooting on the same diagram: the symptom is PC1 failing to ping PC2
+const VLANFIX_LEAD = L('PC1 on S1 Fa0/1 and PC2 on S2 Fa0/1 both belong in VLAN 10, but PC1 cannot ping 192.168.10.2. S1 Gi0/1 to S2 Gi0/1 should be a trunk. Find the fault and fix it.',
+  'PC1 na S1 Fa0/1 i PC2 na S2 Fa0/1 patří do VLAN 10, ale PC1 nepingne 192.168.10.2. Linka S1 Gi0/1 – S2 Gi0/1 má být trunk. Najdi chybu a oprav ji.');
+// a working setup of one switch, with the faults of a level: the PC port's VLAN, the trunk's allowed list and its mode
+const vlanSetup = ({vlan = 10, allowed, mode = 'trunk'} = {}) => [...SW2_BASE, ...onIf('fa0/1', `switchport access vlan ${vlan}`),
+  ...uplink(`switchport mode ${mode}`, ...(allowed ? [`switchport trunk allowed vlan ${allowed}`] : []))];
+const VLANFIX_ALL = [
+  ...['S1', 'S2'].flatMap(d => [
+    devReq(d, 'fa0/1', L('is an access port in VLAN 10', 'je access port ve VLAN 10'), q => q.mode === 'access' && q.vlan === 10, 'switchport access vlan 10'),
+    devReq(d, 'gi0/1', L('is a trunk', 'je trunk'), q => q.mode === 'trunk', 'switchport mode trunk'),
+    devReq(d, 'gi0/1', L('allows VLAN 10', 'povoluje VLAN 10'), q => !q.allowed || q.allowed.includes(10), 'switchport trunk allowed vlan add 10'),
+  ]),
+  pcPings('PC1', 'PC2'),
+];
+const VLAN_PING_STEP = L('On PC1, run ping 192.168.10.2 to see the fault.', 'Na PC1 spusť ping 192.168.10.2 a uvidíš chybu.');
+const VLANFIX = {
+  beginner: {
+    sub: L('One PC port is in the wrong VLAN', 'Jeden port PC je ve špatném VLANu'),
+    steps: [VLAN_PING_STEP, L('Run show vlan brief on both switches: which VLAN is each Fa0/1 in?', 'Spusť show vlan brief na obou switchích: v jakém VLANu je který Fa0/1?'),
+      L('Move the wrong port to VLAN 10, then ping again.', 'Přesuň špatný port do VLAN 10 a pingni znovu.')],
+    setup: [['S1', vlanSetup()], ['S2', vlanSetup({vlan: 20})]],
+    reqs: VLANFIX_ALL,
+    then: [onDev('S2', ...onIf('fa0/1', 'switchport access vlan 10'))],
+  },
+  intermediate: {
+    sub: L('Both PC ports are right, but VLAN 10 does not cross the trunk', 'Oba porty PC jsou správně, ale VLAN 10 neprojde trunkem'),
+    steps: [VLAN_PING_STEP, L('Compare the allowed VLANs in show interfaces trunk on both switches.', 'Porovnej povolené VLANy v show interfaces trunk na obou switchích.'),
+      L('Add VLAN 10 without retyping the list.', 'Přidej VLAN 10 bez přepisování seznamu.')],
+    setup: [['S1', vlanSetup({allowed: '20,99'})], ['S2', vlanSetup()]],
+    reqs: VLANFIX_ALL,
+    cmds: onIf('gi0/1', 'switchport trunk allowed vlan add 10'),
+  },
+  advanced: {
+    sub: L('Two faults: one on each switch', 'Dvě chyby: jedna na každém switchi'),
+    steps: [VLAN_PING_STEP, L('Check the VLAN of each PC port with show vlan brief.', 'Zkontroluj VLAN každého portu PC pomocí show vlan brief.'),
+      L('Check the allowed list at both ends of the trunk: one fix alone does not bring the ping back.', 'Zkontroluj seznam povolených na obou koncích trunku: jedna oprava sama ping neobnoví.')],
+    setup: [['S1', vlanSetup({vlan: 20})], ['S2', vlanSetup({allowed: '20,99'})]],
+    reqs: VLANFIX_ALL,
+    cmds: onIf('fa0/1', 'switchport access vlan 10'),
+    then: [onDev('S2', ...onIf('gi0/1', 'switchport trunk allowed vlan add 10'))],
+  },
+  expert: {
+    sub: L('Three faults between PC1 and PC2', 'Tři chyby mezi PC1 a PC2'),
+    steps: [VLAN_PING_STEP, L('Follow the path of the frame: PC port, trunk on S1, trunk on S2, PC port.', 'Sleduj cestu rámce: port PC, trunk na S1, trunk na S2, port PC.'),
+      L('Use show interfaces gi0/1 switchport to compare both ends of the link, and ping after each fix.', 'Pomocí show interfaces gi0/1 switchport porovnej oba konce linky a po každé opravě pingni.')],
+    setup: [['S1', vlanSetup({allowed: '20,99'})], ['S2', vlanSetup({vlan: 99, mode: 'access'})]],
+    reqs: VLANFIX_ALL,
+    cmds: onIf('gi0/1', 'switchport trunk allowed vlan add 10'),
+    then: [onDev('S2', ...onIf('fa0/1', 'switchport access vlan 10'), ...onIf('gi0/1', 'switchport mode trunk'))],
+  },
+};
+
+// 1.0 interface troubleshooting on the same diagram: speed, duplex, shutdown and err-disabled faults
+const IFFIX_LEAD = L('PC1 on S1 Fa0/1 and PC2 on S2 Fa0/1 are in VLAN 10, and S1 Gi0/1 is trunked to S2 Gi0/1. The VLANs and the trunk are right: the faults are on the interfaces. Read show interfaces status and show interfaces on both switches.',
+  'PC1 na S1 Fa0/1 a PC2 na S2 Fa0/1 jsou ve VLAN 10 a S1 Gi0/1 je trunkem propojený s S2 Gi0/1. VLANy a trunk jsou správně: chyby jsou na rozhraních. Přečti show interfaces status a show interfaces na obou switchích.');
+const ifSetup = (pcPort = [], uplinkPort = []) => [...SW2_BASE, ...(pcPort.length ? onIf('fa0/1', ...pcPort) : []),
+  ...uplink('switchport mode trunk', ...uplinkPort)];
+// the port is up on its cable and both ends run the same duplex; hint is the level's fix for it
+const portHealthy = (dev, key, text, hint) => ({
+  text,
+  ok: s => {
+    const l = portLink(s, dev, key);
+    return l.state === 'connected' && !l.mismatch;
+  },
+  hint: {cmds: hint, port: portName(key), dev},
+});
+// each argument is the fix hint of S1 Fa0/1, S2 Fa0/1 and the uplink
+const ifReqs = ({s1 = ['no shutdown'], s2 = ['no shutdown'], up = ['no shutdown'], upDev = 'S2'} = {}) => [
+  portHealthy('S1', 'fa0/1', L('S1 Fa0/1 is connected with no duplex mismatch', 'S1 Fa0/1 je připojený bez neshody duplexu'), s1),
+  portHealthy('S2', 'fa0/1', L('S2 Fa0/1 is connected with no duplex mismatch', 'S2 Fa0/1 je připojený bez neshody duplexu'), s2),
+  portHealthy(upDev, 'gi0/1', L('The link S1 Gi0/1 - S2 Gi0/1 is connected with no duplex mismatch', 'Linka S1 Gi0/1 - S2 Gi0/1 je připojená bez neshody duplexu'), up),
+  pcPings('PC1', 'PC2'),
+];
+const BAD_MAC = '0050.7966.9999';
+const IFFIX = {
+  beginner: {
+    sub: L('One port is switched off', 'Jeden port je vypnutý'),
+    steps: [VLAN_PING_STEP, L('Run show interfaces status on both switches: look for a port that is disabled.', 'Spusť show interfaces status na obou switchích: hledej port ve stavu disabled.'),
+      L('Bring the port up and ping again.', 'Zapni port a znovu pingni.')],
+    setup: [['S1', ifSetup()], ['S2', ifSetup(['shutdown'])]],
+    reqs: ifReqs(),
+    then: [onDev('S2', ...onIf('fa0/1', 'no shutdown'))],
+  },
+  intermediate: {
+    sub: L('The link between the switches is down although both ports are on', 'Linka mezi switchi je dole, i když jsou oba porty zapnuté'),
+    steps: [VLAN_PING_STEP, L('show interfaces status shows notconnect on the uplink: compare the Speed column on both switches.', 'show interfaces status ukazuje na uplinku notconnect: porovnej sloupec Speed na obou switchích.'),
+      L('Set both ends to the same speed, or back to auto.', 'Nastav na obou koncích stejnou rychlost, nebo je vrať na auto.')],
+    setup: [['S1', ifSetup([], ['speed 1000'])], ['S2', ifSetup([], ['speed 100'])]],
+    reqs: ifReqs({up: ['speed auto']}),
+    then: [onDev('S2', ...onIf('gi0/1', 'speed auto'))],
+  },
+  advanced: {
+    sub: L('Two faults: one breaks the ping, the other only slows the link', 'Dvě chyby: jedna rozbije ping, druhá linku jen zpomalí'),
+    steps: [VLAN_PING_STEP, L('Fix what stops the ping, then keep looking: a ping that works does not prove the link is healthy.', 'Oprav to, co brání pingu, a hledej dál: funkční ping nedokazuje, že je linka v pořádku.'),
+      L('Run show interfaces gi0/1 on both switches and read the duplex and the error counters.', 'Spusť show interfaces gi0/1 na obou switchích a přečti duplex a čítače chyb.')],
+    setup: [['S1', ifSetup(['shutdown'], ['duplex full'])], ['S2', ifSetup([], ['duplex half'])]],
+    reqs: ifReqs({up: ['duplex auto']}),
+    cmds: onIf('fa0/1', 'no shutdown'),
+    then: [onDev('S2', ...onIf('gi0/1', 'duplex auto'))],
+  },
+  expert: {
+    sub: L('Three faults: an err-disabled port, a dead uplink and a duplex mismatch', 'Tři chyby: port v err-disabled, mrtvý uplink a neshoda duplexu'),
+    steps: [VLAN_PING_STEP, L('For the err-disabled port, run show port-security interface fa0/1 and compare the secure MAC address with the one ipconfig shows on the PC.', 'U portu v err-disabled spusť show port-security interface fa0/1 a porovnej zabezpečenou MAC adresu s tou, kterou na PC ukáže ipconfig.'),
+      L('Remove the cause first, then use shutdown and no shutdown to recover the port.', 'Nejdřív odstraň příčinu, pak port obnov příkazy shutdown a no shutdown.'),
+      L('Check speed on the uplink and duplex on S2 Fa0/1: a PC always negotiates.', 'Zkontroluj rychlost na uplinku a duplex na S2 Fa0/1: PC vždy autonegociuje.')],
+    setup: [['S1', ifSetup(['switchport port-security', `switchport port-security mac-address ${BAD_MAC}`], ['speed 100'])],
+      ['S2', ifSetup(['speed 100', 'duplex full'], ['speed 1000'])]],
+    reqs: ifReqs({s1: [`no switchport port-security mac-address ${BAD_MAC}`, 'shutdown', 'no shutdown'], s2: ['speed auto', 'duplex auto'],
+      up: ['speed auto'], upDev: 'S1'}),
+    cmds: [...onIf('fa0/1', `no switchport port-security mac-address ${BAD_MAC}`, 'shutdown', 'no shutdown'), ...onIf('gi0/1', 'speed auto')],
+    then: [onDev('S2', ...onIf('fa0/1', 'speed auto', 'duplex auto'), ...onIf('gi0/1', 'speed auto'))],
   },
 };
 
@@ -233,6 +347,8 @@ const ACLFIX = {
 
 Object.assign(LABS, {
   trunkfix: {kind: 'sw2', lead: TRUNKFIX_LEAD, levels: TRUNKFIX},
+  vlanfix: {kind: 'sw2', lead: VLANFIX_LEAD, levels: VLANFIX},
+  iftrouble: {kind: 'sw2', lead: IFFIX_LEAD, levels: IFFIX},
   ospffix: {kind: 'rt', lead: OSPFFIX_LEAD, levels: OSPFFIX},
   intervlanfix: {kind: 'sw', lead: INTERFIX_LEAD, levels: INTERVLANFIX},
   dhcpfix: {kind: 'rt', lead: DHCPFIX_LEAD, levels: DHCPFIX},

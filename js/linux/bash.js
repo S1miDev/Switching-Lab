@@ -7,8 +7,8 @@
 //      out(line), write(text), err(line), note(line) (a muted remark for the terminal only)}
 
 const LINUX_CMDS = {};
-const LX_NOT_SIMULATED = new Set(('man nano vi vim ssh scp ping ip ifconfig systemctl service curl wget tar gzip gunzip zip unzip ln ' +
-  'df du free history alias export source sed awk tr tee diff file stat which whereis locate more nl xargs crontab journalctl ' +
+const LX_NOT_SIMULATED = new Set(('man nano vi vim ssh scp ping ip ifconfig service curl wget tar gzip gunzip zip unzip ln ' +
+  'df du free history alias export source awk diff file stat which whereis locate more nl xargs crontab ' +
   'dmesg mount umount uname hostname date clear shutdown reboot pkill killall nohup bg fg apt-get dpkg snap userdel groupdel ' +
   'deluser adduser visudo chpasswd gpasswd watch bash sh env printenv lsblk lscpu ll la l printf seq basename dirname tac rev ' +
   'who w uptime pgrep pidof nice renice python3 perl type test getent chsh chfn newgrp dd cmp comm join paste split shuf ' +

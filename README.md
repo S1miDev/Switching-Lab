@@ -12,8 +12,8 @@ A web-based virtual lab for practising the command line. It has two tracks: **Sw
 The site is in English and Czech. The **CZ / EN** switch is in the top bar of every page. On your first visit the language follows your browser; after that it follows your choice (saved to your account when you are logged in). Device output, commands and the CCNA questions stay in English, as on real devices and in the official courses.
 
 ## 🐧 Linux
-The bash command line on a simulated Ubuntu 24.04: **9 topics** at **4 difficulties**.
-- **Topics:** navigation, files and directories, viewing files, searching, pipes and redirection, permissions and ownership, users, groups and sudo, processes, packages (apt)
+The bash command line on a simulated Ubuntu 24.04: **13 topics** at **4 difficulties**.
+- **Topics:** navigation, files and directories, viewing files, searching, pipes and redirection, permissions and ownership, users, groups and sudo, processes, packages (apt), wildcards and quoting, editing text (`sed`, `tr`, `tee`), services (`systemctl`, `journalctl`), and a broken system to fix (on its own **Troubleshooting** page)
 - **Terminal:** Tab completes commands and paths, Up/Down walk the history, `help` lists every command the terminal knows
 - Error messages match the real GNU tools and bash
 - Its own **Reference** with the commands and their options
@@ -25,14 +25,18 @@ Practise switching and routing along the CCNA syllabus: **38 topics** at **4 dif
 - **Check** – shows the score, time, hints used, the state of every requirement and the reference solution
 
 ## 🛠️ Troubleshooting
-Broken networks for you to fix. There are **5** topics, each at **4 difficulties**:
+Broken networks for you to fix. There are **7** topics, each at **4 difficulties**:
+- Interface troubleshooting
 - Trunk troubleshooting
+- VLAN troubleshooting
 - Inter-VLAN troubleshooting
 - OSPF troubleshooting
 - DHCP troubleshooting
 - ACL troubleshooting
 
 Every level starts with a faulty configuration, and your commands are the fix.
+
+The Linux track has its own Troubleshooting page with **Broken system** at 4 difficulties: a web page that cannot be read, team directory access, a refused SSH key and an app that is down.
  
 ## 🔌 Topology
 Learn to build a network and pick the right cabling between devices.
