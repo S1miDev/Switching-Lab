@@ -4,9 +4,9 @@
  
 A web-based virtual lab for practising the command line. It has two tracks: **Switching & Routing** in the style of Cisco labs, and **Linux** on a simulated Ubuntu terminal. Pick a difficulty, start a lab and work right in your browser. The lab is graded as you type.
  
-🔗 **Live version:** https://switching-lab.netlify.app/
+🔗 **Live version:** https://ls-labbing.netlify.app/
  
-<img width="1877" height="957" alt="image" src="https://github.com/user-attachments/assets/8a31d814-0a5e-4f49-908d-466597cb847e" />
+<img width="1271" height="728" alt="image" src="https://github.com/user-attachments/assets/dc12edba-bb61-4e73-aea3-3bf447c4d6af" />
 
 ## 🌐 Language
 The site is in English and Czech. The **CZ / EN** switch is in the top bar of every page. On your first visit the language follows your browser; after that it follows your choice (saved to your account when you are logged in). Device output, commands and the CCNA questions stay in English, as on real devices and in the official courses.
