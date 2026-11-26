@@ -1,7 +1,6 @@
 // Switching page wiring on top of script.js: the views and nav tabs only switching.html has.
 
 Object.assign(VIEWS, {
-  trouble: {page: 'trouble', nav: 'nav-trouble', seg: 'trouble-seg'},
   sandbox: {page: 'sandbox', nav: 'nav-sandbox', seg: 'sandbox-seg'},
   topo: {page: 'topo-view', nav: 'nav-topo', seg: 'topo-seg'},
   exam: {page: 'exam-view', nav: 'nav-exam'},
@@ -16,6 +15,3 @@ document.querySelectorAll('[data-sb-tab]').forEach(b => b.addEventListener('clic
   document.querySelectorAll('[data-sb-tab]').forEach(x => x.classList.toggle('active', x === b));
   moveSeg($('sandbox-seg'));
 }));
-$('nav-trouble').addEventListener('click', () => show('trouble'));
-
-renderDashboard('trouble-domains', true);

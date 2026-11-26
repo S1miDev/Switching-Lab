@@ -74,6 +74,19 @@ for (const lang of ['en', 'cs']) {
   }
 }
 
+test('troubleshooting does not score what is right from the start', () => {
+  for (const level of Object.keys(LABS['lx-fix'].levels)) {
+    const s = createSession({topic: 'lx-fix', level, net: 7});
+    assert.equal(s.score().done, 0, level);
+    assert.ok(s.score().total > 0, level);
+  }
+  const s = createSession({topic: 'lx-fix', level: 'intermediate', net: 7});
+  const dir = s.solution[0][1].at(-1).split(' ').at(-1);
+  type(s, `sudo chmod g=w ${dir}`);
+  type(s, s.solution[0][1].at(-2));
+  assert.ok(s.grade().includes(false), 'write without x on a directory must not pass');
+});
+
 test('the random values change between labs', () => {
   for (const [id, T] of Object.entries(LABS)) {
     for (const level of Object.keys(T.levels)) {

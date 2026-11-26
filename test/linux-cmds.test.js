@@ -318,3 +318,49 @@ test('review: smaller GNU and bash details', () => {
 test('every command has a synopsis for the hints', () => {
   for (const [name, c] of Object.entries(get('LINUX_CMDS'))) assert.match(c.synopsis, new RegExp(`^${name}\\b`), name);
 });
+
+test('tr swaps, repeats the last character of a short SET2, deletes, and reports bad operands', () => {
+  const {run} = host();
+  assert.deepEqual(run('echo abc-12 | tr a-c A-C'), ['ABC-12']);
+  assert.deepEqual(run("echo abcd | tr '[:lower:]' x"), ['xxxx']);
+  assert.deepEqual(run('echo a-b-c | tr -d -'), ['abc']);
+  assert.deepEqual(run('echo a | tr a'), ['ERR tr: missing operand after ‘a’', "ERR Try 'tr --help' for more information."]);
+});
+
+test('tee writes and appends, and only sudo tee writes a root file', () => {
+  const {run, sudo} = host();
+  assert.deepEqual(run('echo one | tee n'), ['one']);
+  run('echo two | tee -a n');
+  assert.deepEqual(run('cat n'), ['one', 'two']);
+  assert.deepEqual(run('echo x | tee /etc/hostname'), ['ERR tee: /etc/hostname: Permission denied', 'x']);
+  assert.deepEqual(run('cat /etc/hostname'), ['lab']);
+  sudo('true');
+  run('echo x | sudo tee -a /etc/hostname');
+  assert.deepEqual(run('cat /etc/hostname'), ['lab', 'x']);
+});
+
+test('sed substitutes, deletes and prints lines; other scripts say so', () => {
+  const {run} = host({files: [['/home/student/f', 'aa 80\nbb 8080\n']]});
+  assert.deepEqual(run("sed 's/a/X/' f"), ['Xa 80', 'bb 8080']);
+  assert.deepEqual(run("sed 's/A/X/gi' f"), ['XX 80', 'bb 8080']);
+  assert.deepEqual(run("sed 's|\\(b*\\) 80|& \\1|' f"), ['aa 80 ', 'bb 80 bb80']);
+  assert.deepEqual(run("sed 1d f"), ['bb 8080']);
+  assert.deepEqual(run("sed '/^bb/d' f"), ['aa 80']);
+  assert.deepEqual(run("sed -n 2p f"), ['bb 8080']);
+  assert.deepEqual(run("echo a/b | sed 's/\\//-/'"), ['a-b']);
+  assert.match(run("sed 'y/a/b/' f")[0], /^ERR sed: this script is not available/);
+  assert.match(run("sed 's/a/b' f")[0], /unterminated/);
+  assert.deepEqual(run('cat f'), ['aa 80', 'bb 8080']);
+});
+
+test('sed -i edits in place, needs write access to the directory, and takes a file it replaces', () => {
+  const {st, run, sudo} = host({dirs: [['/srv/app', {owner: 'root', mode: 0o755}], ['/home/student/d']],
+    files: [['/srv/app/a.conf', 'port = 1\n', {owner: 'root', mode: 0o666}], ['/home/student/d/b', 'x\n', {owner: 'root', mode: 0o644}]]});
+  assert.deepEqual(run("sed -i 's/1/2/' /srv/app/a.conf"), ["ERR sed: couldn't open temporary file /srv/app/sedXXXXXX: Permission denied"]);
+  assert.deepEqual(sudo("sed -i 's/1/2/' /srv/app/a.conf"), []);
+  assert.equal(lxFind(st, '/srv/app/a.conf').content, 'port = 2\n');
+  assert.equal(lxFind(st, '/srv/app/a.conf').owner, 'root');
+  st.sudoOk = false;
+  assert.deepEqual(run("sed -i 's/x/y/' d/b"), []);
+  assert.equal(lxFind(st, '/home/student/d/b').owner, 'student');
+});

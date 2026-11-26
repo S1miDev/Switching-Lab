@@ -12,8 +12,8 @@ Webové virtuální prostředí na procvičování příkazové řádky. Má dv�
 Web je česky i anglicky. Přepínač **CZ / EN** je v horní liště každé stránky. Při první návštěvě se jazyk řídí prohlížečem, potom tvou volbou (po přihlášení se ukládá k účtu). Výpisy zařízení, příkazy a otázky CCNA zůstávají anglicky, stejně jako na skutečných zařízeních a v oficiálních kurzech.
 
 ## 🐧 Linux
-Příkazová řádka bash na simulovaném Ubuntu 24.04: **9 témat** ve **4 obtížnostech**.
-- **Témata:** navigace, soubory a adresáře, prohlížení souborů, hledání, roury a přesměrování, oprávnění a vlastníci, uživatelé, skupiny a sudo, procesy, balíčky (apt)
+Příkazová řádka bash na simulovaném Ubuntu 24.04: **13 témat** ve **4 obtížnostech**.
+- **Témata:** navigace, soubory a adresáře, prohlížení souborů, hledání, roury a přesměrování, oprávnění a vlastníci, uživatelé, skupiny a sudo, procesy, balíčky (apt), zástupné znaky a uvozovky, úpravy textu (`sed`, `tr`, `tee`), služby (`systemctl`, `journalctl`) a rozbitý systém k opravě (na vlastní stránce **Řešení problémů**)
 - **Terminál:** Tab doplňuje příkazy a cesty, šipky procházejí historii, `help` vypíše všechny příkazy, které terminál zná
 - Chybové hlášky odpovídají skutečným GNU nástrojům a bashi
 - Vlastní **Reference** s příkazy a jejich volbami
@@ -34,6 +34,8 @@ Najdeš tu rozbité sítě, které musíš opravit. Témat je **7** a každé je
 - DHCP troubleshooting
 - ACL troubleshooting
 Každá úroveň začíná s chybnou konfigurací a tvé příkazy jsou oprava.
+
+Část Linux má vlastní stránku Řešení problémů s tématem **Rozbitý systém** ve 4 obtížnostech: webová stránka, kterou nejde číst, přístup do týmového adresáře, odmítnutý SSH klíč a aplikace, která neběží.
  
 ## 🔌 Topology
 Nauč se sestavit síť a správně zvolit kabeláž mezi prvky.

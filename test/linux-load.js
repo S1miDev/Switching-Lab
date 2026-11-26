@@ -4,7 +4,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 const FILES = ['i18n.js', 'linux/topics.js', 'devices/device.js', 'linux/fs.js', 'linux/bash.js', 'linux/cmds-files.js', 'linux/cmds-text.js',
-  'linux/cmds-system.js', 'devices/linux.js', 'linux/labs.js', 'linux/track.js', 'session.js'];
+  'linux/cmds-system.js', 'linux/cmds-services.js', 'devices/linux.js', 'linux/labs.js', 'linux/track.js', 'session.js'];
 
 // a getter for the code loaded in one language ('en' or 'cs', as if saved in localStorage)
 function load(lang) {

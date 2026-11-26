@@ -131,6 +131,151 @@ LINUX_CMDS.find = {
   },
 };
 
+// a tr set as a list of characters: ranges (a-z), the common classes and \n \t \\
+const LX_TR_CLASSES = {'[:lower:]': 'a-z', '[:upper:]': 'A-Z', '[:digit:]': '0-9', '[:alpha:]': 'A-Za-z', '[:alnum:]': '0-9A-Za-z', '[:space:]': ' \\t\\n'};
+function lxTrSet(set) {
+  const chars = [...set.replace(/\[:[a-z]+:\]/g, c => LX_TR_CLASSES[c] ?? c)
+    .replace(/\\(.)/g, (m, c) => ({n: '\n', t: '\t'}[c] ?? c))];
+  const out = [];
+  for (let i = 0; i < chars.length; i++) {
+    if (chars[i + 1] === '-' && i + 2 < chars.length) {
+      const a = chars[i].charCodeAt(0), b = chars[i + 2].charCodeAt(0);
+      if (b < a) return null;
+      for (let c = a; c <= b; c++) out.push(String.fromCharCode(c));
+      i += 2;
+    } else out.push(chars[i]);
+  }
+  return out;
+}
+
+LINUX_CMDS.tr = {
+  synopsis: 'tr SET1 SET2  (or -d SET1), reading standard input',
+  run(ctx) {
+    const p = lxOpts(ctx, ctx.args, 'd', '', {delete: 'd'});
+    if (!p) return 1;
+    const {o, rest} = p, want = o.d ? 1 : 2;
+    const usage = text => { ctx.err(`tr: ${text}`); return lxErr(ctx, "Try 'tr --help' for more information."); };
+    if (rest.length < want) return usage(rest.length ? `missing operand after ‘${rest[0]}’` : 'missing operand');
+    if (rest.length > want) return usage(`extra operand ‘${rest[want]}’`);
+    const [from, to] = rest.map(lxTrSet);
+    if (!from || (!o.d && !to)) return lxErr(ctx, 'tr: range-endpoints are in reverse collating sequence order');
+    if (!o.d && !to.length) return lxErr(ctx, 'tr: when not truncating set1, string2 must be non-empty');
+    // a shorter SET2 repeats its last character, as GNU tr does
+    ctx.write([...ctx.stdin ?? ''].map(c => {
+      const i = from.lastIndexOf(c);
+      return i < 0 ? c : o.d ? '' : to[Math.min(i, to.length - 1)];
+    }).join(''));
+    return 0;
+  },
+};
+
+LINUX_CMDS.tee = {
+  synopsis: 'tee [-a] [FILE]...',
+  run(ctx) {
+    const p = lxOpts(ctx, ctx.args, 'a', '', {append: 'a'});
+    if (!p) return 1;
+    const {st} = ctx, text = ctx.stdin ?? '';
+    let code = 0;
+    for (const f of p.rest) {
+      const w = lxAt(ctx, f), fail = c => { code = lxErr(ctx, `tee: ${f}: ${LX_ERR[c]}`); };
+      let node = w.node;
+      if (!node) {
+        if (!w.parent) { fail(w.error); continue; }
+        if (!lxMay(st, ctx.user, w.parent, 'w')) { fail('EACCES'); continue; }
+        node = lxMake(st, ctx.user, w.abs, 'file');
+      } else if (node.type === 'dir') { fail('EISDIR'); continue; }
+      else if (node.gen || !lxMay(st, ctx.user, node, 'w')) { fail('EACCES'); continue; }
+      if (!p.o.a && !node.dev) node.content = '';
+      lxWriteTo(node, text);
+    }
+    ctx.write(text);
+    return code;
+  },
+};
+
+// ---- sed: one command, [N or /RE/] then s/RE/NEW/[gi], d or p ----
+
+// {test(line, number), cmd: 's'|'d'|'p', re, to} or {error}
+function lxSedScript(script) {
+  const na = {error: `sed: this script is not available in this lab (use s/old/new/g, Nd, /re/d, or -n with p)`};
+  // the part from at up to the next unescaped delimiter: [text, index after it], or null
+  const part = (at, d) => {
+    let text = '';
+    for (let i = at; i < script.length; i++) {
+      if (script[i] === '\\' && i + 1 < script.length) text += script[i + 1] === d ? script[++i] : script[i] + script[++i];
+      else if (script[i] === d) return [text, i + 1];
+      else text += script[i];
+    }
+    return null;
+  };
+  const regex = (src, flags) => {
+    try { return src ? new RegExp(lxBre(src), flags) : null; } catch { return null; }
+  };
+  let i = 0, test = () => true;
+  const num = /^\d+/.exec(script);
+  if (num) { test = (l, n) => n === +num[0]; i = num[0].length; }
+  else if (script[0] === '/') {
+    const got = part(1, '/'), re = got && regex(got[0], '');
+    if (!re) return na;
+    test = l => re.test(l);
+    i = got[1];
+  }
+  const cmd = script[i];
+  if ((cmd === 'd' || cmd === 'p') && i + 1 === script.length) return i ? {test, cmd} : na;
+  const d = script[i + 1];
+  if (cmd !== 's' || !d || d === '\\') return na;
+  const pattern = part(i + 2, d), repl = pattern && part(pattern[1], d);
+  if (!repl) return {error: `sed: -e expression #1, char ${script.length}: unterminated \`s' command`};
+  const flags = script.slice(repl[1]);
+  if (!/^[gi]*$/.test(flags)) return na;
+  const re = regex(pattern[0], flags);
+  if (!re) return na;
+  // in the replacement, & is the match, \1 to \9 are groups, and a backslash makes anything else plain
+  const to = (...m) => repl[0].replace(/\\(.)|&/g, (all, c) => (all === '&' ? m[0] : /\d/.test(c) ? m[+c] ?? '' : {n: '\n', t: '\t'}[c] ?? c));
+  return {test, cmd, re, to};
+}
+
+LINUX_CMDS.sed = {
+  synopsis: "sed [-n] [-i] 's/OLD/NEW/g' [FILE]...  (or Nd, /RE/d, Np)",
+  run(ctx) {
+    const p = lxOpts(ctx, ctx.args, 'ni', '', {quiet: 'n', silent: 'n', 'in-place': 'i'});
+    if (!p) return 1;
+    const {o} = p, [script, ...files] = p.rest, {st} = ctx;
+    if (script === undefined) return lxErr(ctx, 'Usage: sed [OPTION]... {script-only-if-no-other-script} [input-file]...');
+    const s = lxSedScript(script);
+    if (s.error) return lxErr(ctx, s.error);
+    const edit = text => {
+      const out = lxLines(text).flatMap((line, k) => {
+        const hit = s.test(line, k + 1);
+        if (hit && s.cmd === 'd') return [];
+        const next = hit && s.cmd === 's' ? line.replace(s.re, s.to) : line;
+        return [...(hit && s.cmd === 'p' ? [next] : []), ...(o.n ? [] : [next])];
+      });
+      return out.join('\n') + (out.length && text.endsWith('\n') ? '\n' : '');
+    };
+    let code = 0;
+    if (!o.i) {
+      // several files are one stream, so line numbers run on
+      const inputs = lxInputs(ctx, files, (f, c) => { code = 2; ctx.err(`sed: can't read ${f}: ${LX_ERR[c]}`); });
+      ctx.write(edit(inputs.map(x => x.text ?? '').join('')));
+      return code;
+    }
+    if (!files.length) return lxErr(ctx, 'sed: no input files');
+    for (const f of files) {
+      const w = lxAt(ctx, f);
+      if (!w.node) { ctx.err(`sed: can't read ${f}: ${LX_ERR[w.error]}`); code = 2; continue; }
+      if (w.node.type !== 'file' || w.node.dev) { code = lxErr(ctx, `sed: couldn't edit ${f}: not a regular file`); continue; }
+      if (!lxMay(st, ctx.user, w.node, 'r')) { code = lxErr(ctx, `sed: can't read ${f}: ${LX_ERR.EACCES}`); continue; }
+      // like GNU sed, -i writes a new file beside the old one, so it needs write access to the directory
+      if (w.node.gen || !lxMay(st, ctx.user, w.parent, 'w')) { code = lxErr(ctx, `sed: couldn't open temporary file ${lxParent(w.abs)}/sedXXXXXX: ${LX_ERR.EACCES}`); continue; }
+      w.node.content = edit(w.node.content);
+      w.node.mtime = Date.now();
+      if (ctx.user !== 'root') w.node.owner = ctx.user;
+    }
+    return code;
+  },
+};
+
 // the lines of a filter's inputs (files or standard input), or null when one could not be read
 function lxFilterLines(ctx, files) {
   let failed = false;
